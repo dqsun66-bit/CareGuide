@@ -26,6 +26,16 @@ class BusinessStore:
                 ON handoffs(actor, conversation) WHERE status IN ('open', 'in_progress');
                 CREATE TABLE IF NOT EXISTS knowledge (
                     id TEXT PRIMARY KEY, status TEXT NOT NULL, payload TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS map_parking_queries (
+                    id TEXT PRIMARY KEY,
+                    actor TEXT NOT NULL,
+                    conversation TEXT NOT NULL,
+                    version INTEGER NOT NULL,
+                    expires_at TEXT NOT NULL,
+                    payload TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS map_parking_query_scope
+                ON map_parking_queries(actor, conversation, expires_at);
             ''')
 
     @contextmanager
@@ -83,3 +93,51 @@ class BusinessStore:
             connection.execute('UPDATE handoffs SET status=?,payload=? WHERE id=?',
                 (status, json.dumps(item, ensure_ascii=False), identity))
             return item
+
+    def create_map_parking_query(
+            self, actor, conversation, query, city, hospitals, *, expires_at, now=None):
+        now = now or datetime.now(timezone.utc)
+        query_id = 'MAP-' + uuid.uuid4().hex
+        item = {
+            'query_id': query_id,
+            'candidate_version': 1,
+            'actor': actor,
+            'conversation': conversation,
+            'query': query,
+            'city': city,
+            'hospitals': hospitals,
+            'created_at': now.isoformat(),
+            'expires_at': expires_at.isoformat(),
+        }
+        with self._lock, self.connect() as connection:
+            connection.execute('BEGIN IMMEDIATE')
+            connection.execute(
+                'INSERT INTO map_parking_queries VALUES (?,?,?,?,?,?)',
+                (query_id, actor, conversation, 1, item['expires_at'],
+                 json.dumps(item, ensure_ascii=False)),
+            )
+        return item
+
+    def select_map_hospital(
+            self, query_id, actor, conversation, version, hospital_id, *, now=None):
+        now = now or datetime.now(timezone.utc)
+        with self.connect() as connection:
+            row = connection.execute(
+                'SELECT actor, conversation, version, expires_at, payload '
+                'FROM map_parking_queries WHERE id=?',
+                (query_id,),
+            ).fetchone()
+        if row is None:
+            raise LookupError('Map parking query not found')
+        if row['actor'] != actor or row['conversation'] != conversation:
+            raise PermissionError('Map parking query belongs to another scope')
+        if row['version'] != version:
+            raise ValueError('Map parking query version mismatch')
+        if datetime.fromisoformat(row['expires_at']) <= now:
+            raise TimeoutError('Map parking query expired')
+
+        item = json.loads(row['payload'])
+        for hospital in item['hospitals']:
+            if hospital.get('hospital_id') == hospital_id:
+                return hospital
+        raise ValueError('Hospital is not a candidate for this query')
