@@ -7,7 +7,7 @@ export function createAmapLoader({ documentRef = document, windowRef = window } 
     pending = new Promise((resolve, reject) => {
       const script = documentRef.createElement('script')
       script.async = true
-      script.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(jsKey)}`
+      script.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(jsKey)}&plugin=AMap.Scale`
       script.onload = () => windowRef.AMap
         ? resolve(windowRef.AMap)
         : reject(new Error('高德地图 SDK 未正确初始化'))

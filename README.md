@@ -68,7 +68,7 @@ npm ci
 npm run dev
 ```
 
-启用高德地图时，后端 `.env` 配置 `CAREGUIDE_AMAP_WEB_SERVICE_KEY`，前端 `frontend/.env.local` 配置 `VITE_AMAP_JS_KEY`。两把 Key 用途不同，后端 Key 不得进入 Vite 配置或浏览器。可使用 `python scripts/smoke_amap.py` 进行只读联调。
+启用高德地图时，后端 `.env` 配置 `CAREGUIDE_AMAP_WEB_SERVICE_KEY`，前端 `frontend/.env.local` 配置 `VITE_AMAP_JS_KEY`。两把 Key 用途不同：后端 Key 不得进入 Vite 配置或浏览器；Web JS Key 会按高德的前端接入方式出现在浏览器构建中，应在高德控制台限制允许域名。可使用 `python -m scripts.validate_amap_parking --config-file .env` 进行只读联调；脚本会同时核对医院名称和城市，不写入语料或索引。
 
 Docker 完整模式：
 

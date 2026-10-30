@@ -442,14 +442,16 @@
 
           <section class="workspace-card parking-result real-map-card">
             <ParkingMap :hospital="selectedHospital" :candidates="mapParking"
-              :selected="selectedParking" :route="mapRoute" />
+              :selected-parking-id="selectedParking?.parking_id || ''" :route="mapRoute"
+              @select-parking="selectParking" @map-error="showToast" />
             <div class="parking-candidates real-candidates">
               <article v-for="item in mapParking" :key="item.parking_id"
                 :class="{ eligible: selectedParking?.parking_id === item.parking_id }"
                 role="button" tabindex="0" @click="selectParking(item)" @keydown.enter="selectParking(item)">
                 <strong>{{ item.name }}</strong>
-                <span>{{ item.distance_to_hospital_m == null ? '距离未知' : `${item.distance_to_hospital_m} 米` }} · 实时车位未知</span>
-                <small>无障碍通行未核实 · {{ item.parking_type || '停车类型未知' }}</small>
+                <span>{{ item.distance_to_hospital_m == null ? '距离未知' : `${item.distance_to_hospital_m} 米` }} · {{ parkingTruthLabels(item).availability }}</span>
+                <small>{{ parkingTruthLabels(item).accessibility }} · {{ item.parking_type || '停车类型未知' }}</small>
+                <small class="source-badge">map_poi · 高德地图 · {{ formatMapObservation(item.observed_at) }}</small>
               </article>
             </div>
             <div v-if="selectedParking" class="route-summary">
@@ -541,6 +543,8 @@ import { safeSourceUrl } from './lib/markdown'
 import { requestIdentity } from './lib/backends'
 import { accessToken, setAccessToken } from './lib/auth'
 import {
+  buildParkingToHospitalRoute,
+  parkingTruthLabels,
   requestMapRoute,
   requestParkingReplan,
   searchMapHospitals,
@@ -705,15 +709,23 @@ function selectParking(parking) {
   mapRoute.value = null
 }
 
+function formatMapObservation(value) {
+  if (!value) return '查询时间未知'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '查询时间未知'
+  return `查询于 ${new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(date)}`
+}
+
 async function planSelectedRoute() {
   if (!selectedHospital.value || !selectedParking.value) return
   parkingBusy.value = true
   try {
-    mapRoute.value = await requestMapRoute(mapRequester, {
-      origin: selectedHospital.value.entrance_location || selectedHospital.value.location,
-      destination: selectedParking.value.entrance_location || selectedParking.value.location,
-      mode: 'walking',
-    })
+    mapRoute.value = await requestMapRoute(
+      mapRequester,
+      buildParkingToHospitalRoute(selectedHospital.value, selectedParking.value),
+    )
   } catch (error) { showToast(error.message) }
   finally { parkingBusy.value = false }
 }

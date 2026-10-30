@@ -2,6 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  buildParkingToHospitalRoute,
+  parkingTruthLabels,
   requestMapRoute,
   requestParkingReplan,
   searchMapHospitals,
@@ -79,4 +81,43 @@ test('route request uses the read-only map route endpoint', async () => {
   })
   assert.equal(route.wheelchair_verified, false)
   assert.equal(calls[0].path, '/map/routes')
+})
+
+test('simulation mode rejects map POI data and real labels preserve unknown states', async () => {
+  await assert.rejects(
+    () => requestParkingReplan(async () => ({
+      simulation: true,
+      after: { candidates: [{ id: 'P1', data_tier: 'map_poi' }] },
+    }), {
+      maxWalkingDistanceM: 200,
+      requiresWheelchairAccess: true,
+      eventLotId: 'SIM-A',
+      availableSpaces: 0,
+    }),
+    /map data/i,
+  )
+
+  assert.deepEqual(parkingTruthLabels({
+    available_spaces: null,
+    wheelchair_accessible: null,
+  }), {
+    availability: '实时车位未知',
+    accessibility: '无障碍通行未核实',
+  })
+})
+
+test('walking route starts at parking and ends at the hospital entrance', () => {
+  const hospital = {
+    location: { longitude: 119.9, latitude: 32.4 },
+    entrance_location: { longitude: 119.91, latitude: 32.41 },
+  }
+  const parking = {
+    location: { longitude: 119.8, latitude: 32.3 },
+    entrance_location: { longitude: 119.81, latitude: 32.31 },
+  }
+  assert.deepEqual(buildParkingToHospitalRoute(hospital, parking), {
+    origin: parking.entrance_location,
+    destination: hospital.entrance_location,
+    mode: 'walking',
+  })
 })

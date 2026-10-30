@@ -12,9 +12,10 @@ import { loadAmap } from '../lib/amap-loader'
 const props = defineProps({
   hospital: { type: Object, default: null },
   candidates: { type: Array, default: () => [] },
-  selected: { type: Object, default: null },
+  selectedParkingId: { type: String, default: '' },
   route: { type: Object, default: null },
 })
+const emit = defineEmits(['select-parking', 'map-error'])
 const container = ref(null)
 const error = ref('')
 let AMap = null
@@ -41,13 +42,15 @@ function render() {
     }))
   }
   for (const item of props.candidates) {
-    overlays.push(new AMap.Marker({
+    const marker = new AMap.Marker({
       position: lngLat(item.entrance_location || item.location),
       title: item.name,
-      label: item.parking_id === props.selected?.parking_id
+      label: item.parking_id === props.selectedParkingId
         ? { content: `已选：${item.name}`, direction: 'top' }
         : undefined,
-    }))
+    })
+    marker.on('click', () => emit('select-parking', item))
+    overlays.push(marker)
   }
   const path = (props.route?.polyline || []).map(lngLat).filter(Boolean)
   if (path.length > 1) {
@@ -63,13 +66,15 @@ onMounted(async () => {
   try {
     AMap = await loadAmap(import.meta.env.VITE_AMAP_JS_KEY)
     map = new AMap.Map(container.value, { zoom: 14, viewMode: '2D' })
+    if (AMap.Scale) map.addControl(new AMap.Scale())
     render()
   } catch (loadError) {
     error.value = loadError.message
+    emit('map-error', loadError.message)
   }
 })
 
-watch(() => [props.hospital, props.candidates, props.selected, props.route], render, { deep: true })
+watch(() => [props.hospital, props.candidates, props.selectedParkingId, props.route], render, { deep: true })
 onBeforeUnmount(() => {
   clearOverlays()
   map?.destroy()

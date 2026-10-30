@@ -41,6 +41,8 @@ def test_search_parking_preserves_unknown_live_and_accessibility_fields():
                 'id': 'H1',
                 'name': '泰州市人民医院（总院）',
                 'address': '太湖路366号',
+                'cityname': '泰州市',
+                'adname': '海陵区',
                 'location': '119.923000,32.455000',
                 'navi': {'entr_location': '119.923100,32.455100'},
             }]})
@@ -66,6 +68,8 @@ def test_search_parking_preserves_unknown_live_and_accessibility_fields():
     hospitals, parking = asyncio.run(exercise())
 
     assert hospitals[0].hospital_id == 'H1'
+    assert hospitals[0].city_name == '泰州市'
+    assert hospitals[0].district_name == '海陵区'
     assert hospitals[0].entrance_location.longitude == 119.9231
     assert parking[0].available_spaces is None
     assert parking[0].wheelchair_accessible is None

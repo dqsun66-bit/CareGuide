@@ -17,6 +17,8 @@ class HospitalPoi(BaseModel):
     hospital_id: str
     name: str
     address: str
+    city_name: str | None = None
+    district_name: str | None = None
     location: Coordinate
     entrance_location: Coordinate | None = None
     data_tier: Literal['map_poi'] = 'map_poi'

@@ -69,6 +69,8 @@ def _hospital(item: Any, observed_at: datetime) -> HospitalPoi | None:
         hospital_id=str(item['id']),
         name=str(item['name']),
         address=_text(item.get('address')),
+        city_name=_text(item.get('cityname')) or None,
+        district_name=_text(item.get('adname')) or None,
         location=location,
         entrance_location=_coordinate(navi.get('entr_location')),
         observed_at=observed_at,

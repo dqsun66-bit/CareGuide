@@ -1218,6 +1218,11 @@ a { color: inherit; }
 .map-result-button small { color: var(--muted); }
 .map-result-button.active { outline: 2px solid var(--accent); }
 .real-candidates article { cursor: pointer; }
+.real-candidates article:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.source-badge { color: var(--accent) !important; }
 .route-summary {
   display: flex;
   gap: 12px;

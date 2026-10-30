@@ -30,3 +30,21 @@ test('Amap loader is single-flight and resolves the loaded SDK', async () => {
   assert.equal(appended, 1)
   assert.equal(first, second)
 })
+
+test('Amap loader requests the scale plugin without exposing key elsewhere', async () => {
+  const windowRef = {}
+  let source = ''
+  const loader = createAmapLoader({
+    windowRef,
+    documentRef: {
+      createElement: () => ({}),
+      head: { appendChild(script) {
+        source = script.src
+        windowRef.AMap = { Map: class {} }
+        queueMicrotask(() => script.onload())
+      } },
+    },
+  })
+  await loader('public-key')
+  assert.match(source, /plugin=AMap\.Scale/)
+})
