@@ -12,6 +12,12 @@ from pathlib import Path
 from contextlib import contextmanager
 
 
+def _as_utc(value, name):
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError(f'{name} must be timezone-aware')
+    return value.astimezone(timezone.utc)
+
+
 class BusinessStore:
     def __init__(self, path):
         self.path = Path(path)
@@ -96,7 +102,8 @@ class BusinessStore:
 
     def create_map_parking_query(
             self, actor, conversation, query, city, hospitals, *, expires_at, now=None):
-        now = now or datetime.now(timezone.utc)
+        now = _as_utc(now if now is not None else datetime.now(timezone.utc), 'now')
+        expires_at = _as_utc(expires_at, 'expires_at')
         query_id = 'MAP-' + uuid.uuid4().hex
         item = {
             'query_id': query_id,
@@ -120,7 +127,7 @@ class BusinessStore:
 
     def select_map_hospital(
             self, query_id, actor, conversation, version, hospital_id, *, now=None):
-        now = now or datetime.now(timezone.utc)
+        now = _as_utc(now if now is not None else datetime.now(timezone.utc), 'now')
         with self.connect() as connection:
             row = connection.execute(
                 'SELECT actor, conversation, version, expires_at, payload '
@@ -133,7 +140,9 @@ class BusinessStore:
             raise PermissionError('Map parking query belongs to another scope')
         if row['version'] != version:
             raise ValueError('Map parking query version mismatch')
-        if datetime.fromisoformat(row['expires_at']) <= now:
+        expires_at = _as_utc(
+            datetime.fromisoformat(row['expires_at']), 'Stored expires_at')
+        if expires_at <= now:
             raise TimeoutError('Map parking query expired')
 
         item = json.loads(row['payload'])

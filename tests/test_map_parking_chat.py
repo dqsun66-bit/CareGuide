@@ -57,6 +57,59 @@ def test_create_and_select_map_hospital(store, query):
     assert selected == HOSPITAL
 
 
+def test_create_rejects_naive_expires_at(store):
+    with pytest.raises(ValueError, match='expires_at must be timezone-aware'):
+        store.create_map_parking_query(
+            'alice',
+            'conversation-1',
+            '泰州市人民医院',
+            '泰州市',
+            [HOSPITAL],
+            expires_at=EXPIRES_AT.replace(tzinfo=None),
+            now=NOW,
+        )
+
+
+def test_create_rejects_naive_now(store):
+    with pytest.raises(ValueError, match='now must be timezone-aware'):
+        store.create_map_parking_query(
+            'alice',
+            'conversation-1',
+            '泰州市人民医院',
+            '泰州市',
+            [HOSPITAL],
+            expires_at=EXPIRES_AT,
+            now=NOW.replace(tzinfo=None),
+        )
+
+
+def test_create_normalizes_offset_times_and_select_expires_at_boundary(store):
+    china_timezone = timezone(timedelta(hours=8))
+    local_now = NOW.astimezone(china_timezone)
+    local_expires_at = EXPIRES_AT.astimezone(china_timezone)
+    item = store.create_map_parking_query(
+        'alice',
+        'conversation-1',
+        '泰州市人民医院',
+        '泰州市',
+        [HOSPITAL],
+        expires_at=local_expires_at,
+        now=local_now,
+    )
+
+    assert item['created_at'] == NOW.isoformat()
+    assert item['expires_at'] == EXPIRES_AT.isoformat()
+    with pytest.raises(TimeoutError):
+        store.select_map_hospital(
+            item['query_id'],
+            'alice',
+            'conversation-1',
+            1,
+            'H1',
+            now=local_expires_at,
+        )
+
+
 @pytest.mark.parametrize(
     ('actor', 'conversation'),
     [
@@ -101,6 +154,31 @@ def test_select_rejects_missing_query(store):
     with pytest.raises(LookupError):
         store.select_map_hospital(
             'MAP-missing', 'alice', 'conversation-1', 1, 'H1', now=NOW
+        )
+
+
+def test_select_rejects_naive_now(store, query):
+    with pytest.raises(ValueError, match='now must be timezone-aware'):
+        store.select_map_hospital(
+            query['query_id'],
+            'alice',
+            'conversation-1',
+            1,
+            'H1',
+            now=NOW.replace(tzinfo=None),
+        )
+
+
+def test_select_rejects_naive_stored_expiry(store, query):
+    with store.connect() as connection:
+        connection.execute(
+            'UPDATE map_parking_queries SET expires_at=? WHERE id=?',
+            (EXPIRES_AT.replace(tzinfo=None).isoformat(), query['query_id']),
+        )
+
+    with pytest.raises(ValueError, match='Stored expires_at must be timezone-aware'):
+        store.select_map_hospital(
+            query['query_id'], 'alice', 'conversation-1', 1, 'H1', now=NOW
         )
 
 
