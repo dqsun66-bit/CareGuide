@@ -1,8 +1,13 @@
+import asyncio
+import json
 from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from careguide.business_store import BusinessStore
+from careguide.amap_models import Coordinate, HospitalPoi
+from careguide.map_parking_chat import MapParkingChatService
+from careguide.trace_store import TRACE_VERSION, TraceStore, validate_trace_completeness
 
 
 NOW = datetime(2026, 10, 30, 8, tzinfo=timezone.utc)
@@ -19,6 +24,37 @@ HOSPITAL = {
     'source_provider': 'amap',
     'observed_at': NOW.isoformat(),
 }
+
+
+def hospital_poi(identity='H1', name='泰州市人民医院（总院）'):
+    return HospitalPoi(
+        hospital_id=identity,
+        name=name,
+        address='太湖路366号',
+        city_name='泰州市',
+        district_name='医药高新区',
+        location=Coordinate(longitude=119.923, latitude=32.455),
+        entrance_location=Coordinate(longitude=119.9228, latitude=32.4552),
+        observed_at=NOW,
+    )
+
+
+class ScriptedAmap:
+    def __init__(self, hospitals):
+        self.hospitals = list(hospitals)
+        self.calls = []
+
+    async def search_hospitals(self, query, *, city):
+        self.calls.append({'query': query, 'city': city})
+        return list(self.hospitals)
+
+
+def chat_service(tmp_path, hospitals):
+    amap = ScriptedAmap(hospitals)
+    store = BusinessStore(tmp_path / 'chat-business.sqlite3')
+    traces = TraceStore(path=None)
+    service = MapParkingChatService(amap, store, traces, now=lambda: NOW)
+    return service, amap, store, traces
 
 
 @pytest.fixture
@@ -206,3 +242,92 @@ def test_selected_hospital_cannot_mutate_stored_candidate(store, query):
     )
 
     assert selected_again == HOSPITAL
+
+
+def test_real_parking_query_searches_exact_hospital_and_waits_for_confirmation(tmp_path):
+    hospitals = [hospital_poi(), hospital_poi('H2', '泰州市中医院')]
+    service, amap, store, traces = chat_service(tmp_path, hospitals)
+
+    result = asyncio.run(service.handle(
+        '查询泰州医院停车场', 'alice', 'conversation-map'))
+
+    assert amap.calls == [{'query': '泰州医院', 'city': '泰州'}]
+    assert result['intent'] == 'map_parking'
+    assert result['intents'] == ['map_parking']
+    assert result['intent_group'] == 'map_parking'
+    assert result['workflow_status'] == 'waiting_user'
+    assert result['simulation'] is False
+    assert result['execution_mode'] == 'deterministic_tool'
+    selection = result['map_selection']
+    assert selection['candidate_version'] == 1
+    assert selection['expires_at'] == EXPIRES_AT.isoformat()
+    assert [item['hospital_id'] for item in selection['hospitals']] == ['H1', 'H2']
+    assert set(selection['hospitals'][0]) == {
+        'hospital_id', 'name', 'address', 'city', 'district', 'location',
+        'entrance', 'data_tier', 'source_provider', 'observed_at',
+    }
+    stored = store.select_map_hospital(
+        selection['query_id'], 'alice', 'conversation-map', 1, 'H1', now=NOW)
+    assert stored == selection['hospitals'][0]
+
+    recent = traces.list_recent()
+    assert len(recent) == 1
+    trace = recent[0]
+    assert trace['trace_version'] == TRACE_VERSION
+    assert validate_trace_completeness(trace)['complete']
+    assert trace['task_understanding']['task_type'] == 'map_parking'
+    assert trace['task_understanding']['missing_fields'] == {'map_parking': ['hospital_id']}
+    assert trace['routing']['primary_agent'] == 'map_parking'
+    assert trace['execution']['budget']['model_calls'] == 0
+    tool_call = trace['execution']['tool_calls'][0]
+    assert tool_call['tool_name'] == 'amap_search_hospitals'
+    assert tool_call['input'] == {'query': '泰州医院', 'city': '泰州'}
+    assert tool_call['output'] == {'count': 2, 'hospital_ids': ['H1', 'H2']}
+    serialized = json.dumps(trace, ensure_ascii=False).lower()
+    assert 'key' not in serialized
+    assert 'url' not in serialized
+    assert 'sim-' not in serialized
+
+
+def test_single_hospital_candidate_still_waits_for_user_confirmation(tmp_path):
+    service, amap, _store, traces = chat_service(tmp_path, [hospital_poi()])
+
+    result = asyncio.run(service.handle(
+        '开车去南京市第一医院，停车怎么停', 'alice', 'conversation-single'))
+
+    assert amap.calls == [{'query': '南京市第一医院', 'city': '南京'}]
+    assert result['workflow_status'] == 'waiting_user'
+    assert len(result['map_selection']['hospitals']) == 1
+    assert len(traces.list_recent()) == 1
+
+
+def test_no_hospital_candidate_completes_without_simulated_data(tmp_path):
+    service, amap, _store, traces = chat_service(tmp_path, [])
+
+    result = asyncio.run(service.handle(
+        '帮我查找上海医院附近停车场', 'alice', 'conversation-empty'))
+
+    assert amap.calls == [{'query': '上海医院', 'city': '上海'}]
+    assert result['workflow_status'] == 'completed'
+    assert result['simulation'] is False
+    assert '没有找到' in result['response']
+    assert '城市' in result['response'] and '正式名称' in result['response']
+    assert 'map_selection' not in result
+    assert 'SIM-' not in json.dumps(result, ensure_ascii=False)
+    assert len(traces.list_recent()) == 1
+    assert validate_trace_completeness(traces.list_recent()[0])['complete']
+
+
+@pytest.mark.parametrize('message', [
+    '医院怎么挂号',
+    '最近总是头痛怎么办',
+    '请模拟医院停车方案',
+    '请对医院停车做模拟重规划',
+    '医院停车场 SIM-A 满了怎么办',
+])
+def test_unrelated_or_explicit_simulation_requests_are_not_claimed(tmp_path, message):
+    service, amap, _store, traces = chat_service(tmp_path, [hospital_poi()])
+
+    assert asyncio.run(service.handle(message, 'alice', 'conversation-other')) is None
+    assert amap.calls == []
+    assert traces.list_recent() == []
