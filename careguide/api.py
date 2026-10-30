@@ -4,6 +4,7 @@ import asyncio
 import uuid
 import os
 from contextlib import asynccontextmanager
+from functools import lru_cache
 
 from fastapi import Depends, FastAPI, HTTPException, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,6 +19,9 @@ from careguide.orchestration.store import VersionConflict, WorkflowExpired
 from careguide.orchestration.budget import BudgetExhausted
 from careguide.streaming import emit, progress_events, encode_event
 from careguide.auth import ActorModel, authentication_middleware, principal, owned_trace, bound_actor
+from careguide.parking_demo import parking_chat_response, replan_demo
+from careguide.amap_client import AmapClient, AmapProviderError
+from careguide.amap_models import RouteRequest
 
 @asynccontextmanager
 async def lifespan(app):
@@ -41,6 +45,9 @@ async def lifespan(app):
         await engine.appointment_service.backend.close()
     if engine.client is not None:
         await engine.client.close()
+    if get_amap_client.cache_info().currsize:
+        await get_amap_client().aclose()
+        get_amap_client.cache_clear()
     get_chat_runtime.cache_clear()
 
 
@@ -54,6 +61,41 @@ _MEMORY_READ_TIMEOUT_S = 2
 _MEMORY_WRITE_TIMEOUT_S = 8
 _stream_tasks = set()
 _STREAM_HEARTBEAT_SECONDS = 10
+
+
+@lru_cache(maxsize=1)
+def get_amap_client() -> AmapClient:
+    key = os.environ.get('CAREGUIDE_AMAP_WEB_SERVICE_KEY', '').strip()
+    if not _amap_configured():
+        raise HTTPException(503, detail={
+            'code': 'provider_unconfigured',
+            'message': '高德 Web 服务密钥未配置',
+        })
+    try:
+        timeout_s = float(os.environ.get('CAREGUIDE_AMAP_TIMEOUT_SECONDS', '8'))
+    except ValueError as exc:
+        raise HTTPException(503, detail={
+            'code': 'provider_unconfigured', 'message': '地图服务超时配置无效'
+        }) from exc
+    if not 0.1 <= timeout_s <= 60:
+        raise HTTPException(503, detail={
+            'code': 'provider_unconfigured', 'message': '地图服务超时配置必须在 0.1–60 秒之间'
+        })
+    return AmapClient(
+        key,
+        base_url=os.environ.get('CAREGUIDE_AMAP_BASE_URL', 'https://restapi.amap.com'),
+        timeout_s=timeout_s,
+    )
+
+
+def _map_provider_error(exc: AmapProviderError) -> HTTPException:
+    status = 429 if exc.code == 'provider_rate_limited' else 503
+    return HTTPException(status, detail={'code': exc.code, 'message': str(exc)})
+
+
+def _amap_configured() -> bool:
+    key = os.environ.get('CAREGUIDE_AMAP_WEB_SERVICE_KEY', '').strip()
+    return bool(key and not key.startswith('YOUR_'))
 
 
 @asynccontextmanager
@@ -136,7 +178,9 @@ async def _execute_chat_result(request, runtime):
                 result = await engine.process(request.message, request.user_id, conv_id, history,
                     workflow_event=event.model_dump())
             else:
-                result = await engine.process(request.message, request.user_id, conv_id, history)
+                result = parking_chat_response(
+                    request.message, request.user_id, conv_id, engine.traces,
+                ) or await engine.process(request.message, request.user_id, conv_id, history)
             emit('stage', stage='saving', message='结果已生成，正在保存会话')
             try:
                 async with asyncio.timeout(_MEMORY_WRITE_TIMEOUT_S):
@@ -532,6 +576,20 @@ class ActionIdentityRequest(ActorModel):
     conv_id: str = Field(min_length=1, max_length=100)
 
 
+class ParkingEvent(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    parking_lot_id: str = Field(min_length=1, max_length=50)
+    available_spaces: int = Field(ge=0, le=100000)
+
+
+class ParkingReplanRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    hospital_id: str = Field(min_length=1, max_length=100)
+    max_walking_distance_m: int = Field(ge=0, le=5000)
+    requires_wheelchair_access: bool
+    event: ParkingEvent
+
+
 def _intent_classifier_status(engine) -> dict:
     recognizer = engine.recognizer
     classifier = getattr(recognizer, 'semantic_classifier', None)
@@ -565,7 +623,53 @@ async def health(runtime=Depends(get_chat_runtime)):
     return {'status': 'ok', 'stage': 'medical_chat_runtime',
             'integrations': {'intent_classifier': intent,
                              'knowledge': knowledge, 'hospital': hospital,
-                             'memory': memory_status}}
+                             'memory': memory_status,
+                             'amap': {'configured': _amap_configured()}}}
+
+
+@app.get('/map/hospitals/search')
+async def search_map_hospitals(q: str, city: str = '泰州',
+                               amap: AmapClient = Depends(get_amap_client)):
+    q, city = q.strip(), city.strip()
+    if not 1 <= len(q) <= 100 or not 1 <= len(city) <= 50:
+        raise HTTPException(422, '搜索词或城市长度无效')
+    try:
+        hospitals = await amap.search_hospitals(q, city=city)
+    except AmapProviderError as exc:
+        raise _map_provider_error(exc) from exc
+    return {'hospitals': hospitals, 'simulation': False,
+            'source_provider': 'amap', 'data_tier': 'map_poi'}
+
+
+@app.get('/map/hospitals/{hospital_id}/parking')
+async def search_map_parking(hospital_id: str, radius_m: int = 1000,
+                             amap: AmapClient = Depends(get_amap_client)):
+    if not 1 <= len(hospital_id) <= 100:
+        raise HTTPException(422, 'hospital_id length is invalid')
+    if not 1 <= radius_m <= 50000:
+        raise HTTPException(422, 'radius_m must be between 1 and 50000')
+    try:
+        hospital = await amap.get_hospital(hospital_id)
+        if hospital is None:
+            raise HTTPException(404, '未找到该医院院区')
+        candidates = await amap.search_parking(hospital, radius_m=radius_m)
+    except AmapProviderError as exc:
+        raise _map_provider_error(exc) from exc
+    return {'hospital': hospital, 'candidates': candidates, 'simulation': False,
+            'source_provider': 'amap', 'data_tier': 'map_poi'}
+
+
+@app.post('/map/routes')
+async def create_map_route(request: RouteRequest,
+                           amap: AmapClient = Depends(get_amap_client)):
+    try:
+        route = await amap.route(request)
+    except AmapProviderError as exc:
+        raise _map_provider_error(exc) from exc
+    if route is None:
+        raise HTTPException(404, '未找到可用路线')
+    return {'route': route, 'simulation': False,
+            'source_provider': 'amap', 'data_tier': 'map_poi'}
 
 
 @app.get('/capabilities')
@@ -643,6 +747,20 @@ async def get_appointments(user_id: str, runtime=Depends(get_chat_runtime)):
 @app.post('/plan')
 def get_plan(request: PlanRequest):
     return plan(request.intents)
+
+
+@app.post('/demo/parking/replan')
+def demo_parking_replan(request: ParkingReplanRequest):
+    try:
+        return replan_demo(
+            request.hospital_id,
+            request.max_walking_distance_m,
+            request.requires_wheelchair_access,
+            request.event.parking_lot_id,
+            request.event.available_spaces,
+        )
+    except (ValueError, LookupError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.get('/tools')

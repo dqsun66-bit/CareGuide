@@ -113,7 +113,8 @@ a { color: inherit; }
 
 .app-shell-knowledge,
 .app-shell-evaluation,
-.app-shell-appointments {
+.app-shell-appointments,
+.app-shell-parking {
   height: auto;
   min-height: 100vh;
   overflow: visible;
@@ -1152,6 +1153,161 @@ a { color: inherit; }
 .skill-item > span:not(.skill-dot),
 .skill-item small { color: var(--muted); font-size: 11px; }
 .skill-item small { font-family: "SFMono-Regular", Consolas, monospace; }
+
+.parking-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1.28fr);
+  gap: 18px;
+}
+
+.parking-mode-switch {
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--panel-2);
+}
+
+.parking-mode-switch button {
+  background: transparent;
+  color: var(--muted);
+}
+
+.parking-mode-switch button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.truth-banner {
+  margin-bottom: 16px;
+  padding: 12px 15px;
+  border: 1px solid rgba(89, 100, 221, 0.32);
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.real-parking-layout { grid-template-columns: minmax(260px, 0.55fr) minmax(0, 1.45fr); }
+.real-map-card { min-width: 0; }
+.parking-map-shell { position: relative; }
+.parking-map {
+  width: 100%;
+  height: 390px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel-2);
+}
+.map-error {
+  margin: 8px 0 0;
+  color: var(--red);
+  font-size: 12px;
+}
+.map-result-button {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 12px;
+  text-align: left;
+  background: var(--panel-2);
+  color: var(--text);
+}
+.map-result-button small { color: var(--muted); }
+.map-result-button.active { outline: 2px solid var(--accent); }
+.real-candidates article { cursor: pointer; }
+.route-summary {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+.route-summary strong { color: var(--text); }
+.route-summary span { flex: 1; }
+
+.parking-controls {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.parking-controls label {
+  display: grid;
+  gap: 7px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.parking-controls select {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+}
+
+.parking-controls .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.parking-controls .checkbox-label input { width: auto; }
+.parking-controls > small { color: var(--muted); line-height: 1.5; }
+
+.replan-timeline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.replan-timeline article {
+  min-height: 150px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel-2);
+}
+
+.replan-timeline span,
+.replan-timeline strong { display: block; }
+.replan-timeline span { color: var(--muted); font-size: 11px; }
+.replan-timeline strong { margin-top: 10px; color: var(--text); font-size: 24px; }
+.replan-timeline p { color: var(--text-soft); font-size: 12px; line-height: 1.6; }
+.replan-arrow { color: var(--accent); font-size: 12px; font-weight: 800; }
+
+.parking-candidates { display: grid; gap: 8px; margin-top: 18px; }
+.parking-candidates article {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.7fr) minmax(180px, 1fr) minmax(150px, 1fr);
+  gap: 12px;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.parking-candidates article.eligible { border-color: rgba(65, 201, 140, 0.35); }
+.parking-candidates strong { color: var(--text); }
+.parking-candidates article.eligible small { color: var(--green); }
+
+@media (max-width: 860px) {
+  .parking-layout,
+  .replan-timeline { grid-template-columns: 1fr; }
+  .replan-arrow { text-align: center; transform: rotate(90deg); }
+  .parking-candidates article { grid-template-columns: 1fr; }
+  .parking-map { height: 320px; }
+  .route-summary { align-items: stretch; flex-direction: column; }
+}
 
 .evaluation-summary {
   display: grid;

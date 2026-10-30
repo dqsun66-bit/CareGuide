@@ -11,6 +11,7 @@
         <button :class="{ active: activeView === 'knowledge' }" @click="activeView = 'knowledge'">知识库</button>
         <button v-if="identity.role !== 'user'" :class="{ active: activeView === 'operations' }" @click="activeView = 'operations'; loadOperations()">咨询记录与评测</button>
         <button :class="{ active: activeView === 'appointments' }" @click="activeView = 'appointments'; loadAppointments()">模拟预约</button>
+        <button :class="{ active: activeView === 'parking' }" @click="activeView = 'parking'">行程重规划</button>
       </nav>
 
       <div class="topbar-tools">
@@ -403,6 +404,114 @@
         <p v-if="!appointments.length">当前没有模拟预约。</p>
       </section>
     </section>
+
+    <section v-else-if="activeView === 'parking'" class="page page-parking">
+      <div class="page-heading">
+        <div class="heading-copy">
+          <span class="kicker">Hospital journey</span>
+          <h1>医院停车与行程规划</h1>
+          <p>用高德地图查找真实院区和周边停车场；车位变化只在独立模拟模式中演示。</p>
+        </div>
+        <div class="parking-mode-switch" role="group" aria-label="停车数据模式">
+          <button :class="{ active: parkingMode === 'real' }" @click="parkingMode = 'real'">真实地图</button>
+          <button :class="{ active: parkingMode === 'simulation' }" @click="parkingMode = 'simulation'">模拟重规划</button>
+        </div>
+      </div>
+
+      <template v-if="parkingMode === 'real'">
+        <div class="truth-banner">高德提供地点、地址和普通道路路线。未接入停车运营方，实时车位为未知；无障碍通行尚未核实。</div>
+        <div class="parking-layout real-parking-layout">
+          <section class="workspace-card parking-controls">
+            <div class="card-heading"><div><span class="kicker">Amap POI</span><h2>选择院区</h2></div></div>
+            <label>医院名称
+              <input v-model="mapSearch.query" @keydown.enter.prevent="searchHospitals" />
+            </label>
+            <label>城市
+              <input v-model="mapSearch.city" @keydown.enter.prevent="searchHospitals" />
+            </label>
+            <button :disabled="parkingBusy || !mapSearch.query.trim()" @click="searchHospitals">
+              {{ parkingBusy ? '正在查询…' : '查询真实院区' }}
+            </button>
+            <button v-for="hospital in mapHospitals" :key="hospital.hospital_id"
+              class="map-result-button" :class="{ active: selectedHospital?.hospital_id === hospital.hospital_id }"
+              @click="selectHospital(hospital)">
+              <strong>{{ hospital.name }}</strong><small>{{ hospital.address || '地址未提供' }}</small>
+            </button>
+            <small>数据等级：map_poi · 来源：高德地图</small>
+          </section>
+
+          <section class="workspace-card parking-result real-map-card">
+            <ParkingMap :hospital="selectedHospital" :candidates="mapParking"
+              :selected="selectedParking" :route="mapRoute" />
+            <div class="parking-candidates real-candidates">
+              <article v-for="item in mapParking" :key="item.parking_id"
+                :class="{ eligible: selectedParking?.parking_id === item.parking_id }"
+                role="button" tabindex="0" @click="selectParking(item)" @keydown.enter="selectParking(item)">
+                <strong>{{ item.name }}</strong>
+                <span>{{ item.distance_to_hospital_m == null ? '距离未知' : `${item.distance_to_hospital_m} 米` }} · 实时车位未知</span>
+                <small>无障碍通行未核实 · {{ item.parking_type || '停车类型未知' }}</small>
+              </article>
+            </div>
+            <div v-if="selectedParking" class="route-summary">
+              <strong>{{ selectedParking.name }}</strong>
+              <span v-if="mapRoute">普通步行路线 {{ mapRoute.distance_m }} 米。该路线不代表轮椅可通行。</span>
+              <button :disabled="parkingBusy" @click="planSelectedRoute">生成普通步行路线</button>
+            </div>
+            <div v-if="!mapParking.length" class="workspace-empty">先搜索并选择院区，再查看周边真实停车场。</div>
+          </section>
+        </div>
+      </template>
+
+      <template v-else>
+      <div class="simulation-banner">停车场、距离、车位与路线全部为虚构测试数据，不可用于实际就医或导航。</div>
+      <div class="parking-layout">
+        <section class="workspace-card parking-controls">
+          <div class="card-heading"><div><span class="kicker">Constraints</span><h2>用户约束</h2></div></div>
+          <label>最多步行距离（米）
+            <input v-model.number="parkingForm.maxWalkingDistanceM" type="number" min="0" max="5000" />
+          </label>
+          <label class="checkbox-label"><input v-model="parkingForm.requiresWheelchairAccess" type="checkbox" /> 需要已确认的轮椅通行路线</label>
+          <label>模拟变化
+            <select v-model="parkingForm.eventLotId">
+              <option value="SIM-A">模拟停车场 A</option>
+              <option value="SIM-B">模拟停车场 B</option>
+              <option value="SIM-C">模拟停车场 C</option>
+            </select>
+          </label>
+          <label>变化后的可用车位
+            <input v-model.number="parkingForm.availableSpaces" type="number" min="0" max="100000" />
+          </label>
+          <button :disabled="parkingBusy" @click="runParkingDemo">{{ parkingBusy ? '正在重规划…' : '运行重规划演示' }}</button>
+          <small>默认情节：A 从 3 个模拟空位变为 0，系统由 A 改选 B。</small>
+        </section>
+
+        <section class="workspace-card parking-result">
+          <div class="card-heading"><div><span class="kicker">Decision trace</span><h2>规划结果</h2></div></div>
+          <div v-if="parkingResult" class="replan-timeline">
+            <article>
+              <span>变化前</span>
+              <strong>{{ parkingResult.before.selected_lot_id || '无可行方案' }}</strong>
+              <p>{{ parkingResult.before.message }}</p>
+            </article>
+            <div class="replan-arrow">车位事件 →</div>
+            <article>
+              <span>变化后</span>
+              <strong>{{ parkingResult.after.selected_lot_id || '无可行方案' }}</strong>
+              <p>{{ parkingResult.change_reason }}</p>
+            </article>
+          </div>
+          <div v-if="parkingResult" class="parking-candidates">
+            <article v-for="item in parkingResult.after.candidates" :key="item.id" :class="{ eligible: item.eligible }">
+              <strong>{{ item.name }}</strong>
+              <span>{{ item.walking_distance_m }} 米 · {{ item.available_spaces ?? '未知' }} 个模拟空位</span>
+              <small>{{ item.eligible ? '满足当前约束' : item.reasons.join('、') }}</small>
+            </article>
+          </div>
+          <div v-else class="workspace-empty">设置约束后运行演示，查看系统如何解释停车方案变化。</div>
+        </section>
+      </div>
+      </template>
+    </section>
   </main>
 </template>
 
@@ -427,9 +536,16 @@ import { requestOperations, uploadKnowledge } from './lib/backends'
 import { acceptWorkflow, currentTask, currentAction, answerEvent } from './lib/workflow'
 import { applyAnswerEvent } from './lib/sse'
 import AnswerBody from './components/AnswerBody.vue'
+import ParkingMap from './components/ParkingMap.vue'
 import { safeSourceUrl } from './lib/markdown'
 import { requestIdentity } from './lib/backends'
 import { accessToken, setAccessToken } from './lib/auth'
+import {
+  requestMapRoute,
+  requestParkingReplan,
+  searchMapHospitals,
+  searchMapParking,
+} from './lib/parking'
 
 const settings = reactive(createInitialSettings())
 const identity = reactive({ mode: 'unknown', role: 'demo' })
@@ -505,6 +621,21 @@ const rerankSearch = ref(false)
 const knowledgeSubmissions = ref([])
 const handoffs = ref([])
 const appointments = ref([])
+const parkingBusy = ref(false)
+const parkingResult = ref(null)
+const parkingMode = ref('real')
+const mapSearch = reactive({ query: '泰州市人民医院', city: '泰州' })
+const mapHospitals = ref([])
+const selectedHospital = ref(null)
+const mapParking = ref([])
+const selectedParking = ref(null)
+const mapRoute = ref(null)
+const parkingForm = reactive({
+  maxWalkingDistanceM: 200,
+  requiresWheelchairAccess: true,
+  eventLotId: 'SIM-A',
+  availableSpaces: 0,
+})
 const reviewNote = ref('')
 const evalLimit = ref(12)
 const evalJudge = ref(false)
@@ -527,6 +658,64 @@ async function loadAppointments() {
     const data = await requestAppointments(settings.backend, settings)
     appointments.value = data.appointments || []
   } catch (error) { toast.value = error.message }
+}
+
+async function runParkingDemo() {
+  parkingBusy.value = true
+  try {
+    parkingResult.value = await requestParkingReplan(
+      (path, body) => requestOperations(settings.backend, settings, path, body),
+      parkingForm,
+    )
+  } catch (error) { showToast(error.message) }
+  finally { parkingBusy.value = false }
+}
+
+function mapRequester(path, body) {
+  return requestOperations(settings.backend, settings, path, body)
+}
+
+async function searchHospitals() {
+  parkingBusy.value = true
+  selectedHospital.value = null
+  selectedParking.value = null
+  mapParking.value = []
+  mapRoute.value = null
+  try {
+    mapHospitals.value = await searchMapHospitals(mapRequester, mapSearch.query.trim(), mapSearch.city.trim())
+    if (!mapHospitals.value.length) showToast('未找到院区，请补充城市或具体院区名')
+  } catch (error) { showToast(error.message) }
+  finally { parkingBusy.value = false }
+}
+
+async function selectHospital(hospital) {
+  selectedHospital.value = hospital
+  selectedParking.value = null
+  mapRoute.value = null
+  parkingBusy.value = true
+  try {
+    mapParking.value = await searchMapParking(mapRequester, hospital.hospital_id, 1000)
+    if (!mapParking.value.length) showToast('高德未返回 1 公里内的停车场')
+  } catch (error) { showToast(error.message) }
+  finally { parkingBusy.value = false }
+}
+
+function selectParking(parking) {
+  selectedParking.value = parking
+  mapRoute.value = null
+}
+
+async function planSelectedRoute() {
+  if (!selectedHospital.value || !selectedParking.value) return
+  parkingBusy.value = true
+  try {
+    mapRoute.value = await requestMapRoute(mapRequester, {
+      origin: selectedHospital.value.entrance_location || selectedHospital.value.location,
+      destination: selectedParking.value.entrance_location || selectedParking.value.location,
+      mode: 'walking',
+    })
+  } catch (error) { showToast(error.message) }
+  finally { parkingBusy.value = false }
 }
 
 async function confirmPendingAction(action) {
