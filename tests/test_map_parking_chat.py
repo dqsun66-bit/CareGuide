@@ -386,7 +386,7 @@ def test_explicit_parking_still_wins_when_message_mentions_medical_care(tmp_path
     result = asyncio.run(service.handle(
         '开车去医院看病，停车场在哪', 'alice', 'conversation-parking'))
 
-    assert amap.calls == [{'query': '医院', 'city': '泰州'}]
+    assert amap.calls == [{'query': '医院', 'city': ''}]
     assert result['workflow_status'] == 'waiting_user'
     assert len(traces.list_recent()) == 1
 
@@ -406,7 +406,7 @@ def test_extended_negated_simulation_still_calls_real_map_handler(tmp_path):
     result = asyncio.run(service.handle(
         '不要再模拟医院停车，查询真实停车场', 'alice', 'conversation-real-only'))
 
-    assert amap.calls == [{'query': '真实', 'city': '泰州'}]
+    assert amap.calls == [{'query': '真实', 'city': ''}]
     assert result['workflow_status'] == 'waiting_user'
     assert result['simulation'] is False
     assert len(traces.list_recent()) == 1

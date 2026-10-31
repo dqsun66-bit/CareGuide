@@ -107,13 +107,16 @@ class AmapClient:
             raise AmapProviderError(code, '地图服务请求受限' if code == 'provider_rate_limited' else '地图服务暂不可用')
         return payload
 
-    async def search_hospitals(self, query: str, *, city: str) -> list[HospitalPoi]:
-        payload = await self._request('/v5/place/text', {
+    async def search_hospitals(
+            self, query: str, *, city: str | None = None) -> list[HospitalPoi]:
+        params = {
             'keywords': query,
-            'region': city,
-            'city_limit': 'true',
+            'city_limit': 'true' if city else 'false',
             'show_fields': 'navi,business',
-        })
+        }
+        if city:
+            params['region'] = city
+        payload = await self._request('/v5/place/text', params)
         observed_at = datetime.now(timezone.utc)
         return [hospital for item in payload.get('pois', [])
                 if (hospital := _hospital(item, observed_at))]

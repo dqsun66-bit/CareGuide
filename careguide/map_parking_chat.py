@@ -150,21 +150,32 @@ def _clean_location_source(value: str) -> str:
     return value.strip(' \t\r\n，,。.!！？?；;、')
 
 
+def _nearest_known_city(source: str) -> str | None:
+    markers = list(LOCATION_MARKER.finditer(source))
+    limit = markers[-1].start() if markers else len(source)
+    candidates = [
+        (source.rfind(city, 0, limit), city)
+        for city in KNOWN_CITIES
+        if source.rfind(city, 0, limit) >= 0
+    ]
+    return max(candidates, default=(-1, None), key=lambda item: item[0])[1]
+
+
 def _city_hint(source: str, cleaned_query: str, full_message: str) -> str:
-    for city in KNOWN_CITIES:
-        if city in source:
-            return city
+    known_city = _nearest_known_city(source)
+    if known_city:
+        return known_city
     match = CITY_AFTER_TRAVEL.search(source)
     if match:
         return _normalize_city_qualifier(match.group(1))
     match = re.search(r'^([\u4e00-\u9fff]{2,20}?)市', cleaned_query)
     if match:
         return _normalize_city_qualifier(match.group(1))
-    for city in KNOWN_CITIES:
-        if city in full_message:
-            return city
+    known_city = _nearest_known_city(full_message)
+    if known_city:
+        return known_city
     match = CITY_AFTER_TRAVEL.search(full_message)
-    return _normalize_city_qualifier(match.group(1)) if match else '泰州'
+    return _normalize_city_qualifier(match.group(1)) if match else ''
 
 
 def _serialize_hospital(hospital: HospitalPoi) -> dict:
