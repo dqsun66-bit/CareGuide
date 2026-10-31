@@ -320,22 +320,63 @@ def test_non_map_chat_never_constructs_amap_client(chat_api, monkeypatch):
     assert len(engine.process_calls) == 1
 
 
-def test_explicit_simulation_precedes_real_map_and_real_map_precedes_engine(
-        chat_api):
-    client, engine, amap = chat_api
-    simulated = client.post('/chat', json={
+def test_explicit_simulation_never_constructs_amap_client(chat_api, monkeypatch):
+    import careguide.api as api_module
+    client, engine, _amap = chat_api
+    factory_calls = []
+
+    def forbidden_amap_factory():
+        factory_calls.append(True)
+        raise AssertionError('明确模拟请求不得创建 Amap 客户端')
+
+    monkeypatch.setattr(api_module, 'get_amap_client', forbidden_amap_factory)
+
+    response = client.post('/chat', json={
         'message': '我明天想去泰州市医院看病，需要轮椅，最多走200米'
     })
-    real = client.post('/chat', json={
+
+    assert response.status_code == 200
+    assert response.json()['simulation'] is True
+    assert response.json()['tools_used'] == ['replan_parking_demo']
+    assert factory_calls == []
+    assert engine.process_calls == []
+
+
+def test_real_map_result_precedes_simulation_and_engine_fallbacks(
+        chat_api, monkeypatch):
+    import careguide.api as api_module
+    client, engine, amap = chat_api
+    factory_calls = []
+    simulation_calls = []
+    engine_calls = []
+
+    def scripted_amap_factory():
+        factory_calls.append(True)
+        return amap
+
+    def forbidden_simulation(*args, **kwargs):
+        simulation_calls.append((args, kwargs))
+        raise AssertionError('真实地图成功后不得调用模拟停车处理器')
+
+    async def forbidden_engine(*args, **kwargs):
+        engine_calls.append((args, kwargs))
+        raise AssertionError('真实地图成功后不得调用普通对话引擎')
+
+    monkeypatch.setattr(api_module, 'get_amap_client', scripted_amap_factory)
+    monkeypatch.setattr(api_module, 'parking_chat_response', forbidden_simulation)
+    engine.process = forbidden_engine
+
+    response = client.post('/chat', json={
         'message': '查询泰州医院停车场并预约'
     })
 
-    assert simulated.status_code == 200
-    assert simulated.json()['simulation'] is True
-    assert real.status_code == 200
-    assert real.json()['intent'] == 'map_parking'
-    assert engine.process_calls == []
+    assert response.status_code == 200
+    assert response.json()['intent'] == 'map_parking'
+    assert response.json()['map_selection']['hospitals'][0]['hospital_id'] == 'H1'
+    assert factory_calls == [True]
     assert len(amap.hospital_calls) == 1
+    assert simulation_calls == []
+    assert engine_calls == []
 
 
 def test_workflow_resume_remains_prior_to_map_message_matching(chat_api):
