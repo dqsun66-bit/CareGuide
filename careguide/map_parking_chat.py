@@ -15,14 +15,19 @@ PARKING = re.compile(r'停车场|停车|车停|开车去')
 HOSPITAL = re.compile(r'医院|院区|就医地点')
 SIMULATION = re.compile(r'SIM-[ABC]|模拟重规划|模拟停车', re.I)
 QUERY_NOISE = re.compile(
-    r'开车去|我想去|我要去|想去|我在|停车场|车停哪里|怎么停|哪里停|停哪里|车停|停车|'
+    r'不要模拟结果|停车场|车停哪里|怎么停|哪里停|停哪里|车停|停车|'
     r'附近|周边|查询|查找|搜索|帮我|一下|请'
+)
+LEADING_TRAVEL_NOISE = re.compile(
+    r'^(?:我(?:想|要)?|想)?(?:开车去|前往|去|到|在)'
 )
 KNOWN_CITIES = ('泰州', '南京', '上海', '北京', '广州', '深圳', '杭州', '苏州')
 
 
 def _hospital_query(message: str) -> str:
     value = QUERY_NOISE.sub('', message)
+    value = value.lstrip(' \t\r\n，,。.!！？?、的')
+    value = LEADING_TRAVEL_NOISE.sub('', value)
     return value.strip(' \t\r\n，,。.!！？?、的')
 
 
@@ -35,19 +40,7 @@ def _city_hint(message: str) -> str:
 
 
 def _serialize_hospital(hospital: HospitalPoi) -> dict:
-    payload = hospital.model_dump(mode='json')
-    return {
-        'hospital_id': payload['hospital_id'],
-        'name': payload['name'],
-        'address': payload['address'],
-        'city': payload['city_name'],
-        'district': payload['district_name'],
-        'location': payload['location'],
-        'entrance': payload['entrance_location'],
-        'data_tier': payload['data_tier'],
-        'source_provider': payload['source_provider'],
-        'observed_at': payload['observed_at'],
-    }
+    return hospital.model_dump(mode='json')
 
 
 class MapParkingChatService:
@@ -62,13 +55,10 @@ class MapParkingChatService:
     def matches(message: str) -> bool:
         if not isinstance(message, str):
             return False
-        explicit_simulation = SIMULATION.search(message) or (
-            '模拟' in message and PARKING.search(message)
-        )
         return bool(
             PARKING.search(message)
             and HOSPITAL.search(message)
-            and not explicit_simulation
+            and not SIMULATION.search(message)
         )
 
     async def handle(self, message, user_id, conv_id, *, map_event=None):

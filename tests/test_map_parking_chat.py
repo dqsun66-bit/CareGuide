@@ -356,7 +356,7 @@ def test_no_hospital_candidate_completes_without_simulated_data(tmp_path):
 @pytest.mark.parametrize('message', [
     '医院怎么挂号',
     '最近总是头痛怎么办',
-    '请模拟医院停车方案',
+    '请模拟停车方案',
     '请对医院停车做模拟重规划',
     '医院停车场 SIM-A 满了怎么办',
 ])
