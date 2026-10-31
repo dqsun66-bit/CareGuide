@@ -301,6 +301,15 @@ def test_single_hospital_candidate_still_waits_for_user_confirmation(tmp_path):
     assert len(traces.list_recent()) == 1
 
 
+def test_city_suffix_hint_is_extracted_from_conversational_message(tmp_path):
+    service, amap, _store, _traces = chat_service(tmp_path, [hospital_poi()])
+
+    asyncio.run(service.handle(
+        '我在无锡市人民医院，车停哪里', 'alice', 'conversation-city'))
+
+    assert amap.calls == [{'query': '无锡市人民医院', 'city': '无锡'}]
+
+
 def test_no_hospital_candidate_completes_without_simulated_data(tmp_path):
     service, amap, _store, traces = chat_service(tmp_path, [])
 
