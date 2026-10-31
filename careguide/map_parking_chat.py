@@ -11,10 +11,13 @@ from careguide.amap_models import HospitalPoi
 from careguide.trace_store import TRACE_VERSION, validate_trace_completeness
 
 
-PARKING = re.compile(r'停车场|停车|车停|开车去')
+EXPLICIT_PARKING = re.compile(r'停车场|停车|车停')
+DRIVE_TO = re.compile(r'开车去')
 HOSPITAL = re.compile(r'医院|院区|就医地点')
+MEDICAL_REQUEST = re.compile(r'挂号|号源|科室|症状|材料|看病|医生|药品|检查')
 SIMULATION_ID = re.compile(r'SIM-[ABC]', re.I)
 SIMULATION_NEGATIONS = ('不要再', '不再', '不要', '别再', '别', '无需', '拒绝')
+CLAUSE_BOUNDARY = re.compile(r'[，,。.!！？?；;\r\n]')
 QUERY_NOISE = re.compile(
     r'不要模拟结果|停车场|车停哪里|怎么停|哪里停|停哪里|车停|停车|'
     r'附近|周边|查询|查找|搜索|帮我|一下|请'
@@ -26,12 +29,24 @@ LEADING_POLITENESS = re.compile(r'^(?:麻烦|能不能)')
 CITY_AFTER_TRAVEL = re.compile(
     r'(?:前往|位于|去|到|在)([\u4e00-\u9fff]{2,20}?)市'
 )
+TARGET_HOSPITAL = re.compile(
+    r'(?:开车去|前往|去|到)([^，,。.!！？?；;\r\n]*?(?:医院|院区|就医地点))'
+)
 KNOWN_CITIES = ('泰州', '南京', '上海', '北京', '广州', '深圳', '杭州', '苏州')
 
 
 def _simulation_is_negated(prefix: str) -> bool:
     context = prefix[-6:]
     return any(context.endswith(term) for term in SIMULATION_NEGATIONS)
+
+
+def _clause_containing(message: str, offset: int) -> str:
+    start = 0
+    for boundary in CLAUSE_BOUNDARY.finditer(message):
+        if boundary.start() >= offset:
+            return message[start:boundary.start()]
+        start = boundary.end()
+    return message[start:]
 
 
 def _is_explicit_simulation(message: str) -> bool:
@@ -41,7 +56,8 @@ def _is_explicit_simulation(message: str) -> bool:
         if _simulation_is_negated(message[:match.start()]):
             continue
         following = message[match.start():match.end() + 20]
-        if following.startswith('模拟重规划') or '停车' in following:
+        clause = _clause_containing(message, match.start())
+        if following.startswith('模拟重规划') or EXPLICIT_PARKING.search(clause):
             return True
     return False
 
@@ -73,6 +89,11 @@ def _normalize_city_qualifier(value: str) -> str:
     return value
 
 
+def _target_hospital_fragment(message: str) -> str | None:
+    match = TARGET_HOSPITAL.search(message)
+    return match.group(1).strip() if match else None
+
+
 def _city_hint(message: str, cleaned_query: str) -> str:
     for city in KNOWN_CITIES:
         if city in message:
@@ -100,9 +121,14 @@ class MapParkingChatService:
     def matches(message: str) -> bool:
         if not isinstance(message, str):
             return False
+        explicit_parking = EXPLICIT_PARKING.search(message)
+        drive_to = DRIVE_TO.search(message)
+        if not explicit_parking and not drive_to:
+            return False
+        if drive_to and not explicit_parking and MEDICAL_REQUEST.search(message):
+            return False
         return bool(
-            PARKING.search(message)
-            and HOSPITAL.search(message)
+            HOSPITAL.search(message)
             and not _is_explicit_simulation(message)
         )
 
@@ -113,8 +139,10 @@ class MapParkingChatService:
             return None
 
         started = time.monotonic()
-        query = _hospital_query(message)
-        city = _city_hint(message, query)
+        target = _target_hospital_fragment(message)
+        query_source = target or message
+        query = _hospital_query(query_source)
+        city = _city_hint(query_source, query)
         hospitals = await self.amap.search_hospitals(query, city=city)
         tool_input = {'query': query, 'city': city}
         tool_output = {
