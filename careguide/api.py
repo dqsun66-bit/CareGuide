@@ -5,6 +5,7 @@ import uuid
 import os
 from contextlib import asynccontextmanager
 from functools import lru_cache
+from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +23,7 @@ from careguide.auth import ActorModel, authentication_middleware, principal, own
 from careguide.parking_demo import parking_chat_response, replan_demo
 from careguide.amap_client import AmapClient, AmapProviderError
 from careguide.amap_models import RouteRequest
+from careguide.map_parking_chat import MapParkingChatService
 
 @asynccontextmanager
 async def lifespan(app):
@@ -116,12 +118,21 @@ class WorkflowEvent(BaseModel):
     event_id: str | None = Field(default=None, min_length=1, max_length=100)
 
 
+class MapHospitalSelectEvent(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    kind: Literal['map_hospital_select']
+    query_id: str = Field(min_length=1, max_length=100)
+    candidate_version: int = Field(ge=1)
+    hospital_id: str = Field(min_length=1, max_length=100)
+
+
 class ChatRequest(ActorModel):
     model_config = ConfigDict(extra='forbid')
     message: str = Field(min_length=1, max_length=4000)
     user_id: str = Field(default='demo-user', min_length=1, max_length=100)
     conv_id: str | None = Field(default=None, min_length=1, max_length=100)
     workflow_event: WorkflowEvent | None = None
+    map_event: MapHospitalSelectEvent | None = None
 
 
 @app.post('/chat')
@@ -130,6 +141,8 @@ async def chat(request: ChatRequest, runtime=Depends(get_chat_runtime)):
 
 
 def _validate_chat_event(request, engine):
+    if request.workflow_event is not None and request.map_event is not None:
+        raise HTTPException(422, '任务恢复事件与地图候选事件不能同时提交')
     event = request.workflow_event
     if event is None:
         return
@@ -173,12 +186,27 @@ async def _execute_chat_result(request, runtime):
                         history = await memory.history(request.user_id, conv_id, query=request.message)
             except Exception:
                 history, memory_status = [], 'unavailable'
+            map_result = None
+            if (request.workflow_event is None and (
+                    request.map_event or MapParkingChatService.matches(request.message))):
+                service = MapParkingChatService(
+                    get_amap_client(), engine.business_store, engine.traces,
+                )
+                map_result = await service.handle(
+                    request.message,
+                    request.user_id,
+                    conv_id,
+                    map_event=(
+                        request.map_event.model_dump()
+                        if request.map_event is not None else None
+                    ),
+                )
             if request.workflow_event:
                 event = request.workflow_event
                 result = await engine.process(request.message, request.user_id, conv_id, history,
                     workflow_event=event.model_dump())
             else:
-                result = parking_chat_response(
+                result = map_result or parking_chat_response(
                     request.message, request.user_id, conv_id, engine.traces,
                 ) or await engine.process(request.message, request.user_id, conv_id, history)
             emit('stage', stage='saving', message='结果已生成，正在保存会话')
@@ -196,14 +224,24 @@ async def _execute_chat_result(request, runtime):
             return result
         except HTTPException:
             raise
+        except AmapProviderError as exc:
+            raise _map_provider_error(exc) from exc
+        except TimeoutError as exc:
+            if request.map_event is not None:
+                raise HTTPException(410, '地图候选已过期，请重新查询医院') from exc
+            raise HTTPException(503, '对话服务暂不可用') from exc
         except LookupError as exc:
-            raise HTTPException(404, '未找到当前用户和会话的任务') from exc
+            detail = ('未找到当前用户和会话的地图候选'
+                      if request.map_event is not None else '未找到当前用户和会话的任务')
+            raise HTTPException(404, detail) from exc
         except WorkflowExpired as exc:
             raise HTTPException(410, '任务或候选项已过期，请重新查询') from exc
         except VersionConflict as exc:
             raise HTTPException(409, '任务已更新，请刷新后使用当前问题或确认入口') from exc
         except (ValueError, PermissionError) as exc:
-            raise HTTPException(422, '回答不符合当前任务或候选项约束') from exc
+            detail = ('请求不符合当前地图候选项约束'
+                      if request.map_event is not None else '回答不符合当前任务或候选项约束')
+            raise HTTPException(422, detail) from exc
         except Exception as exc:
             raise HTTPException(503, '对话服务暂不可用') from exc
 
