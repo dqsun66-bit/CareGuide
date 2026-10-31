@@ -314,6 +314,8 @@ def test_city_suffix_hint_is_extracted_from_conversational_message(tmp_path):
 @pytest.mark.parametrize(('message', 'query', 'city'), [
     ('去无锡市人民医院停车', '无锡市人民医院', '无锡'),
     ('前往常州市第一人民医院停车场', '常州市第一人民医院', '常州'),
+    ('麻烦去常州市第一人民医院停车场', '常州市第一人民医院', '常州'),
+    ('能不能前往无锡市人民医院停车', '无锡市人民医院', '无锡'),
 ])
 def test_city_suffix_hint_does_not_absorb_leading_travel_verbs(
         tmp_path, message, query, city):
@@ -357,6 +359,7 @@ def test_no_hospital_candidate_completes_without_simulated_data(tmp_path):
     '医院怎么挂号',
     '最近总是头痛怎么办',
     '请模拟停车方案',
+    '请模拟医院停车方案',
     '请对医院停车做模拟重规划',
     '医院停车场 SIM-A 满了怎么办',
 ])
