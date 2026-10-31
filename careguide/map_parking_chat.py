@@ -13,7 +13,10 @@ from careguide.trace_store import TRACE_VERSION, validate_trace_completeness
 
 PARKING = re.compile(r'停车场|停车|车停|开车去')
 HOSPITAL = re.compile(r'医院|院区|就医地点')
-SIMULATION = re.compile(r'SIM-[ABC]|模拟重规划|模拟停车', re.I)
+SIMULATION = re.compile(
+    r'SIM-[ABC]|(?<!不要)(?<!别)(?:模拟重规划|模拟(?:医院|院区)?停车)',
+    re.I,
+)
 QUERY_NOISE = re.compile(
     r'不要模拟结果|停车场|车停哪里|怎么停|哪里停|停哪里|车停|停车|'
     r'附近|周边|查询|查找|搜索|帮我|一下|请'
@@ -21,21 +24,29 @@ QUERY_NOISE = re.compile(
 LEADING_TRAVEL_NOISE = re.compile(
     r'^(?:我(?:想|要)?|想)?(?:开车去|前往|去|到|在)'
 )
+LEADING_POLITENESS = re.compile(r'^(?:麻烦|能不能)')
+CITY_AFTER_TRAVEL = re.compile(
+    r'(?:前往|位于|去|到|在)([\u4e00-\u9fff]{2,6})市'
+)
 KNOWN_CITIES = ('泰州', '南京', '上海', '北京', '广州', '深圳', '杭州', '苏州')
 
 
 def _hospital_query(message: str) -> str:
     value = QUERY_NOISE.sub('', message)
     value = value.lstrip(' \t\r\n，,。.!！？?、的')
+    value = LEADING_POLITENESS.sub('', value)
     value = LEADING_TRAVEL_NOISE.sub('', value)
     return value.strip(' \t\r\n，,。.!！？?、的')
 
 
-def _city_hint(message: str) -> str:
+def _city_hint(message: str, cleaned_query: str) -> str:
     for city in KNOWN_CITIES:
         if city in message:
             return city
-    match = re.search(r'(?:^|[\s，,。！？?、])([\u4e00-\u9fff]{2,8})市', message)
+    match = CITY_AFTER_TRAVEL.search(message)
+    if match:
+        return match.group(1)
+    match = re.search(r'^([\u4e00-\u9fff]{2,6})市', cleaned_query)
     return match.group(1) if match else '泰州'
 
 
@@ -69,7 +80,7 @@ class MapParkingChatService:
 
         started = time.monotonic()
         query = _hospital_query(message)
-        city = _city_hint(query)
+        city = _city_hint(message, query)
         hospitals = await self.amap.search_hospitals(query, city=city)
         tool_input = {'query': query, 'city': city}
         tool_output = {
