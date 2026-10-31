@@ -14,7 +14,11 @@ from careguide.trace_store import TRACE_VERSION, validate_trace_completeness
 EXPLICIT_PARKING = re.compile(r'停车场|停车|车停')
 DRIVE_TO = re.compile(r'开车去')
 HOSPITAL = re.compile(r'医院|院区|就医地点')
-MEDICAL_REQUEST = re.compile(r'挂号|号源|科室|症状|材料|看病|医生|药品|检查')
+LOCATION_MARKER = re.compile(r'医院|院区|就医地点')
+DIRECTION_TO = re.compile(r'开车去|前往|去|到')
+TRAVEL_SUFFIXES = frozenset(
+    {'怎么走', '怎么去', '路线', '导航', '入口', '地址', '在哪', '在哪里'}
+)
 SIMULATION_ID = re.compile(r'SIM-[ABC]', re.I)
 SIMULATION_NEGATIONS = ('不要再', '不再', '不要', '别再', '别', '无需', '拒绝')
 CLAUSE_BOUNDARY = re.compile(r'[，,。.!！？?；;\r\n]')
@@ -28,9 +32,6 @@ LEADING_TRAVEL_NOISE = re.compile(
 LEADING_POLITENESS = re.compile(r'^(?:麻烦|能不能)')
 CITY_AFTER_TRAVEL = re.compile(
     r'(?:前往|位于|去|到|在)([\u4e00-\u9fff]{2,20}?)市'
-)
-TARGET_HOSPITAL = re.compile(
-    r'(?:开车去|前往|去|到)([^，,。.!！？?；;\r\n]*?(?:医院|院区|就医地点))'
 )
 KNOWN_CITIES = ('泰州', '南京', '上海', '北京', '广州', '深圳', '杭州', '苏州')
 
@@ -89,19 +90,80 @@ def _normalize_city_qualifier(value: str) -> str:
     return value
 
 
-def _target_hospital_fragment(message: str) -> str | None:
-    match = TARGET_HOSPITAL.search(message)
-    return match.group(1).strip() if match else None
+def _directional_segment(message: str) -> str | None:
+    direction = DIRECTION_TO.search(message)
+    if direction is None:
+        return None
+    boundary = CLAUSE_BOUNDARY.search(message, direction.end())
+    end = boundary.start() if boundary else len(message)
+    return message[direction.end():end].strip()
 
 
-def _city_hint(message: str, cleaned_query: str) -> str:
+def _location_prefix(segment: str) -> str | None:
+    markers = list(LOCATION_MARKER.finditer(segment))
+    return segment[:markers[-1].end()].strip() if markers else None
+
+
+def _drive_only_is_travel_request(message: str) -> bool:
+    direction = DIRECTION_TO.search(message)
+    segment = _directional_segment(message)
+    if direction is None or segment is None:
+        return False
+    target = _location_prefix(segment)
+    if target is None:
+        return False
+    target_end = direction.end() + segment.find(target) + len(target)
+    suffix = message[target_end:].strip(' \t\r\n，,。.!！？?；;、')
+    return not suffix or suffix in TRAVEL_SUFFIXES
+
+
+def _clause_has_only_negated_simulation(clause: str) -> bool:
+    matches = list(re.finditer('模拟', clause))
+    return bool(matches) and all(
+        _simulation_is_negated(clause[:match.start()]) for match in matches
+    )
+
+
+def _local_parking_clause(message: str) -> str:
+    candidates = []
+    for clause in CLAUSE_BOUNDARY.split(message):
+        if (not HOSPITAL.search(clause) or not EXPLICIT_PARKING.search(clause)
+                or _clause_has_only_negated_simulation(clause)):
+            continue
+        hospital_positions = [match.start() for match in HOSPITAL.finditer(clause)]
+        parking_positions = [match.start() for match in EXPLICIT_PARKING.finditer(clause)]
+        distance = min(
+            abs(hospital - parking)
+            for hospital in hospital_positions
+            for parking in parking_positions
+        )
+        candidates.append((distance, clause.strip()))
+    return min(candidates, default=(0, message), key=lambda item: item[0])[1]
+
+
+def _clean_location_source(value: str) -> str:
+    value = re.sub(r'(?:附近|周边)?(?:停车场|停车|车停).*$', '', value)
+    for suffix in sorted(TRAVEL_SUFFIXES, key=len, reverse=True):
+        if value.endswith(suffix):
+            value = value[:-len(suffix)]
+            break
+    return value.strip(' \t\r\n，,。.!！？?；;、')
+
+
+def _city_hint(source: str, cleaned_query: str, full_message: str) -> str:
     for city in KNOWN_CITIES:
-        if city in message:
+        if city in source:
             return city
-    match = CITY_AFTER_TRAVEL.search(message)
+    match = CITY_AFTER_TRAVEL.search(source)
     if match:
         return _normalize_city_qualifier(match.group(1))
     match = re.search(r'^([\u4e00-\u9fff]{2,20}?)市', cleaned_query)
+    if match:
+        return _normalize_city_qualifier(match.group(1))
+    for city in KNOWN_CITIES:
+        if city in full_message:
+            return city
+    match = CITY_AFTER_TRAVEL.search(full_message)
     return _normalize_city_qualifier(match.group(1)) if match else '泰州'
 
 
@@ -125,7 +187,7 @@ class MapParkingChatService:
         drive_to = DRIVE_TO.search(message)
         if not explicit_parking and not drive_to:
             return False
-        if drive_to and not explicit_parking and MEDICAL_REQUEST.search(message):
+        if drive_to and not explicit_parking and not _drive_only_is_travel_request(message):
             return False
         return bool(
             HOSPITAL.search(message)
@@ -139,10 +201,13 @@ class MapParkingChatService:
             return None
 
         started = time.monotonic()
-        target = _target_hospital_fragment(message)
-        query_source = target or message
+        segment = _directional_segment(message)
+        target = _location_prefix(segment) if segment else None
+        query_source = target or _local_parking_clause(message)
+        query_source = _strip_negated_simulation_clause(query_source)
+        query_source = _clean_location_source(query_source)
         query = _hospital_query(query_source)
-        city = _city_hint(query_source, query)
+        city = _city_hint(query_source, query, message)
         hospitals = await self.amap.search_hospitals(query, city=city)
         tool_input = {'query': query, 'city': city}
         tool_output = {
