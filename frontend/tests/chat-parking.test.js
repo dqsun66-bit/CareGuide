@@ -38,10 +38,14 @@ test('hospital selection emits only the version-bound hospital identity', () => 
 test('hospital selection rejects missing identity, invalid versions, and simulated hospitals', () => {
   assert.throws(() => hospitalSelectionEvent(null, hospital), /选择信息/)
   assert.throws(() => hospitalSelectionEvent({ ...selection, query_id: ' ' }, hospital), /查询标识/)
+  assert.throws(() => hospitalSelectionEvent({ ...selection, query_id: ' query-1' }, hospital), /查询标识/)
   assert.throws(() => hospitalSelectionEvent({ ...selection, candidate_version: 0 }, hospital), /候选版本/)
   assert.throws(() => hospitalSelectionEvent({ ...selection, candidate_version: 1.5 }, hospital), /候选版本/)
+  assert.throws(() => hospitalSelectionEvent(selection, { ...hospital, hospital_id: undefined }), /院区标识/)
   assert.throws(() => hospitalSelectionEvent(selection, { ...hospital, hospital_id: '' }), /院区标识/)
+  assert.throws(() => hospitalSelectionEvent(selection, { ...hospital, hospital_id: ' hospital-1' }), /院区标识/)
   assert.throws(() => hospitalSelectionEvent(selection, { ...hospital, hospital_id: 'SIM-H1' }), /模拟/)
+  assert.throws(() => hospitalSelectionEvent(selection, { ...hospital, hospital_id: ' SIM-H1' }), /院区标识/)
 })
 
 test('map handoff preserves real map fields and explicitly retains unknown parking truth', () => {
@@ -91,10 +95,16 @@ test('map handoff preserves known false and zero truth values', () => {
 test('map handoff rejects malformed, non-map, simulated, and unidentified values', () => {
   assert.throws(() => mapHandoff(null), /地图接力数据/)
   assert.throws(() => mapHandoff({ hospital, candidates: null }), /停车候选列表/)
+  assert.throws(() => mapHandoff({ hospital: { ...hospital, hospital_id: undefined }, candidates: [] }), /院区标识/)
+  assert.throws(() => mapHandoff({ hospital: { ...hospital, hospital_id: '' }, candidates: [] }), /院区标识/)
+  assert.throws(() => mapHandoff({ hospital: { ...hospital, hospital_id: ' ' }, candidates: [] }), /院区标识/)
+  assert.throws(() => mapHandoff({ hospital: { ...hospital, hospital_id: 'SIM-H1' }, candidates: [] }), /模拟/)
+  assert.throws(() => mapHandoff({ hospital: { ...hospital, hospital_id: ' SIM-H1' }, candidates: [] }), /院区标识/)
   assert.throws(() => mapHandoff({ hospital: { ...hospital, data_tier: 'simulation' }, candidates: [] }), /真实地图/)
   assert.throws(() => mapHandoff({ hospital, candidates: [{ parking_id: 'P1', data_tier: 'simulation' }] }), /真实地图/)
   assert.throws(() => mapHandoff({ hospital, candidates: [{ parking_id: '', data_tier: 'map_poi' }] }), /停车场标识/)
   assert.throws(() => mapHandoff({ hospital, candidates: [{ parking_id: 'SIM-P1', data_tier: 'map_poi' }] }), /模拟/)
+  assert.throws(() => mapHandoff({ hospital, candidates: [{ parking_id: ' SIM-P1', data_tier: 'map_poi' }] }), /停车场标识/)
 })
 
 test('chat payload serializes workflow and map events into independent fields', () => {
