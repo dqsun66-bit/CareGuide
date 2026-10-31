@@ -437,6 +437,21 @@ def test_local_parking_clause_wins_without_direction_word(tmp_path):
     assert amap.calls == [{'query': '上海市第一人民医院', 'city': '上海'}]
 
 
+@pytest.mark.parametrize(('message', 'query', 'city'), [
+    ('查询北京大学深圳医院停车场', '北京大学深圳医院', '深圳'),
+    ('查询上海交大附属苏州九龙医院停车场', '上海交大附属苏州九龙医院', '苏州'),
+    ('查询武汉协和医院停车场', '武汉协和医院', ''),
+    ('查询成都华西医院停车场', '成都华西医院', ''),
+])
+def test_city_hint_uses_nearest_reliable_target_city_or_nationwide_search(
+        tmp_path, message, query, city):
+    service, amap, _store, _traces = chat_service(tmp_path, [hospital_poi()])
+
+    asyncio.run(service.handle(message, 'alice', 'conversation-city-reliability'))
+
+    assert amap.calls == [{'query': query, 'city': city}]
+
+
 def test_no_hospital_candidate_completes_without_simulated_data(tmp_path):
     service, amap, _store, traces = chat_service(tmp_path, [])
 

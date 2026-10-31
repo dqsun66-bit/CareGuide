@@ -95,6 +95,29 @@ def test_invalid_coordinate_is_rejected_instead_of_invented():
     assert hospitals == []
 
 
+def test_hospital_search_params_support_scoped_and_nationwide_queries():
+    requests = []
+
+    def handle(request: httpx.Request):
+        requests.append(request)
+        return httpx.Response(200, json={'status': '1', 'pois': []})
+
+    async def exercise():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as http:
+            client = AmapClient('test-key', http_client=http)
+            await client.search_hospitals('泰州市人民医院', city='泰州')
+            await client.search_hospitals('武汉协和医院', city=None)
+
+    asyncio.run(exercise())
+
+    scoped = requests[0].url.params
+    assert scoped['region'] == '泰州'
+    assert scoped['city_limit'] == 'true'
+    nationwide = requests[1].url.params
+    assert 'region' not in nationwide
+    assert nationwide['city_limit'] == 'false'
+
+
 def test_walking_route_requests_polyline_and_never_claims_wheelchair_verification():
     requests = []
 
