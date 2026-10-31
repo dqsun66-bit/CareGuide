@@ -340,6 +340,28 @@ def test_negated_simulation_word_still_uses_real_map_handler(tmp_path):
     assert len(traces.list_recent()) == 1
 
 
+def test_drive_to_hospital_with_medical_request_is_not_claimed(tmp_path):
+    service, amap, _store, traces = chat_service(tmp_path, [hospital_poi()])
+
+    result = asyncio.run(service.handle(
+        '开车去医院挂号需要什么材料', 'alice', 'conversation-medical'))
+
+    assert result is None
+    assert amap.calls == []
+    assert traces.list_recent() == []
+
+
+def test_explicit_parking_still_wins_when_message_mentions_medical_care(tmp_path):
+    service, amap, _store, traces = chat_service(tmp_path, [hospital_poi()])
+
+    result = asyncio.run(service.handle(
+        '开车去医院看病，停车场在哪', 'alice', 'conversation-parking'))
+
+    assert amap.calls == [{'query': '医院', 'city': '泰州'}]
+    assert result['workflow_status'] == 'waiting_user'
+    assert len(traces.list_recent()) == 1
+
+
 def test_extended_negated_simulation_still_calls_real_map_handler(tmp_path):
     service, amap, _store, traces = chat_service(tmp_path, [hospital_poi()])
 
@@ -350,6 +372,19 @@ def test_extended_negated_simulation_still_calls_real_map_handler(tmp_path):
     assert result['workflow_status'] == 'waiting_user'
     assert result['simulation'] is False
     assert len(traces.list_recent()) == 1
+
+
+@pytest.mark.parametrize(('message', 'query', 'city'), [
+    ('我在南京，想开车去上海市第一人民医院停车', '上海市第一人民医院', '上海'),
+    ('从苏州前往无锡市人民医院附近停车', '无锡市人民医院', '无锡'),
+])
+def test_destination_hospital_fragment_wins_over_origin_city(
+        tmp_path, message, query, city):
+    service, amap, _store, _traces = chat_service(tmp_path, [hospital_poi()])
+
+    asyncio.run(service.handle(message, 'alice', 'conversation-destination'))
+
+    assert amap.calls == [{'query': query, 'city': city}]
 
 
 def test_no_hospital_candidate_completes_without_simulated_data(tmp_path):
@@ -375,6 +410,8 @@ def test_no_hospital_candidate_completes_without_simulated_data(tmp_path):
     '请模拟停车方案',
     '请模拟医院停车方案',
     '请模拟一下医院停车方案',
+    '医院停车模拟一下',
+    '这个医院停车方案做个模拟',
     '请对医院停车做模拟重规划',
     '医院停车场 SIM-A 满了怎么办',
 ])
