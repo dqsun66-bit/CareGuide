@@ -266,7 +266,64 @@ class MapParkingChatService:
         )
 
     async def _select(self, message, user_id, conv_id, map_event):
-        raise NotImplementedError('Hospital candidate selection is implemented in Task 3')
+        if map_event.get('kind') != 'map_hospital_select':
+            raise ValueError('Unsupported map event kind')
+
+        started = time.monotonic()
+        stored = self.store.select_map_hospital(
+            map_event['query_id'],
+            user_id,
+            conv_id,
+            map_event['candidate_version'],
+            map_event['hospital_id'],
+            now=self._now(),
+        )
+        stored_hospital = HospitalPoi.model_validate(stored)
+        refreshed_hospital = await self.amap.get_hospital(
+            stored_hospital.hospital_id
+        )
+        hospital = refreshed_hospital or stored_hospital
+        candidates = await self.amap.search_parking(hospital, radius_m=1000)
+        serialized_candidates = [
+            candidate.model_dump(mode='json') for candidate in candidates
+        ]
+        observed_at = self._now().isoformat()
+
+        if candidates:
+            response = (
+                f'已确认院区“{hospital.name}”，找到 {len(candidates)} 个停车地点。'
+                '本项目无法核实实时余位和无障碍通行，请以现场信息为准。'
+            )
+        else:
+            response = (
+                f'已确认院区“{hospital.name}”，1 公里内未找到停车地点。'
+                '建议到地图页扩大范围；本项目无法核实实时余位和无障碍通行。'
+            )
+
+        return self._result(
+            message,
+            user_id,
+            conv_id,
+            started,
+            'completed',
+            response,
+            map_parking={
+                'hospital': hospital.model_dump(mode='json'),
+                'candidates': serialized_candidates,
+                'data_tier': 'map_poi',
+                'source_provider': 'amap',
+                'observed_at': observed_at,
+            },
+            tool_name='amap_search_parking',
+            tool_input={
+                'hospital_id': stored_hospital.hospital_id,
+                'radius_m': 1000,
+            },
+            tool_output={
+                'count': len(candidates),
+                'parking_ids': [candidate.parking_id for candidate in candidates],
+            },
+        )
 
     def _now(self) -> datetime:
         value = self.now() if callable(self.now) else self.now
@@ -284,6 +341,8 @@ class MapParkingChatService:
         response,
         *,
         map_selection=None,
+        map_parking=None,
+        tool_name='amap_search_hospitals',
         tool_input,
         tool_output,
     ):
@@ -295,7 +354,6 @@ class MapParkingChatService:
             finished.timestamp() - latency_ms / 1000,
             tz=timezone.utc,
         ).isoformat()
-        tool_name = 'amap_search_hospitals'
         routing_reason = '医院停车请求使用真实地图 POI 确定性流程'
         tool_call = {
             'tool_name': tool_name,
@@ -398,4 +456,6 @@ class MapParkingChatService:
         }
         if map_selection is not None:
             result['map_selection'] = map_selection
+        if map_parking is not None:
+            result['map_parking'] = map_parking
         return result

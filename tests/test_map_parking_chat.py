@@ -5,7 +5,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from careguide.business_store import BusinessStore
-from careguide.amap_models import Coordinate, HospitalPoi
+from careguide.amap_client import AmapProviderError
+from careguide.amap_models import Coordinate, HospitalPoi, ParkingCandidate
 from careguide.map_parking_chat import MapParkingChatService
 from careguide.trace_store import TRACE_VERSION, TraceStore, validate_trace_completeness
 
@@ -39,14 +40,44 @@ def hospital_poi(identity='H1', name='泰州市人民医院（总院）'):
     )
 
 
+def parking_poi(identity='P1', name='泰州市人民医院停车场'):
+    return ParkingCandidate(
+        parking_id=identity,
+        name=name,
+        address='太湖路366号',
+        location=Coordinate(longitude=119.9227, latitude=32.4551),
+        entrance_location=Coordinate(longitude=119.9226, latitude=32.4550),
+        parking_type='地下',
+        distance_to_hospital_m=85,
+        available_spaces=None,
+        wheelchair_accessible=None,
+        observed_at=NOW,
+    )
+
+
 class ScriptedAmap:
-    def __init__(self, hospitals):
+    def __init__(self, hospitals, *, refreshed=None, parking=None, parking_error=None):
         self.hospitals = list(hospitals)
+        self.refreshed = refreshed
+        self.parking = list(parking or [])
+        self.parking_error = parking_error
         self.calls = []
+        self.detail_calls = []
+        self.parking_calls = []
 
     async def search_hospitals(self, query, *, city):
         self.calls.append({'query': query, 'city': city})
         return list(self.hospitals)
+
+    async def get_hospital(self, hospital_id):
+        self.detail_calls.append(hospital_id)
+        return self.refreshed
+
+    async def search_parking(self, hospital, *, radius_m):
+        self.parking_calls.append({'hospital': hospital, 'radius_m': radius_m})
+        if self.parking_error:
+            raise self.parking_error
+        return list(self.parking)
 
 
 def chat_service(tmp_path, hospitals):
@@ -486,3 +517,201 @@ def test_unrelated_or_explicit_simulation_requests_are_not_claimed(tmp_path, mes
     assert asyncio.run(service.handle(message, 'alice', 'conversation-other')) is None
     assert amap.calls == []
     assert traces.list_recent() == []
+
+
+def _selection_event(result, hospital_id='H1', **extra):
+    selection = result['map_selection']
+    return {
+        'kind': 'map_hospital_select',
+        'query_id': selection['query_id'],
+        'candidate_version': selection['candidate_version'],
+        'hospital_id': hospital_id,
+        **extra,
+    }
+
+
+def test_selected_hospital_refreshes_detail_and_returns_real_parking(tmp_path):
+    stored = hospital_poi()
+    refreshed = hospital_poi(name='泰州市人民医院总院（刷新）')
+    parking = parking_poi()
+    amap = ScriptedAmap([stored], refreshed=refreshed, parking=[parking])
+    store = BusinessStore(tmp_path / 'selected.sqlite3')
+    traces = TraceStore(path=None)
+    service = MapParkingChatService(amap, store, traces, now=lambda: NOW)
+    waiting = asyncio.run(service.handle(
+        '查询泰州市人民医院停车场', 'alice', 'conversation-select'))
+    trace_count = len(traces.list_recent())
+
+    result = asyncio.run(service.handle(
+        '确认该院区', 'alice', 'conversation-select',
+        map_event=_selection_event(waiting),
+    ))
+
+    assert amap.detail_calls == ['H1']
+    assert amap.parking_calls == [{'hospital': refreshed, 'radius_m': 1000}]
+    assert result['workflow_status'] == 'completed'
+    assert result['simulation'] is False
+    assert result['intent'] == 'map_parking'
+    assert result['map_parking'] == {
+        'hospital': refreshed.model_dump(mode='json'),
+        'candidates': [parking.model_dump(mode='json')],
+        'data_tier': 'map_poi',
+        'source_provider': 'amap',
+        'observed_at': NOW.isoformat(),
+    }
+    assert '确认院区' in result['response']
+    assert '1 个停车地点' in result['response']
+    assert '无法核实实时余位和无障碍通行' in result['response']
+    assert parking.available_spaces is None
+    assert parking.wheelchair_accessible is None
+    assert 'SIM' not in json.dumps(result, ensure_ascii=False)
+
+    assert len(traces.list_recent()) == trace_count + 1
+    trace = traces.list_recent()[0]
+    assert trace['execution']['tool_calls'] == [{
+        'tool_name': 'amap_search_parking',
+        'agent_type': 'map_parking',
+        'input': {'hospital_id': 'H1', 'radius_m': 1000},
+        'success': True,
+        'output': {'count': 1, 'parking_ids': ['P1']},
+        'error': None,
+        'latency_ms': trace['execution']['tool_calls'][0]['latency_ms'],
+    }]
+    assert trace['execution']['budget']['tool_calls'] == 1
+    assert 'SIM' not in json.dumps(trace, ensure_ascii=False)
+
+
+def test_selection_uses_stored_candidate_when_detail_refresh_is_missing(tmp_path):
+    stored = hospital_poi()
+    amap = ScriptedAmap([stored], refreshed=None, parking=[])
+    service = MapParkingChatService(
+        amap,
+        BusinessStore(tmp_path / 'fallback.sqlite3'),
+        TraceStore(path=None),
+        now=lambda: NOW,
+    )
+    waiting = asyncio.run(service.handle(
+        '查询泰州市人民医院停车场', 'alice', 'conversation-fallback'))
+
+    result = asyncio.run(service.handle(
+        '确认', 'alice', 'conversation-fallback',
+        map_event=_selection_event(waiting),
+    ))
+
+    assert amap.parking_calls == [{'hospital': stored, 'radius_m': 1000}]
+    assert result['map_parking']['hospital'] == stored.model_dump(mode='json')
+    assert result['map_parking']['candidates'] == []
+    assert '1 公里内未找到' in result['response']
+    assert '地图页扩大范围' in result['response']
+    assert result['simulation'] is False
+
+
+@pytest.mark.parametrize(
+    ('event_change', 'actor', 'conversation', 'error_type'),
+    [
+        ({'hospital_id': 'FORGED'}, 'alice', 'conversation-secure', ValueError),
+        ({}, 'mallory', 'conversation-secure', PermissionError),
+        ({}, 'alice', 'conversation-other', PermissionError),
+        ({'candidate_version': 2}, 'alice', 'conversation-secure', ValueError),
+        ({'kind': 'other'}, 'alice', 'conversation-secure', ValueError),
+    ],
+)
+def test_selection_rejects_forged_or_wrong_scope_event(
+        tmp_path, event_change, actor, conversation, error_type):
+    amap = ScriptedAmap([hospital_poi()], refreshed=hospital_poi())
+    service = MapParkingChatService(
+        amap, BusinessStore(tmp_path / 'secure.sqlite3'), TraceStore(path=None),
+        now=lambda: NOW,
+    )
+    waiting = asyncio.run(service.handle(
+        '查询泰州市人民医院停车场', 'alice', 'conversation-secure'))
+    event = _selection_event(waiting)
+    event.update(event_change)
+
+    with pytest.raises(error_type):
+        asyncio.run(service.handle(
+            '确认', actor, conversation, map_event=event))
+
+    assert amap.detail_calls == []
+    assert amap.parking_calls == []
+
+
+def test_selection_rejects_expired_event(tmp_path):
+    amap = ScriptedAmap([hospital_poi()])
+    current = [NOW]
+    service = MapParkingChatService(
+        amap, BusinessStore(tmp_path / 'expired.sqlite3'), TraceStore(path=None),
+        now=lambda: current[0],
+    )
+    waiting = asyncio.run(service.handle(
+        '查询泰州市人民医院停车场', 'alice', 'conversation-expired'))
+    current[0] = EXPIRES_AT
+
+    with pytest.raises(TimeoutError):
+        asyncio.run(service.handle(
+            '确认', 'alice', 'conversation-expired',
+            map_event=_selection_event(waiting),
+        ))
+
+    assert amap.detail_calls == []
+    assert amap.parking_calls == []
+
+
+def test_selection_ignores_forged_event_data_and_uses_stored_candidate_id(tmp_path):
+    stored = hospital_poi()
+    refreshed = hospital_poi(name='可信刷新详情')
+    parking = parking_poi()
+    amap = ScriptedAmap([stored], refreshed=refreshed, parking=[parking])
+    service = MapParkingChatService(
+        amap, BusinessStore(tmp_path / 'ignore-forged.sqlite3'), TraceStore(path=None),
+        now=lambda: NOW,
+    )
+    waiting = asyncio.run(service.handle(
+        '查询泰州市人民医院停车场', 'alice', 'conversation-forged-data'))
+    event = _selection_event(
+        waiting,
+        location={'longitude': 73, 'latitude': 3},
+        address='伪造地址',
+        hospital={'hospital_id': 'EVIL'},
+        radius_m=50000,
+        available_spaces=999,
+        wheelchair_accessible=True,
+    )
+
+    result = asyncio.run(service.handle(
+        '确认', 'alice', 'conversation-forged-data', map_event=event))
+
+    assert amap.detail_calls == ['H1']
+    assert amap.parking_calls == [{'hospital': refreshed, 'radius_m': 1000}]
+    candidate = result['map_parking']['candidates'][0]
+    assert candidate['available_spaces'] is None
+    assert candidate['wheelchair_accessible'] is None
+    assert result['map_parking']['hospital']['address'] == refreshed.address
+
+
+@pytest.mark.parametrize('code', [
+    'provider_auth_failed', 'provider_rate_limited', 'provider_timeout',
+])
+def test_selection_propagates_provider_errors_without_trace_or_simulation(tmp_path, code):
+    provider_error = AmapProviderError(code, '安全地图错误')
+    amap = ScriptedAmap(
+        [hospital_poi()], refreshed=hospital_poi(), parking_error=provider_error)
+    traces = TraceStore(path=None)
+    service = MapParkingChatService(
+        amap, BusinessStore(tmp_path / f'{code}.sqlite3'), traces, now=lambda: NOW)
+    waiting = asyncio.run(service.handle(
+        '查询泰州市人民医院停车场', 'alice', f'conversation-{code}'))
+    trace_count = len(traces.list_recent())
+
+    with pytest.raises(AmapProviderError) as caught:
+        asyncio.run(service.handle(
+            '确认', 'alice', f'conversation-{code}',
+            map_event=_selection_event(waiting),
+        ))
+
+    assert caught.value is provider_error
+    assert caught.value.code == code
+    assert 'key' not in str(caught.value).lower()
+    assert 'http' not in str(caught.value).lower()
+    assert 'sim' not in str(caught.value).lower()
+    assert len(traces.list_recent()) == trace_count
