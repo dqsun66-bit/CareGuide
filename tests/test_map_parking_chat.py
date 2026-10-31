@@ -311,6 +311,12 @@ def test_real_parking_query_searches_exact_hospital_and_waits_for_confirmation(t
     assert trace['task_understanding']['missing_fields'] == {'map_parking': ['hospital_id']}
     assert trace['routing']['primary_agent'] == 'map_parking'
     assert trace['execution']['budget']['model_calls'] == 0
+    assert trace['execution']['budget']['tool_calls'] == 1
+    assert trace['final']['total_tool_calls'] == 1
+    assert result['tools_used'] == ['amap_search_hospitals']
+    assert trace['execution']['execution_waves'][0]['agents'][0]['tools_used'] == [
+        'amap_search_hospitals'
+    ]
     tool_call = trace['execution']['tool_calls'][0]
     assert tool_call['tool_name'] == 'amap_search_hospitals'
     assert tool_call['input'] == {'query': '泰州医院', 'city': '泰州'}
@@ -568,16 +574,32 @@ def test_selected_hospital_refreshes_detail_and_returns_real_parking(tmp_path):
 
     assert len(traces.list_recent()) == trace_count + 1
     trace = traces.list_recent()[0]
-    assert trace['execution']['tool_calls'] == [{
+    tool_calls = trace['execution']['tool_calls']
+    assert len(tool_calls) == 2
+    assert tool_calls[0] == {
+        'tool_name': 'amap_get_hospital',
+        'agent_type': 'map_parking',
+        'input': {'hospital_id': 'H1'},
+        'success': True,
+        'output': {'found': True, 'hospital_id': 'H1'},
+        'error': None,
+        'latency_ms': tool_calls[0]['latency_ms'],
+    }
+    assert tool_calls[1] == {
         'tool_name': 'amap_search_parking',
         'agent_type': 'map_parking',
         'input': {'hospital_id': 'H1', 'radius_m': 1000},
         'success': True,
         'output': {'count': 1, 'parking_ids': ['P1']},
         'error': None,
-        'latency_ms': trace['execution']['tool_calls'][0]['latency_ms'],
-    }]
-    assert trace['execution']['budget']['tool_calls'] == 1
+        'latency_ms': tool_calls[1]['latency_ms'],
+    }
+    assert trace['execution']['budget']['tool_calls'] == 2
+    assert trace['final']['total_tool_calls'] == 2
+    assert result['tools_used'] == ['amap_get_hospital', 'amap_search_parking']
+    assert trace['execution']['execution_waves'][0]['agents'][0]['tools_used'] == [
+        'amap_get_hospital', 'amap_search_parking'
+    ]
     assert 'SIM' not in json.dumps(trace, ensure_ascii=False)
 
 
@@ -604,6 +626,39 @@ def test_selection_uses_stored_candidate_when_detail_refresh_is_missing(tmp_path
     assert '1 公里内未找到' in result['response']
     assert '地图页扩大范围' in result['response']
     assert result['simulation'] is False
+    trace = service.traces.list_recent()[0]
+    assert trace['execution']['tool_calls'][0]['output'] == {
+        'found': False,
+        'hospital_id': None,
+    }
+
+
+def test_selection_rejects_mismatched_refreshed_hospital_id(tmp_path):
+    stored = hospital_poi()
+    mismatched = hospital_poi(identity='H2', name='错误院区')
+    amap = ScriptedAmap([stored], refreshed=mismatched, parking=[parking_poi()])
+    traces = TraceStore(path=None)
+    service = MapParkingChatService(
+        amap,
+        BusinessStore(tmp_path / 'mismatched-refresh.sqlite3'),
+        traces,
+        now=lambda: NOW,
+    )
+    waiting = asyncio.run(service.handle(
+        '查询泰州市人民医院停车场', 'alice', 'conversation-mismatch'))
+    trace_count = len(traces.list_recent())
+
+    with pytest.raises(AmapProviderError) as caught:
+        asyncio.run(service.handle(
+            '确认', 'alice', 'conversation-mismatch',
+            map_event=_selection_event(waiting),
+        ))
+
+    assert caught.value.code == 'provider_invalid_response'
+    assert str(caught.value) == '地图服务返回的医院信息不一致'
+    assert amap.detail_calls == ['H1']
+    assert amap.parking_calls == []
+    assert len(traces.list_recent()) == trace_count
 
 
 @pytest.mark.parametrize(

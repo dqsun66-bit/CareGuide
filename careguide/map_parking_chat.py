@@ -7,6 +7,7 @@ import re
 import time
 import uuid
 
+from careguide.amap_client import AmapProviderError
 from careguide.amap_models import HospitalPoi
 from careguide.trace_store import TRACE_VERSION, validate_trace_completeness
 
@@ -279,11 +280,23 @@ class MapParkingChatService:
             now=self._now(),
         )
         stored_hospital = HospitalPoi.model_validate(stored)
+
+        detail_started = time.monotonic()
         refreshed_hospital = await self.amap.get_hospital(
             stored_hospital.hospital_id
         )
+        detail_latency_ms = (time.monotonic() - detail_started) * 1000
+        if (refreshed_hospital is not None
+                and refreshed_hospital.hospital_id != stored_hospital.hospital_id):
+            raise AmapProviderError(
+                'provider_invalid_response',
+                '地图服务返回的医院信息不一致',
+            )
         hospital = refreshed_hospital or stored_hospital
+
+        parking_started = time.monotonic()
         candidates = await self.amap.search_parking(hospital, radius_m=1000)
+        parking_latency_ms = (time.monotonic() - parking_started) * 1000
         serialized_candidates = [
             candidate.model_dump(mode='json') for candidate in candidates
         ]
@@ -314,15 +327,40 @@ class MapParkingChatService:
                 'source_provider': 'amap',
                 'observed_at': observed_at,
             },
-            tool_name='amap_search_parking',
-            tool_input={
-                'hospital_id': stored_hospital.hospital_id,
-                'radius_m': 1000,
-            },
-            tool_output={
-                'count': len(candidates),
-                'parking_ids': [candidate.parking_id for candidate in candidates],
-            },
+            tool_calls=[
+                {
+                    'tool_name': 'amap_get_hospital',
+                    'agent_type': 'map_parking',
+                    'input': {'hospital_id': stored_hospital.hospital_id},
+                    'success': True,
+                    'output': {
+                        'found': refreshed_hospital is not None,
+                        'hospital_id': (
+                            refreshed_hospital.hospital_id
+                            if refreshed_hospital is not None else None
+                        ),
+                    },
+                    'error': None,
+                    'latency_ms': detail_latency_ms,
+                },
+                {
+                    'tool_name': 'amap_search_parking',
+                    'agent_type': 'map_parking',
+                    'input': {
+                        'hospital_id': stored_hospital.hospital_id,
+                        'radius_m': 1000,
+                    },
+                    'success': True,
+                    'output': {
+                        'count': len(candidates),
+                        'parking_ids': [
+                            candidate.parking_id for candidate in candidates
+                        ],
+                    },
+                    'error': None,
+                    'latency_ms': parking_latency_ms,
+                },
+            ],
         )
 
     def _now(self) -> datetime:
@@ -343,8 +381,9 @@ class MapParkingChatService:
         map_selection=None,
         map_parking=None,
         tool_name='amap_search_hospitals',
-        tool_input,
-        tool_output,
+        tool_input=None,
+        tool_output=None,
+        tool_calls=None,
     ):
         request_id = uuid.uuid4().hex
         finished = self._now()
@@ -355,15 +394,18 @@ class MapParkingChatService:
             tz=timezone.utc,
         ).isoformat()
         routing_reason = '医院停车请求使用真实地图 POI 确定性流程'
-        tool_call = {
-            'tool_name': tool_name,
-            'agent_type': 'map_parking',
-            'input': tool_input,
-            'success': True,
-            'output': tool_output,
-            'error': None,
-            'latency_ms': latency_ms,
-        }
+        if tool_calls is None:
+            tool_calls = [{
+                'tool_name': tool_name,
+                'agent_type': 'map_parking',
+                'input': tool_input,
+                'success': True,
+                'output': tool_output,
+                'error': None,
+                'latency_ms': latency_ms,
+            }]
+        tool_names = [call['tool_name'] for call in tool_calls]
+        tool_count = len(tool_calls)
         trace = {
             'trace_version': TRACE_VERSION,
             'request_id': request_id,
@@ -399,12 +441,12 @@ class MapParkingChatService:
                         'finished_at': finished_at,
                         'latency_ms': latency_ms,
                         'success': True,
-                        'tools_used': [tool_name],
+                        'tools_used': tool_names,
                         'error': None,
                     }],
                 }],
-                'tool_calls': [tool_call],
-                'budget': {'model_calls': 0, 'tool_calls': 1},
+                'tool_calls': tool_calls,
+                'budget': {'model_calls': 0, 'tool_calls': tool_count},
                 'synthesis': {'mode': 'deterministic_map_lookup'},
             },
             'evidence': [],
@@ -415,7 +457,7 @@ class MapParkingChatService:
                 'agent_types': ['map_parking'],
                 'primary_agent': 'map_parking',
                 'supporting_agents': [],
-                'total_tool_calls': 1,
+                'total_tool_calls': tool_count,
                 'total_latency_ms': latency_ms,
             },
         }
@@ -441,7 +483,7 @@ class MapParkingChatService:
             'simulation': False,
             'action_requests': [],
             'appointment': [],
-            'tools_used': [tool_name],
+            'tools_used': tool_names,
             'agent_types': ['map_parking'],
             'agent_type': 'map_parking',
             'primary_agent': 'map_parking',
