@@ -1,10 +1,10 @@
-import { postChatStream } from './sse'
-import { authHeaders } from './auth'
+import { postChatStream } from './sse.js'
+import { authHeaders } from './auth.js'
 
 const BACKEND = {
   id: 'careguide',
   label: 'CareGuide',
-  baseUrl: import.meta.env.VITE_CAREGUIDE_API_URL || '/api',
+  baseUrl: import.meta.env?.VITE_CAREGUIDE_API_URL || '/api',
   port: '8010'
 }
 
@@ -66,18 +66,16 @@ export async function requestSearch(type, settings, query, topK = 5, rewrite = f
   return normalizeSearchResponse(raw)
 }
 
-export async function requestChat(type, settings, message, signal, workflowEvent, onEvent) {
-  const payload = buildChatPayload(type, settings, message)
-  if (workflowEvent) payload.workflow_event = workflowEvent
+export async function requestChat(type, settings, message, signal, workflowEvent, onEvent, mapEvent) {
+  const payload = buildChatPayload(type, settings, message, workflowEvent, mapEvent)
   const base = backendMeta(type, settings).baseUrl
   const raw = await postChatStream(`${base}/chat/stream`, payload, { signal, onEvent, headers: authHeaders(base) })
   return normalizeChatResponse(type, raw)
 }
 
-export async function requestChatJson(type, settings, message, signal, workflowEvent) {
+export async function requestChatJson(type, settings, message, signal, workflowEvent, mapEvent) {
   const meta = backendMeta(type, settings)
-  const payload = buildChatPayload(type, settings, message)
-  if (workflowEvent) payload.workflow_event = workflowEvent
+  const payload = buildChatPayload(type, settings, message, workflowEvent, mapEvent)
   const raw = await requestJson(meta.baseUrl, '/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -130,15 +128,18 @@ export function requestOperations(type, settings, path, body) {
   })
 }
 
-function buildChatPayload(type, settings, message) {
-  return {
+export function buildChatPayload(type, settings, message, workflowEvent, mapEvent) {
+  const payload = {
     message,
     user_id: settings.userId || 'anonymous',
     conv_id: settings.conversationId || undefined
   }
+  if (workflowEvent) payload.workflow_event = workflowEvent
+  if (mapEvent) payload.map_event = mapEvent
+  return payload
 }
 
-function normalizeChatResponse(type, raw) {
+export function normalizeChatResponse(type, raw) {
   const payload = asObject(raw)
   return {
     backend: type,
@@ -164,6 +165,8 @@ function normalizeChatResponse(type, raw) {
     simulation: toBoolean(payload.simulation),
     actionRequests: asArray(payload.action_requests ?? payload.actionRequests),
     workflow: payload.workflow || null,
+    mapSelection: payload.map_selection ?? payload.mapSelection ?? null,
+    mapParking: payload.map_parking ?? payload.mapParking ?? null,
     budget: payload.budget || null,
     appointment: asArray(payload.appointment),
     evidence: asArray(payload.evidence),
