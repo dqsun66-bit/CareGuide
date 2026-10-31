@@ -351,6 +351,35 @@ def test_drive_to_hospital_with_medical_request_is_not_claimed(tmp_path):
     assert traces.list_recent() == []
 
 
+@pytest.mark.parametrize('message', [
+    '开车去南京鼓楼医院复诊要带什么',
+    '开车去南京鼓楼医院住院怎么办',
+    '开车去南京鼓楼医院手术要准备什么',
+])
+def test_drive_to_hospital_with_non_travel_suffix_is_not_claimed(tmp_path, message):
+    service, amap, _store, traces = chat_service(tmp_path, [hospital_poi()])
+
+    assert asyncio.run(service.handle(
+        message, 'alice', 'conversation-medical-structure')) is None
+    assert amap.calls == []
+    assert traces.list_recent() == []
+
+
+@pytest.mark.parametrize('message', [
+    '开车去南京鼓楼医院',
+    '开车去南京鼓楼医院怎么走',
+])
+def test_drive_to_hospital_with_only_travel_suffix_is_claimed(tmp_path, message):
+    service, amap, _store, traces = chat_service(tmp_path, [hospital_poi()])
+
+    result = asyncio.run(service.handle(
+        message, 'alice', 'conversation-travel-structure'))
+
+    assert amap.calls == [{'query': '南京鼓楼医院', 'city': '南京'}]
+    assert result['workflow_status'] == 'waiting_user'
+    assert len(traces.list_recent()) == 1
+
+
 def test_explicit_parking_still_wins_when_message_mentions_medical_care(tmp_path):
     service, amap, _store, traces = chat_service(tmp_path, [hospital_poi()])
 
@@ -360,6 +389,15 @@ def test_explicit_parking_still_wins_when_message_mentions_medical_care(tmp_path
     assert amap.calls == [{'query': '医院', 'city': '泰州'}]
     assert result['workflow_status'] == 'waiting_user'
     assert len(traces.list_recent()) == 1
+
+
+def test_directional_target_preserves_full_hospital_campus_name(tmp_path):
+    service, amap, _store, _traces = chat_service(tmp_path, [hospital_poi()])
+
+    asyncio.run(service.handle(
+        '开车去南京鼓楼医院江北院区停车', 'alice', 'conversation-campus'))
+
+    assert amap.calls == [{'query': '南京鼓楼医院江北院区', 'city': '南京'}]
 
 
 def test_extended_negated_simulation_still_calls_real_map_handler(tmp_path):
@@ -385,6 +423,18 @@ def test_destination_hospital_fragment_wins_over_origin_city(
     asyncio.run(service.handle(message, 'alice', 'conversation-destination'))
 
     assert amap.calls == [{'query': query, 'city': city}]
+
+
+def test_local_parking_clause_wins_without_direction_word(tmp_path):
+    service, amap, _store, _traces = chat_service(tmp_path, [hospital_poi()])
+
+    asyncio.run(service.handle(
+        '我在南京，上海市第一人民医院停车场在哪',
+        'alice',
+        'conversation-local-clause',
+    ))
+
+    assert amap.calls == [{'query': '上海市第一人民医院', 'city': '上海'}]
 
 
 def test_no_hospital_candidate_completes_without_simulated_data(tmp_path):
