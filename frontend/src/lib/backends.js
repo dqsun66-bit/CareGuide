@@ -129,13 +129,18 @@ export function requestOperations(type, settings, path, body) {
 }
 
 export function buildChatPayload(type, settings, message, workflowEvent, mapEvent) {
+  const hasWorkflowEvent = workflowEvent != null
+  const hasMapEvent = mapEvent != null
+  if (hasWorkflowEvent && hasMapEvent) {
+    throw new Error('工作流事件与地图事件不能同时提交')
+  }
   const payload = {
     message,
     user_id: settings.userId || 'anonymous',
     conv_id: settings.conversationId || undefined
   }
-  if (workflowEvent) payload.workflow_event = workflowEvent
-  if (mapEvent) payload.map_event = mapEvent
+  if (hasWorkflowEvent) payload.workflow_event = workflowEvent
+  if (hasMapEvent) payload.map_event = mapEvent
   return payload
 }
 
@@ -165,8 +170,8 @@ export function normalizeChatResponse(type, raw) {
     simulation: toBoolean(payload.simulation),
     actionRequests: asArray(payload.action_requests ?? payload.actionRequests),
     workflow: payload.workflow || null,
-    mapSelection: payload.map_selection ?? payload.mapSelection ?? null,
-    mapParking: payload.map_parking ?? payload.mapParking ?? null,
+    mapSelection: normalizeMapSelection(payload.map_selection ?? payload.mapSelection),
+    mapParking: normalizeMapParking(payload.map_parking ?? payload.mapParking),
     budget: payload.budget || null,
     appointment: asArray(payload.appointment),
     evidence: asArray(payload.evidence),
@@ -284,6 +289,20 @@ function asObject(value) {
 
 function asArray(value) {
   return Array.isArray(value) ? value : []
+}
+
+function normalizeMapSelection(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  return { ...value, hospitals: asArray(value.hospitals) }
+}
+
+function normalizeMapParking(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  return {
+    ...value,
+    hospital: asObject(value.hospital),
+    candidates: asArray(value.candidates)
+  }
 }
 
 function firstArray(...values) {

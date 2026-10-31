@@ -8,6 +8,8 @@ import {
 import {
   buildChatPayload,
   normalizeChatResponse,
+  requestChat,
+  requestChatJson,
 } from '../src/lib/backends.js'
 
 const selection = { query_id: 'query-1', candidate_version: 2 }
@@ -50,30 +52,45 @@ test('hospital selection rejects missing identity, invalid versions, and simulat
 
 test('map handoff preserves real map fields and explicitly retains unknown parking truth', () => {
   const value = {
-    hospital,
+    hospital: {
+      ...hospital,
+      entrance_location: { longitude: 119.91, latitude: 32.41 },
+    },
     candidates: [{
       parking_id: 'parking-1',
       name: '医院停车场',
       data_tier: 'map_poi',
       source_provider: 'amap',
       distance_m: 120,
+      location: { longitude: 119.92, latitude: 32.42 },
     }],
   }
   const before = structuredClone(value)
+  const result = mapHandoff(value)
 
-  assert.deepEqual(mapHandoff(value), {
+  assert.deepEqual(result, {
     mode: 'real',
-    hospital,
+    hospital: value.hospital,
     candidates: [{
       parking_id: 'parking-1',
       name: '医院停车场',
       data_tier: 'map_poi',
       source_provider: 'amap',
       distance_m: 120,
+      location: { longitude: 119.92, latitude: 32.42 },
       available_spaces: null,
       wheelchair_accessible: null,
     }],
   })
+  assert.notStrictEqual(result.hospital, value.hospital)
+  assert.notStrictEqual(result.hospital.location, value.hospital.location)
+  assert.notStrictEqual(result.hospital.entrance_location, value.hospital.entrance_location)
+  assert.notStrictEqual(result.candidates[0], value.candidates[0])
+  assert.notStrictEqual(result.candidates[0].location, value.candidates[0].location)
+  result.hospital.name = '已修改院区'
+  result.hospital.location.longitude = 0
+  result.candidates[0].name = '已修改停车场'
+  result.candidates[0].location.latitude = 0
   assert.deepEqual(value, before)
 })
 
@@ -107,7 +124,7 @@ test('map handoff rejects malformed, non-map, simulated, and unidentified values
   assert.throws(() => mapHandoff({ hospital, candidates: [{ parking_id: ' SIM-P1', data_tier: 'map_poi' }] }), /停车场标识/)
 })
 
-test('chat payload serializes workflow and map events into independent fields', () => {
+test('chat payload serializes either workflow or map event and rejects ambiguous dual events', () => {
   const settings = { userId: 'u1', conversationId: 'c1' }
   const workflowEvent = { kind: 'answer', event_id: 'workflow-event' }
   const mapEvent = { kind: 'map_hospital_select', hospital_id: 'hospital-1' }
@@ -118,9 +135,70 @@ test('chat payload serializes workflow and map events into independent fields', 
   assert.deepEqual(buildChatPayload('careguide', settings, '查看停车', undefined, mapEvent), {
     message: '查看停车', user_id: 'u1', conv_id: 'c1', map_event: mapEvent,
   })
-  assert.deepEqual(buildChatPayload('careguide', settings, '继续', workflowEvent, mapEvent), {
-    message: '继续', user_id: 'u1', conv_id: 'c1', workflow_event: workflowEvent, map_event: mapEvent,
-  })
+  assert.throws(
+    () => buildChatPayload('careguide', settings, '继续', workflowEvent, mapEvent),
+    /工作流事件.*地图事件|地图事件.*工作流事件/,
+  )
+})
+
+test('JSON and SSE chat adapters put map events in the final parameter and actual request body', async () => {
+  const originalFetch = globalThis.fetch
+  const originalWindow = globalThis.window
+  const calls = []
+  const mapEvent = { kind: 'map_hospital_select', hospital_id: 'hospital-1' }
+  const workflowEvent = { kind: 'answer', event_id: 'workflow-event' }
+  globalThis.window = { setTimeout, clearTimeout }
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, body: JSON.parse(options.body) })
+    if (String(url).endsWith('/chat/stream')) {
+      const text = sseFrame(0, 'session', { conversation_id: 'c1' }) +
+        sseFrame(1, 'result', { response: '完成', conversation_id: 'c1' })
+      return sseResponse(text)
+    }
+    return new Response(JSON.stringify({ response: '完成', conversation_id: 'c1' }), {
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  try {
+    const settings = { endpoint: '/api', userId: 'u1', conversationId: 'c1' }
+    await requestChatJson('careguide', settings, '工作流', undefined, workflowEvent)
+    await requestChatJson('careguide', settings, '地图', undefined, undefined, mapEvent)
+    await requestChat('careguide', settings, '流式地图', undefined, undefined, undefined, mapEvent)
+
+    assert.deepEqual(calls.map(({ url, body }) => ({ url, body })), [
+      { url: '/api/chat', body: { message: '工作流', user_id: 'u1', conv_id: 'c1', workflow_event: workflowEvent } },
+      { url: '/api/chat', body: { message: '地图', user_id: 'u1', conv_id: 'c1', map_event: mapEvent } },
+      { url: '/api/chat/stream', body: { message: '流式地图', user_id: 'u1', conv_id: 'c1', map_event: mapEvent } },
+    ])
+  } finally {
+    globalThis.fetch = originalFetch
+    if (originalWindow === undefined) delete globalThis.window
+    else globalThis.window = originalWindow
+  }
+})
+
+test('chat adapters reject dual workflow and map events before making a request', async () => {
+  const originalFetch = globalThis.fetch
+  let calls = 0
+  globalThis.fetch = async () => { calls += 1; throw new Error('不应请求') }
+  const settings = { endpoint: '/api', userId: 'u1' }
+  const workflowEvent = { kind: 'answer' }
+  const mapEvent = { kind: 'map_hospital_select' }
+
+  try {
+    await assert.rejects(
+      requestChatJson('careguide', settings, '冲突', undefined, workflowEvent, mapEvent),
+      /工作流事件.*地图事件|地图事件.*工作流事件/,
+    )
+    await assert.rejects(
+      requestChat('careguide', settings, '冲突', undefined, workflowEvent, undefined, mapEvent),
+      /工作流事件.*地图事件|地图事件.*工作流事件/,
+    )
+    assert.equal(calls, 0)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
 })
 
 test('chat response normalizes snake and camel map contracts and defaults to null', () => {
@@ -129,6 +207,38 @@ test('chat response normalizes snake and camel map contracts and defaults to nul
 
   assert.equal(normalizeChatResponse('careguide', {}).mapSelection, null)
   assert.equal(normalizeChatResponse('careguide', {}).mapParking, null)
-  assert.equal(normalizeChatResponse('careguide', { map_selection: selection }).mapSelection, selection)
-  assert.equal(normalizeChatResponse('careguide', { mapParking: parking }).mapParking, parking)
+  assert.deepEqual(normalizeChatResponse('careguide', { map_selection: selection }).mapSelection, {
+    ...selection, hospitals: [],
+  })
+  assert.deepEqual(normalizeChatResponse('careguide', { mapParking: parking }).mapParking, {
+    hospital: {}, candidates: [],
+  })
 })
+
+test('chat response makes malformed map response shapes safe for UI consumers', () => {
+  const malformed = normalizeChatResponse('careguide', {
+    map_selection: 'bad',
+    map_parking: { hospital: 'bad', candidates: { parking_id: 'P1' } },
+  })
+  assert.equal(malformed.mapSelection, null)
+  assert.deepEqual(malformed.mapParking, { hospital: {}, candidates: [] })
+
+  const selection = normalizeChatResponse('careguide', {
+    mapSelection: { query_id: 'q1', hospitals: null },
+  }).mapSelection
+  assert.deepEqual(selection, { query_id: 'q1', hospitals: [] })
+})
+
+function sseFrame(id, event, data) {
+  return `id: ${id}\nevent: ${event}\ndata: ${JSON.stringify(data)}\n\n`
+}
+
+function sseResponse(text) {
+  const bytes = new TextEncoder().encode(text)
+  return new Response(new ReadableStream({
+    start(controller) {
+      controller.enqueue(bytes)
+      controller.close()
+    },
+  }), { headers: { 'Content-Type': 'text/event-stream' } })
+}

@@ -44,11 +44,15 @@ export function mapHandoff(value) {
     throw new Error('停车候选列表必须是数组')
   }
 
-  const candidates = value.candidates.map((candidate) => {
+  for (const candidate of value.candidates) {
     if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate) || candidate.data_tier !== 'map_poi') {
       throw new Error('停车候选必须来自真实地图')
     }
     normalizedId(candidate.parking_id, '停车场标识')
+  }
+
+  const snapshot = structuredClone({ hospital: value.hospital, candidates: value.candidates })
+  const candidates = snapshot.candidates.map((candidate) => {
     return {
       ...candidate,
       available_spaces: candidate.available_spaces ?? null,
@@ -56,5 +60,5 @@ export function mapHandoff(value) {
     }
   })
 
-  return { mode: 'real', hospital: value.hospital, candidates }
+  return { mode: 'real', hospital: snapshot.hospital, candidates }
 }
