@@ -39,3 +39,7 @@ jobs:
         run: npm run build
       - name: Frontend protocol and rendering tests
         run: npm test
+      - name: Frontend browser workflow
+        run: npm run test:browser
+        env:
+          CAREGUIDE_TEST_BROWSER: /usr/bin/google-chrome

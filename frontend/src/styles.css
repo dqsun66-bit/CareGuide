@@ -1289,6 +1289,12 @@ a { color: inherit; }
 }
 .route-summary strong { color: var(--text); }
 .route-summary span { flex: 1; }
+.parking-empty-selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
 
 .parking-controls {
   display: grid;
@@ -1365,6 +1371,7 @@ a { color: inherit; }
   .parking-candidates article { grid-template-columns: 1fr; }
   .parking-map { height: 320px; }
   .route-summary { align-items: stretch; flex-direction: column; }
+  .parking-empty-selected { align-items: stretch; flex-direction: column; }
 }
 
 .evaluation-summary {

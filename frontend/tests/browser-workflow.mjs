@@ -8,7 +8,10 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const browserPath = process.env.CAREGUIDE_TEST_BROWSER || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+const defaultBrowserPath = process.platform === 'win32'
+  ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+  : process.platform === 'linux' ? '/usr/bin/google-chrome' : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+const browserPath = process.env.CAREGUIDE_TEST_BROWSER || defaultBrowserPath
 const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'careguide-browser-'))
 const requests = []
 const failures = []
@@ -30,6 +33,12 @@ const mapParkingCandidate = {
   data_tier: 'map_poi', source_provider: 'amap', location: { longitude: 119.921, latitude: 32.461 },
   available_spaces: null, wheelchair_accessible: null, observed_at: '2026-10-31T10:01:00+08:00'
 }
+const emptyMapHospital = {
+  ...mapHospital, hospital_id: 'H2', name: '泰州市人民医院空结果院区', address: '青年路 1 号'
+}
+const expandedParkingCandidate = {
+  ...mapParkingCandidate, parking_id: 'P2', name: '三公里停车场', distance_to_hospital_m: 2200
+}
 const workflow = () => ({ id: 'browser-workflow', version, revision, tasks: structuredClone(tasks) })
 const response = () => ({ conversation_id: 'browser-conversation', request_id: 'browser-request-'+revision,
   answer: { body: '## 当前查询\n\n可继续当前任务。[S1]',
@@ -47,11 +56,11 @@ const server = http.createServer(async (req, res) => {
       const chunks = []
       for await (const chunk of req) chunks.push(chunk)
       const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : null
-      requests.push({ method: req.method, path: url.pathname, body })
+      requests.push({ method: req.method, path: url.pathname, search: url.search, body })
       let result = {}
       if (url.pathname === '/api/chat/stream') {
         const event = body.workflow_event
-        if (body.message === '查询泰州医院停车场') {
+        if (body.message === '换成另一家医院停车场') {
           assert.equal(body.workflow_event, undefined)
           assert.equal(body.map_event, undefined)
           result = {
@@ -59,16 +68,27 @@ const server = http.createServer(async (req, res) => {
             response: '请选择真实院区', answer: { body: '已找到真实院区，请确认。', sources: [] },
             map_selection: { query_id: 'map-query-1', candidate_version: 1, hospitals: [mapHospital] }
           }
+        } else if (body.message === '查询空结果医院停车场') {
+          assert.equal(body.workflow_event, undefined)
+          assert.equal(body.map_event, undefined)
+          result = {
+            conversation_id: 'browser-conversation', request_id: 'map-empty-selection-request',
+            response: '请选择真实院区', answer: { body: '请确认空结果测试院区。', sources: [] },
+            map_selection: { query_id: 'map-query-empty', candidate_version: 1, hospitals: [emptyMapHospital] }
+          }
         } else if (body.map_event) {
-          assert.deepEqual(body.map_event, {
-            kind: 'map_hospital_select', query_id: 'map-query-1', candidate_version: 1, hospital_id: 'H1'
-          })
+          const expected = body.map_event.hospital_id === 'H2'
+            ? { kind: 'map_hospital_select', query_id: 'map-query-empty', candidate_version: 1, hospital_id: 'H2' }
+            : { kind: 'map_hospital_select', query_id: 'map-query-1', candidate_version: 1, hospital_id: 'H1' }
+          assert.deepEqual(body.map_event, expected)
           assert.equal('location' in body.map_event, false)
           assert.equal(body.workflow_event, undefined)
           result = {
             conversation_id: 'browser-conversation', request_id: 'map-parking-request',
             response: '已找到真实停车信息', answer: { body: '以下是该院区周边的真实停车场信息。', sources: [] },
-            map_parking: { hospital: mapHospital, candidates: [mapParkingCandidate] }
+            map_parking: body.map_event.hospital_id === 'H2'
+              ? { hospital: emptyMapHospital, candidates: [] }
+              : { hospital: mapHospital, candidates: [mapParkingCandidate] }
           }
         } else if (event?.kind === 'answer') {
           assert.equal(event.workflow_id, 'browser-workflow')
@@ -107,12 +127,15 @@ const server = http.createServer(async (req, res) => {
         emit(4, 'delta', { answer_id: 'browser-answer', offset: 4, text: '整理查询结果', provisional: true })
         // Keep the final response gated so the browser must render actual
         // streamed progress before it can see the interactive result cards.
-        if (!body.workflow_event && !body.map_event && body.message !== '查询泰州医院停车场') {
+        if (!body.workflow_event && !body.map_event && !result.map_selection) {
           await new Promise(resolve => { releaseFirstStream = resolve })
         }
         if (res.destroyed) return
         emit(5, 'result', result)
         res.end(); return
+      } else if (url.pathname === '/api/map/hospitals/H2/parking') {
+        assert.equal(url.searchParams.get('radius_m'), '3000')
+        result = { simulation: false, candidates: [expandedParkingCandidate] }
       } else if (url.pathname === '/api/actions/ACT-2/confirm') {
         assert.equal(body.conv_id, 'browser-conversation')
         actions[0].status = 'completed'; tasks.find(item => item.id === 'booking').status = 'succeeded'
@@ -137,7 +160,7 @@ const server = http.createServer(async (req, res) => {
 })
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
 const origin = `http://127.0.0.1:${server.address().port}`
-const browser = spawn(browserPath, ['--headless=new', '--no-first-run', '--no-default-browser-check',
+const browser = spawn(browserPath, ['--headless=new', ...(process.platform === 'linux' ? ['--no-sandbox'] : []), '--no-first-run', '--no-default-browser-check',
   '--disable-background-networking', '--disable-component-update', '--disable-sync', '--disable-extensions',
   '--remote-debugging-port=0', '--remote-allow-origins=*', `--user-data-dir=${profile}`, 'about:blank'], { stdio: 'ignore' })
 browser.on('error', error => failures.push(error.message))
@@ -222,7 +245,7 @@ try {
   await until(`document.body.textContent.includes('已停止接收')`)
   await evaluate(`fetch('/api/test/release-stream').then(response => response.status)`)
   assert.equal(requests.filter(item => item.path === '/api/chat/stream').length, beforeStop + 1)
-  await send('查询泰州医院停车场')
+  await send('换成另一家医院停车场')
   await until(`document.querySelector('[data-testid="map-hospital-H1"]:not(:disabled)') !== null`)
   assert.equal(await evaluate(`document.querySelector('[data-testid="map-hospital-H1"]')?.textContent.includes('高德地图 · map_poi')`), true)
   await evaluate(`document.querySelector('[data-testid="map-hospital-H1"]').click()`)
@@ -239,13 +262,27 @@ try {
     kind: 'map_hospital_select', query_id: 'map-query-1', candidate_version: 1, hospital_id: 'H1'
   }])
   assert.equal(requests.some(item => item.path.startsWith('/api/map/')), false)
+  await evaluate(`Array.from(document.querySelectorAll('.view-nav button')).find(button => button.textContent === '对话').click()`)
+  await send('查询空结果医院停车场')
+  await until(`document.querySelector('[data-testid="map-hospital-H2"]:not(:disabled)') !== null`)
+  await evaluate(`document.querySelector('[data-testid="map-hospital-H2"]').click()`)
+  await until(`Array.from(document.querySelectorAll('[data-testid="open-map-parking"]')).at(-1)?.disabled === false`)
+  await evaluate(`Array.from(document.querySelectorAll('[data-testid="open-map-parking"]')).at(-1).click()`)
+  await until(`document.body.textContent.includes('已确认泰州市人民医院空结果院区，高德未返回1公里停车场')`)
+  await until(`Array.from(document.querySelectorAll('button')).some(button => button.textContent.includes('扩大到3公里搜索') && !button.disabled)`)
+  const hospitalSearchesBeforeExpansion = requests.filter(item => item.path === '/api/map/hospitals/search').length
+  await evaluate(`Array.from(document.querySelectorAll('button')).find(button => button.textContent.includes('扩大到3公里搜索')).click()`)
+  await until(`document.querySelector('[data-parking-id="P2"]')?.textContent.includes('三公里停车场')`)
+  assert.equal(requests.filter(item => item.path === '/api/map/hospitals/H2/parking' && item.search === '?radius_m=3000').length, 1)
+  assert.equal(requests.filter(item => item.path === '/api/map/hospitals/search').length, hospitalSearchesBeforeExpansion)
   assert.equal(await evaluate(`JSON.parse(localStorage.getItem('careguide.frontend.settings')).conversationId`), 'browser-conversation')
   assert.equal(failures.length, 0, failures.join('\n'))
   console.log(JSON.stringify({ kind: 'real_chrome_built_vue_scripted_api', checks: [
     'task_missing_field_submission', 'doctor_selection', 'slot_selection', 'versioned_change',
     'old_confirmation_disabled', 'one_current_confirmation', 'reload_and_restore', 'sse_progress_before_final', 'answer_deltas_before_final', 'markdown_and_citation_navigation',
     'sse_stop_keeps_session_without_resubmit', 'chat_map_selection', 'map_event_contract',
-    'chat_parking_summary', 'parking_map_handoff_without_refetch'],
+    'chat_parking_summary', 'parking_map_handoff_without_refetch', 'parking_intent_bypasses_old_workflow',
+    'empty_parking_expands_selected_hospital_only'],
     browser: (await command('Browser.getVersion', {}, null)).product,
     chat_events: requests.filter(item => item.path === '/api/chat/stream').map(item => item.body.workflow_event || { kind: 'initial' }),
     confirmation_requests: 1, paid_calls: 0 }, null, 2))

@@ -493,7 +493,13 @@
               <span v-if="mapRoute">普通步行路线 {{ mapRoute.distance_m }} 米。该路线不代表轮椅可通行。</span>
               <button :disabled="parkingBusy" @click="planSelectedRoute">生成普通步行路线</button>
             </div>
-            <div v-if="!mapParking.length" class="workspace-empty">先搜索并选择院区，再查看周边真实停车场。</div>
+            <div v-if="!mapParking.length && !selectedHospital" class="workspace-empty">先搜索并选择院区，再查看周边真实停车场。</div>
+            <div v-else-if="!mapParking.length" class="workspace-empty parking-empty-selected">
+              <span>已确认{{ selectedHospital.name }}，高德未返回1公里停车场。</span>
+              <button :disabled="parkingBusy" @click="expandSelectedHospitalParking">
+                {{ parkingBusy ? '正在扩大搜索…' : '扩大到3公里搜索' }}
+              </button>
+            </div>
           </section>
         </div>
       </template>
@@ -735,6 +741,18 @@ async function selectHospital(hospital) {
   try {
     mapParking.value = await searchMapParking(mapRequester, hospital.hospital_id, 1000)
     if (!mapParking.value.length) showToast('高德未返回 1 公里内的停车场')
+  } catch (error) { showToast(error.message) }
+  finally { parkingBusy.value = false }
+}
+
+async function expandSelectedHospitalParking() {
+  if (!selectedHospital.value || parkingBusy.value) return
+  selectedParking.value = null
+  mapRoute.value = null
+  parkingBusy.value = true
+  try {
+    mapParking.value = await searchMapParking(mapRequester, selectedHospital.value.hospital_id, 3000)
+    if (!mapParking.value.length) showToast('高德未返回 3 公里内的停车场')
   } catch (error) { showToast(error.message) }
   finally { parkingBusy.value = false }
 }
@@ -1019,7 +1037,8 @@ async function sendMessage(workflowEvent, mapEvent, displayContent) {
   const content = displayContent || (workflowEvent?.kind === 'cancel' ? '取消当前任务' : workflowEvent ? Object.entries(workflowEvent.values || {}).map(([field, value]) =>
     `${workflowFieldLabel(field)}：${value}`).join('，') || '继续任务' : draft.value.trim())
   if (!content || busy.value) return false
-  if (!workflowEvent && !mapEvent && activeWorkflow.value && /改成|改为|改查|换成|换号源|更换|取消|不用|另外|增加|再加|不查/.test(content)) {
+  const startsNewParkingQuery = /停车场|停车|车停|开车去/.test(content) && /医院|院区|就医地点/.test(content)
+  if (!workflowEvent && !mapEvent && !startsNewParkingQuery && activeWorkflow.value && /改成|改为|改查|换成|换号源|更换|取消|不用|另外|增加|再加|不查/.test(content)) {
     workflowEvent = { kind: 'change', workflow_id: activeWorkflow.value.id,
       plan_version: activeWorkflow.value.version }
   }
