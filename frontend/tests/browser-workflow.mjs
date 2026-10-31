@@ -20,6 +20,16 @@ const tasks = [
     options: [{ field: 'practitioner_id', values: [{ id: 'PRA-1', name: '合成医生', department: '消化内科' }] }] }
 ]
 let actions = []
+const mapHospital = {
+  hospital_id: 'H1', name: '泰州市人民医院新院区', address: '太湖路 366 号',
+  city_name: '泰州市', district_name: '医药高新区', data_tier: 'map_poi', source_provider: 'amap',
+  location: { longitude: 119.92, latitude: 32.46 }, observed_at: '2026-10-31T10:00:00+08:00'
+}
+const mapParkingCandidate = {
+  parking_id: 'P1', name: '泰州市人民医院停车场', distance_to_hospital_m: 180,
+  data_tier: 'map_poi', source_provider: 'amap', location: { longitude: 119.921, latitude: 32.461 },
+  available_spaces: null, wheelchair_accessible: null, observed_at: '2026-10-31T10:01:00+08:00'
+}
 const workflow = () => ({ id: 'browser-workflow', version, revision, tasks: structuredClone(tasks) })
 const response = () => ({ conversation_id: 'browser-conversation', request_id: 'browser-request-'+revision,
   answer: { body: '## 当前查询\n\n可继续当前任务。[S1]',
@@ -41,7 +51,26 @@ const server = http.createServer(async (req, res) => {
       let result = {}
       if (url.pathname === '/api/chat/stream') {
         const event = body.workflow_event
-        if (event?.kind === 'answer') {
+        if (body.message === '查询泰州医院停车场') {
+          assert.equal(body.workflow_event, undefined)
+          assert.equal(body.map_event, undefined)
+          result = {
+            conversation_id: 'browser-conversation', request_id: 'map-selection-request',
+            response: '请选择真实院区', answer: { body: '已找到真实院区，请确认。', sources: [] },
+            map_selection: { query_id: 'map-query-1', candidate_version: 1, hospitals: [mapHospital] }
+          }
+        } else if (body.map_event) {
+          assert.deepEqual(body.map_event, {
+            kind: 'map_hospital_select', query_id: 'map-query-1', candidate_version: 1, hospital_id: 'H1'
+          })
+          assert.equal('location' in body.map_event, false)
+          assert.equal(body.workflow_event, undefined)
+          result = {
+            conversation_id: 'browser-conversation', request_id: 'map-parking-request',
+            response: '已找到真实停车信息', answer: { body: '以下是该院区周边的真实停车场信息。', sources: [] },
+            map_parking: { hospital: mapHospital, candidates: [mapParkingCandidate] }
+          }
+        } else if (event?.kind === 'answer') {
           assert.equal(event.workflow_id, 'browser-workflow')
           assert.equal(event.plan_version, 1)
           assert.equal(event.task_revision, 1)
@@ -68,7 +97,7 @@ const server = http.createServer(async (req, res) => {
             workflow_binding: { workflow_id: 'browser-workflow', plan_version: 2, task_id: 'booking', task_revision: 2 } }]
         }
         revision += 1
-        result = response()
+        if (!result.response) result = response()
         const emit = (id, event, data) => res.write(`id: ${id}\nevent: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
         res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no' })
         emit(0, 'session', { conversation_id: 'browser-conversation', stream_id: 'browser-stream' })
@@ -78,7 +107,9 @@ const server = http.createServer(async (req, res) => {
         emit(4, 'delta', { answer_id: 'browser-answer', offset: 4, text: '整理查询结果', provisional: true })
         // Keep the final response gated so the browser must render actual
         // streamed progress before it can see the interactive result cards.
-        if (!body.workflow_event) await new Promise(resolve => { releaseFirstStream = resolve })
+        if (!body.workflow_event && !body.map_event && body.message !== '查询泰州医院停车场') {
+          await new Promise(resolve => { releaseFirstStream = resolve })
+        }
         if (res.destroyed) return
         emit(5, 'result', result)
         res.end(); return
@@ -191,12 +222,30 @@ try {
   await until(`document.body.textContent.includes('已停止接收')`)
   await evaluate(`fetch('/api/test/release-stream').then(response => response.status)`)
   assert.equal(requests.filter(item => item.path === '/api/chat/stream').length, beforeStop + 1)
+  await send('查询泰州医院停车场')
+  await until(`document.querySelector('[data-testid="map-hospital-H1"]:not(:disabled)') !== null`)
+  assert.equal(await evaluate(`document.querySelector('[data-testid="map-hospital-H1"]')?.textContent.includes('高德地图 · map_poi')`), true)
+  await evaluate(`document.querySelector('[data-testid="map-hospital-H1"]').click()`)
+  await until(`document.querySelector('[data-testid="open-map-parking"]:not(:disabled)') !== null`)
+  assert.equal(await evaluate(`document.body.textContent.includes('实时车位未知') && document.body.textContent.includes('无障碍通行未核实')`), true)
+  assert.equal(await evaluate(`Array.from(document.querySelectorAll('.message.user p')).at(-1)?.textContent`), '选择院区：泰州市人民医院新院区')
+  await evaluate(`document.querySelector('[data-testid="open-map-parking"]').click()`)
+  await until(`document.querySelector('.page-parking h1')?.textContent.includes('医院停车与行程规划')`)
+  assert.equal(await evaluate(`document.body.textContent.includes('实时车位为未知') && document.body.textContent.includes('无障碍通行尚未核实')`), true)
+  assert.equal(await evaluate(`document.body.textContent.includes('SIM-A')`), false)
+  assert.equal(await evaluate(`document.querySelector('[data-hospital-id="H1"].active') !== null`), true)
+  assert.equal(await evaluate(`document.querySelector('[data-parking-id="P1"]')?.textContent.includes('泰州市人民医院停车场')`), true)
+  assert.deepEqual(requests.filter(item => item.path === '/api/chat/stream' && item.body.map_event).map(item => item.body.map_event), [{
+    kind: 'map_hospital_select', query_id: 'map-query-1', candidate_version: 1, hospital_id: 'H1'
+  }])
+  assert.equal(requests.some(item => item.path.startsWith('/api/map/')), false)
   assert.equal(await evaluate(`JSON.parse(localStorage.getItem('careguide.frontend.settings')).conversationId`), 'browser-conversation')
   assert.equal(failures.length, 0, failures.join('\n'))
   console.log(JSON.stringify({ kind: 'real_chrome_built_vue_scripted_api', checks: [
     'task_missing_field_submission', 'doctor_selection', 'slot_selection', 'versioned_change',
     'old_confirmation_disabled', 'one_current_confirmation', 'reload_and_restore', 'sse_progress_before_final', 'answer_deltas_before_final', 'markdown_and_citation_navigation',
-    'sse_stop_keeps_session_without_resubmit'],
+    'sse_stop_keeps_session_without_resubmit', 'chat_map_selection', 'map_event_contract',
+    'chat_parking_summary', 'parking_map_handoff_without_refetch'],
     browser: (await command('Browser.getVersion', {}, null)).product,
     chat_events: requests.filter(item => item.path === '/api/chat/stream').map(item => item.body.workflow_event || { kind: 'initial' }),
     confirmation_requests: 1, paid_calls: 0 }, null, 2))

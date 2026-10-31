@@ -74,6 +74,38 @@
               </div>
               <AnswerBody v-if="item.role === 'assistant'" :content="item.answer?.body || item.content" :sources="item.answer?.sources || []" />
               <p v-else>{{ item.content }}</p>
+              <section v-if="item.mapSelection" class="chat-map-card" aria-label="真实院区候选">
+                <div class="chat-map-card-heading">
+                  <strong>请选择真实院区</strong>
+                  <small>院区信息来自高德地图，请确认后查询周边停车场。</small>
+                </div>
+                <button v-for="hospital in item.mapSelection.hospitals" :key="hospital.hospital_id"
+                  class="chat-map-option" :data-testid="`map-hospital-${hospital.hospital_id}`"
+                  :disabled="busy || item.mapSelection.resolved"
+                  @click="selectChatHospital(item.mapSelection, hospital)">
+                  <strong>{{ hospital.name }}</strong>
+                  <span>{{ hospital.address || '地址未提供' }}</span>
+                  <small>{{ [hospital.city_name, hospital.district_name].filter(Boolean).join(' · ') || '行政区未知' }}</small>
+                  <small class="source-badge">高德地图 · map_poi</small>
+                </button>
+              </section>
+              <section v-if="item.mapParking" class="chat-map-card" aria-label="真实停车摘要">
+                <div class="chat-map-card-heading">
+                  <strong>{{ item.mapParking.hospital.name || '已选真实院区' }}</strong>
+                  <small>{{ item.mapParking.hospital.address || '院区地址未提供' }}</small>
+                  <small class="source-badge">高德地图 · map_poi · {{ formatMapObservation(item.mapParking.hospital.observed_at) }}</small>
+                </div>
+                <div v-if="item.mapParking.candidates.length" class="chat-parking-list">
+                  <article v-for="candidate in item.mapParking.candidates" :key="candidate.parking_id">
+                    <strong>{{ candidate.name }}</strong>
+                    <span>{{ mapParkingDistance(candidate) }} · {{ parkingTruthLabels(candidate).availability }}</span>
+                    <small>{{ parkingTruthLabels(candidate).accessibility }}</small>
+                    <small class="source-badge">高德地图 · map_poi · {{ formatMapObservation(candidate.observed_at) }}</small>
+                  </article>
+                </div>
+                <p v-else class="chat-map-empty">高德地图暂未返回周边停车场；实时车位未知，无障碍通行未核实。</p>
+                <button data-testid="open-map-parking" :disabled="busy" @click="openChatParkingMap(item.mapParking)">在地图中查看</button>
+              </section>
               <details v-if="item.timings" class="answer-timings">
                 <summary>处理耗时 · {{ Math.round(item.timings.total_ms) }} ms</summary>
                 <span v-for="(ms, phase) in item.timings.phases_ms" :key="phase">{{ phaseLabel(phase) }}：{{ Math.round(ms) }} ms · </span>
@@ -434,6 +466,7 @@
             </button>
             <button v-for="hospital in mapHospitals" :key="hospital.hospital_id"
               class="map-result-button" :class="{ active: selectedHospital?.hospital_id === hospital.hospital_id }"
+              :data-hospital-id="hospital.hospital_id"
               @click="selectHospital(hospital)">
               <strong>{{ hospital.name }}</strong><small>{{ hospital.address || '地址未提供' }}</small>
             </button>
@@ -447,6 +480,7 @@
             <div class="parking-candidates real-candidates">
               <article v-for="item in mapParking" :key="item.parking_id"
                 :class="{ eligible: selectedParking?.parking_id === item.parking_id }"
+                :data-parking-id="item.parking_id"
                 role="button" tabindex="0" @click="selectParking(item)" @keydown.enter="selectParking(item)">
                 <strong>{{ item.name }}</strong>
                 <span>{{ item.distance_to_hospital_m == null ? '距离未知' : `${item.distance_to_hospital_m} 米` }} · {{ parkingTruthLabels(item).availability }}</span>
@@ -518,7 +552,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, toRaw, watch } from 'vue'
 import {
   backendMeta,
   createInitialSettings,
@@ -542,6 +576,7 @@ import ParkingMap from './components/ParkingMap.vue'
 import { safeSourceUrl } from './lib/markdown'
 import { requestIdentity } from './lib/backends'
 import { accessToken, setAccessToken } from './lib/auth'
+import { hospitalSelectionEvent, mapHandoff } from './lib/chat-parking'
 import {
   buildParkingToHospitalRoute,
   parkingTruthLabels,
@@ -702,6 +737,39 @@ async function selectHospital(hospital) {
     if (!mapParking.value.length) showToast('高德未返回 1 公里内的停车场')
   } catch (error) { showToast(error.message) }
   finally { parkingBusy.value = false }
+}
+
+async function selectChatHospital(selection, hospital) {
+  if (busy.value || selection.resolved) return
+  try {
+    const event = hospitalSelectionEvent(selection, hospital)
+    selection.resolved = true
+    const sent = await sendMessage(undefined, event, `选择院区：${hospital.name}`)
+    if (!sent) selection.resolved = false
+  } catch (error) {
+    selection.resolved = false
+    showToast(error.message)
+  }
+}
+
+function openChatParkingMap(value) {
+  try {
+    const handoff = mapHandoff(toRaw(value))
+    parkingMode.value = handoff.mode
+    selectedHospital.value = handoff.hospital
+    mapHospitals.value = [handoff.hospital]
+    mapParking.value = handoff.candidates
+    selectedParking.value = null
+    mapRoute.value = null
+    activeView.value = 'parking'
+  } catch (error) {
+    showToast(error.message)
+  }
+}
+
+function mapParkingDistance(candidate) {
+  const distance = candidate.distance_to_hospital_m ?? candidate.distance_m
+  return distance == null ? '距离未知' : `${distance} 米`
 }
 
 function selectParking(parking) {
@@ -945,12 +1013,13 @@ async function reloadSkillSet() {
   } finally { busy.value = false }
 }
 
-async function sendMessage(workflowEvent) {
+async function sendMessage(workflowEvent, mapEvent, displayContent) {
   if (!['answer', 'run', 'change', 'cancel'].includes(workflowEvent?.kind)) workflowEvent = undefined
-  const content = workflowEvent?.kind === 'cancel' ? '取消当前任务' : workflowEvent ? Object.entries(workflowEvent.values || {}).map(([field, value]) =>
-    `${workflowFieldLabel(field)}：${value}`).join('，') || '继续任务' : draft.value.trim()
-  if (!content || busy.value) return
-  if (!workflowEvent && activeWorkflow.value && /改成|改为|改查|换成|换号源|更换|取消|不用|另外|增加|再加|不查/.test(content)) {
+  if (mapEvent?.kind !== 'map_hospital_select') mapEvent = undefined
+  const content = displayContent || (workflowEvent?.kind === 'cancel' ? '取消当前任务' : workflowEvent ? Object.entries(workflowEvent.values || {}).map(([field, value]) =>
+    `${workflowFieldLabel(field)}：${value}`).join('，') || '继续任务' : draft.value.trim())
+  if (!content || busy.value) return false
+  if (!workflowEvent && !mapEvent && activeWorkflow.value && /改成|改为|改查|换成|换号源|更换|取消|不用|另外|增加|再加|不查/.test(content)) {
     workflowEvent = { kind: 'change', workflow_id: activeWorkflow.value.id,
       plan_version: activeWorkflow.value.version }
   }
@@ -988,8 +1057,8 @@ async function sendMessage(workflowEvent) {
         if (incoming === data.workflow) assistant().progress = {
           message: data.stage === 'plan_ready' ? '计划已校验，准备执行' : '任务进度', workflow: incoming }
       }
-    })
-    if (!stillCurrent() || !assistant()) return
+    }, mapEvent)
+    if (!stillCurrent() || !assistant()) return false
     if (response.conversationId && !settings.conversationId) {
       settings.conversationId = response.conversationId
       persist()
@@ -1000,7 +1069,8 @@ async function sendMessage(workflowEvent) {
     const meta = [response.intent, response.primaryAgent || response.agentType, response.knowledgeUsed ? 'RAG' : '', response.escalated ? '转人工' : ''].filter(Boolean).join(' · ')
     Object.assign(assistant(), { content: response.response, answer: response.answer, timings: response.timings, meta, progress: null,
       trace: null, simulation: response.simulation,
-      actionRequests: response.actionRequests, evidence: response.evidence, workflow: response.workflow })
+      actionRequests: response.actionRequests, evidence: response.evidence, workflow: response.workflow,
+      mapSelection: response.mapSelection, mapParking: response.mapParking })
     // Diagnostics must not delay displaying the terminal result or unlocking
     // its answer/confirmation controls.
     void loadToolTrace(response.requestId).then(trace => {
@@ -1009,9 +1079,11 @@ async function sendMessage(workflowEvent) {
       if (lastResponse.value?.requestId === response.requestId) lastTrace.value = trace
     })
     void loadMonitor()
+    return true
   } catch (error) {
     if (stillCurrent() && assistant()) Object.assign(assistant(), {
       content: error.message, meta: '接收已结束', progress: null, answerId: null, answerOffset: 0 })
+    return false
   } finally {
     chatAbortController = null
     busy.value = false
