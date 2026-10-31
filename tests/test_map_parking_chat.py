@@ -316,6 +316,8 @@ def test_city_suffix_hint_is_extracted_from_conversational_message(tmp_path):
     ('前往常州市第一人民医院停车场', '常州市第一人民医院', '常州'),
     ('麻烦去常州市第一人民医院停车场', '常州市第一人民医院', '常州'),
     ('能不能前往无锡市人民医院停车', '无锡市人民医院', '无锡'),
+    ('去江苏省无锡市人民医院停车', '江苏省无锡市人民医院', '无锡'),
+    ('前往广西壮族自治区南宁市医院停车', '广西壮族自治区南宁市医院', '南宁'),
 ])
 def test_city_suffix_hint_does_not_absorb_leading_travel_verbs(
         tmp_path, message, query, city):
@@ -333,6 +335,18 @@ def test_negated_simulation_word_still_uses_real_map_handler(tmp_path):
         '不要模拟结果，查询泰州医院停车场', 'alice', 'conversation-real-map'))
 
     assert amap.calls == [{'query': '泰州医院', 'city': '泰州'}]
+    assert result['workflow_status'] == 'waiting_user'
+    assert result['simulation'] is False
+    assert len(traces.list_recent()) == 1
+
+
+def test_extended_negated_simulation_still_calls_real_map_handler(tmp_path):
+    service, amap, _store, traces = chat_service(tmp_path, [hospital_poi()])
+
+    result = asyncio.run(service.handle(
+        '不要再模拟医院停车，查询真实停车场', 'alice', 'conversation-real-only'))
+
+    assert amap.calls == [{'query': '真实', 'city': '泰州'}]
     assert result['workflow_status'] == 'waiting_user'
     assert result['simulation'] is False
     assert len(traces.list_recent()) == 1
@@ -360,6 +374,7 @@ def test_no_hospital_candidate_completes_without_simulated_data(tmp_path):
     '最近总是头痛怎么办',
     '请模拟停车方案',
     '请模拟医院停车方案',
+    '请模拟一下医院停车方案',
     '请对医院停车做模拟重规划',
     '医院停车场 SIM-A 满了怎么办',
 ])
