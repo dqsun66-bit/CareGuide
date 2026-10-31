@@ -467,6 +467,7 @@
             <button v-for="hospital in mapHospitals" :key="hospital.hospital_id"
               class="map-result-button" :class="{ active: selectedHospital?.hospital_id === hospital.hospital_id }"
               :data-hospital-id="hospital.hospital_id"
+              :disabled="parkingBusy"
               @click="selectHospital(hospital)">
               <strong>{{ hospital.name }}</strong><small>{{ hospital.address || '地址未提供' }}</small>
             </button>
@@ -675,6 +676,7 @@ const selectedHospital = ref(null)
 const mapParking = ref([])
 const selectedParking = ref(null)
 const mapRoute = ref(null)
+let parkingSearchToken = 0
 const parkingForm = reactive({
   maxWalkingDistanceM: 200,
   requiresWheelchairAccess: true,
@@ -734,27 +736,36 @@ async function searchHospitals() {
 }
 
 async function selectHospital(hospital) {
+  if (parkingBusy.value) return
   selectedHospital.value = hospital
-  selectedParking.value = null
-  mapRoute.value = null
-  parkingBusy.value = true
-  try {
-    mapParking.value = await searchMapParking(mapRequester, hospital.hospital_id, 1000)
-    if (!mapParking.value.length) showToast('高德未返回 1 公里内的停车场')
-  } catch (error) { showToast(error.message) }
-  finally { parkingBusy.value = false }
+  await loadSelectedHospitalParking(hospital.hospital_id, 1000)
 }
 
 async function expandSelectedHospitalParking() {
   if (!selectedHospital.value || parkingBusy.value) return
-  selectedParking.value = null
-  mapRoute.value = null
+  await loadSelectedHospitalParking(selectedHospital.value.hospital_id, 3000)
+}
+
+async function loadSelectedHospitalParking(hospitalId, radiusM) {
+  const token = ++parkingSearchToken
   parkingBusy.value = true
+  if (selectedHospital.value?.hospital_id === hospitalId) {
+    mapParking.value = []
+    selectedParking.value = null
+    mapRoute.value = null
+  }
   try {
-    mapParking.value = await searchMapParking(mapRequester, selectedHospital.value.hospital_id, 3000)
-    if (!mapParking.value.length) showToast('高德未返回 3 公里内的停车场')
-  } catch (error) { showToast(error.message) }
-  finally { parkingBusy.value = false }
+    const candidates = await searchMapParking(mapRequester, hospitalId, radiusM)
+    if (token !== parkingSearchToken || selectedHospital.value?.hospital_id !== hospitalId) return
+    mapParking.value = candidates
+    selectedParking.value = null
+    mapRoute.value = null
+    if (!candidates.length) showToast(`高德未返回 ${radiusM / 1000} 公里内的停车场`)
+  } catch (error) {
+    if (token === parkingSearchToken && selectedHospital.value?.hospital_id === hospitalId) showToast(error.message)
+  } finally {
+    if (token === parkingSearchToken) parkingBusy.value = false
+  }
 }
 
 async function selectChatHospital(selection, hospital) {

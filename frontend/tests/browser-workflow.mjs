@@ -16,6 +16,8 @@ const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'careguide-browser-'))
 const requests = []
 const failures = []
 let releaseFirstStream
+let releaseParkingExpansion
+const parkingExpansionGate = new Promise(resolve => { releaseParkingExpansion = resolve })
 let version = 1, revision = 1
 const tasks = [
   { id: 'drug', revision: 1, label: '查询药品说明书', status: 'waiting_input', missing_fields: ['specification'], options: [] },
@@ -50,6 +52,9 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost')
     if (url.pathname === '/api/test/release-stream') {
       releaseFirstStream?.(); res.writeHead(204); res.end(); return
+    }
+    if (url.pathname === '/api/test/release-parking-expansion') {
+      releaseParkingExpansion(); res.writeHead(204); res.end(); return
     }
     if (url.pathname === '/favicon.ico') { res.writeHead(204); res.end(); return }
     if (url.pathname.startsWith('/api/')) {
@@ -135,6 +140,7 @@ const server = http.createServer(async (req, res) => {
         res.end(); return
       } else if (url.pathname === '/api/map/hospitals/H2/parking') {
         assert.equal(url.searchParams.get('radius_m'), '3000')
+        await parkingExpansionGate
         result = { simulation: false, candidates: [expandedParkingCandidate] }
       } else if (url.pathname === '/api/actions/ACT-2/confirm') {
         assert.equal(body.conv_id, 'browser-conversation')
@@ -271,9 +277,16 @@ try {
   await until(`document.body.textContent.includes('已确认泰州市人民医院空结果院区，高德未返回1公里停车场')`)
   await until(`Array.from(document.querySelectorAll('button')).some(button => button.textContent.includes('扩大到3公里搜索') && !button.disabled)`)
   const hospitalSearchesBeforeExpansion = requests.filter(item => item.path === '/api/map/hospitals/search').length
+  const oneKmRequestsBeforeExpansion = requests.filter(item => item.path === '/api/map/hospitals/H2/parking' && item.search === '?radius_m=1000').length
   await evaluate(`Array.from(document.querySelectorAll('button')).find(button => button.textContent.includes('扩大到3公里搜索')).click()`)
+  await until(`document.querySelector('[data-hospital-id="H2"]')?.disabled === true`)
+  assert.equal(await evaluate(`document.querySelector('[data-hospital-id="H2"]')?.disabled`), true)
+  await evaluate(`document.querySelector('[data-hospital-id="H2"]').click()`)
+  assert.equal(requests.filter(item => item.path === '/api/map/hospitals/H2/parking' && item.search === '?radius_m=1000').length, oneKmRequestsBeforeExpansion)
+  await evaluate(`fetch('/api/test/release-parking-expansion').then(response => response.status)`)
   await until(`document.querySelector('[data-parking-id="P2"]')?.textContent.includes('三公里停车场')`)
   assert.equal(requests.filter(item => item.path === '/api/map/hospitals/H2/parking' && item.search === '?radius_m=3000').length, 1)
+  assert.equal(requests.filter(item => item.path === '/api/map/hospitals/H2/parking' && item.search === '?radius_m=1000').length, oneKmRequestsBeforeExpansion)
   assert.equal(requests.filter(item => item.path === '/api/map/hospitals/search').length, hospitalSearchesBeforeExpansion)
   assert.equal(await evaluate(`JSON.parse(localStorage.getItem('careguide.frontend.settings')).conversationId`), 'browser-conversation')
   assert.equal(failures.length, 0, failures.join('\n'))
@@ -282,7 +295,7 @@ try {
     'old_confirmation_disabled', 'one_current_confirmation', 'reload_and_restore', 'sse_progress_before_final', 'answer_deltas_before_final', 'markdown_and_citation_navigation',
     'sse_stop_keeps_session_without_resubmit', 'chat_map_selection', 'map_event_contract',
     'chat_parking_summary', 'parking_map_handoff_without_refetch', 'parking_intent_bypasses_old_workflow',
-    'empty_parking_expands_selected_hospital_only'],
+    'empty_parking_expands_selected_hospital_only', 'map_parking_searches_are_serialized'],
     browser: (await command('Browser.getVersion', {}, null)).product,
     chat_events: requests.filter(item => item.path === '/api/chat/stream').map(item => item.body.workflow_event || { kind: 'initial' }),
     confirmation_requests: 1, paid_calls: 0 }, null, 2))
