@@ -263,12 +263,13 @@ def test_real_parking_query_searches_exact_hospital_and_waits_for_confirmation(t
     assert selection['expires_at'] == EXPIRES_AT.isoformat()
     assert [item['hospital_id'] for item in selection['hospitals']] == ['H1', 'H2']
     assert set(selection['hospitals'][0]) == {
-        'hospital_id', 'name', 'address', 'city', 'district', 'location',
-        'entrance', 'data_tier', 'source_provider', 'observed_at',
+        'hospital_id', 'name', 'address', 'city_name', 'district_name', 'location',
+        'entrance_location', 'data_tier', 'source_provider', 'observed_at',
     }
     stored = store.select_map_hospital(
         selection['query_id'], 'alice', 'conversation-map', 1, 'H1', now=NOW)
     assert stored == selection['hospitals'][0]
+    assert HospitalPoi.model_validate(stored) == hospitals[0]
 
     recent = traces.list_recent()
     assert len(recent) == 1
@@ -308,6 +309,31 @@ def test_city_suffix_hint_is_extracted_from_conversational_message(tmp_path):
         '我在无锡市人民医院，车停哪里', 'alice', 'conversation-city'))
 
     assert amap.calls == [{'query': '无锡市人民医院', 'city': '无锡'}]
+
+
+@pytest.mark.parametrize(('message', 'query', 'city'), [
+    ('去无锡市人民医院停车', '无锡市人民医院', '无锡'),
+    ('前往常州市第一人民医院停车场', '常州市第一人民医院', '常州'),
+])
+def test_city_suffix_hint_does_not_absorb_leading_travel_verbs(
+        tmp_path, message, query, city):
+    service, amap, _store, _traces = chat_service(tmp_path, [hospital_poi()])
+
+    asyncio.run(service.handle(message, 'alice', 'conversation-city-verb'))
+
+    assert amap.calls == [{'query': query, 'city': city}]
+
+
+def test_negated_simulation_word_still_uses_real_map_handler(tmp_path):
+    service, amap, _store, traces = chat_service(tmp_path, [hospital_poi()])
+
+    result = asyncio.run(service.handle(
+        '不要模拟结果，查询泰州医院停车场', 'alice', 'conversation-real-map'))
+
+    assert amap.calls == [{'query': '泰州医院', 'city': '泰州'}]
+    assert result['workflow_status'] == 'waiting_user'
+    assert result['simulation'] is False
+    assert len(traces.list_recent()) == 1
 
 
 def test_no_hospital_candidate_completes_without_simulated_data(tmp_path):
