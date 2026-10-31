@@ -13,10 +13,8 @@ from careguide.trace_store import TRACE_VERSION, validate_trace_completeness
 
 PARKING = re.compile(r'停车场|停车|车停|开车去')
 HOSPITAL = re.compile(r'医院|院区|就医地点')
-SIMULATION = re.compile(
-    r'SIM-[ABC]|(?<!不要)(?<!别)(?:模拟重规划|模拟(?:医院|院区)?停车)',
-    re.I,
-)
+SIMULATION_ID = re.compile(r'SIM-[ABC]', re.I)
+SIMULATION_NEGATIONS = ('不要再', '不再', '不要', '别再', '别', '无需', '拒绝')
 QUERY_NOISE = re.compile(
     r'不要模拟结果|停车场|车停哪里|怎么停|哪里停|停哪里|车停|停车|'
     r'附近|周边|查询|查找|搜索|帮我|一下|请'
@@ -26,17 +24,53 @@ LEADING_TRAVEL_NOISE = re.compile(
 )
 LEADING_POLITENESS = re.compile(r'^(?:麻烦|能不能)')
 CITY_AFTER_TRAVEL = re.compile(
-    r'(?:前往|位于|去|到|在)([\u4e00-\u9fff]{2,6})市'
+    r'(?:前往|位于|去|到|在)([\u4e00-\u9fff]{2,20}?)市'
 )
 KNOWN_CITIES = ('泰州', '南京', '上海', '北京', '广州', '深圳', '杭州', '苏州')
 
 
+def _simulation_is_negated(prefix: str) -> bool:
+    context = prefix[-6:]
+    return any(context.endswith(term) for term in SIMULATION_NEGATIONS)
+
+
+def _is_explicit_simulation(message: str) -> bool:
+    if SIMULATION_ID.search(message):
+        return True
+    for match in re.finditer('模拟', message):
+        if _simulation_is_negated(message[:match.start()]):
+            continue
+        following = message[match.start():match.end() + 20]
+        if following.startswith('模拟重规划') or '停车' in following:
+            return True
+    return False
+
+
+def _strip_negated_simulation_clause(message: str) -> str:
+    separator = re.search(r'[，,。；;]', message)
+    if separator is None:
+        return message
+    clause = message[:separator.start()]
+    simulation_at = clause.find('模拟')
+    if simulation_at >= 0 and _simulation_is_negated(clause[:simulation_at]):
+        return message[separator.end():]
+    return message
+
+
 def _hospital_query(message: str) -> str:
+    message = _strip_negated_simulation_clause(message)
     value = QUERY_NOISE.sub('', message)
     value = value.lstrip(' \t\r\n，,。.!！？?、的')
     value = LEADING_POLITENESS.sub('', value)
     value = LEADING_TRAVEL_NOISE.sub('', value)
     return value.strip(' \t\r\n，,。.!！？?、的')
+
+
+def _normalize_city_qualifier(value: str) -> str:
+    for suffix in ('特别行政区', '自治区', '省'):
+        if suffix in value:
+            value = value.rsplit(suffix, 1)[-1]
+    return value
 
 
 def _city_hint(message: str, cleaned_query: str) -> str:
@@ -45,9 +79,9 @@ def _city_hint(message: str, cleaned_query: str) -> str:
             return city
     match = CITY_AFTER_TRAVEL.search(message)
     if match:
-        return match.group(1)
-    match = re.search(r'^([\u4e00-\u9fff]{2,6})市', cleaned_query)
-    return match.group(1) if match else '泰州'
+        return _normalize_city_qualifier(match.group(1))
+    match = re.search(r'^([\u4e00-\u9fff]{2,20}?)市', cleaned_query)
+    return _normalize_city_qualifier(match.group(1)) if match else '泰州'
 
 
 def _serialize_hospital(hospital: HospitalPoi) -> dict:
@@ -69,7 +103,7 @@ class MapParkingChatService:
         return bool(
             PARKING.search(message)
             and HOSPITAL.search(message)
-            and not SIMULATION.search(message)
+            and not _is_explicit_simulation(message)
         )
 
     async def handle(self, message, user_id, conv_id, *, map_event=None):
