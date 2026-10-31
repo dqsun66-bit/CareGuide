@@ -90,6 +90,10 @@ def get_amap_client() -> AmapClient:
     )
 
 
+def get_amap_client_factory():
+    return get_amap_client
+
+
 def _map_provider_error(exc: AmapProviderError) -> HTTPException:
     status = 429 if exc.code == 'provider_rate_limited' else 503
     return HTTPException(status, detail={'code': exc.code, 'message': str(exc)})
@@ -136,13 +140,18 @@ class ChatRequest(ActorModel):
 
 
 @app.post('/chat')
-async def chat(request: ChatRequest, runtime=Depends(get_chat_runtime)):
-    return await _chat_result(request, runtime)
+async def chat(
+        request: ChatRequest,
+        runtime=Depends(get_chat_runtime),
+        amap_factory=Depends(get_amap_client_factory)):
+    return await _chat_result(request, runtime, amap_factory)
 
 
 def _validate_chat_event(request, engine):
     if request.workflow_event is not None and request.map_event is not None:
         raise HTTPException(422, '任务恢复事件与地图候选事件不能同时提交')
+    if request.map_event is not None and not request.conv_id:
+        raise HTTPException(422, '地图候选选择需要会话标识')
     event = request.workflow_event
     if event is None:
         return
@@ -153,15 +162,15 @@ def _validate_chat_event(request, engine):
         raise HTTPException(409, '当前运行模式不支持任务恢复')
 
 
-async def _chat_result(request, runtime):
+async def _chat_result(request, runtime, amap_factory=None):
     from careguide.timing import request_timing
     with request_timing() as timing:
-        result = await _execute_chat_result(request, runtime)
+        result = await _execute_chat_result(request, runtime, amap_factory)
         result['timings'] = timing.snapshot()
         return result
 
 
-async def _execute_chat_result(request, runtime):
+async def _execute_chat_result(request, runtime, amap_factory=None):
     from careguide.timing import phase
     engine, memory, monitor = runtime
     _validate_chat_event(request, engine)
@@ -189,8 +198,11 @@ async def _execute_chat_result(request, runtime):
             map_result = None
             if (request.workflow_event is None and (
                     request.map_event or MapParkingChatService.matches(request.message))):
+                client_factory = (
+                    amap_factory if callable(amap_factory) else get_amap_client
+                )
                 service = MapParkingChatService(
-                    get_amap_client(), engine.business_store, engine.traces,
+                    client_factory(), engine.business_store, engine.traces,
                 )
                 map_result = await service.handle(
                     request.message,
@@ -247,7 +259,10 @@ async def _execute_chat_result(request, runtime):
 
 
 @app.post('/chat/stream')
-async def chat_stream(request: ChatRequest, runtime=Depends(get_chat_runtime)):
+async def chat_stream(
+        request: ChatRequest,
+        runtime=Depends(get_chat_runtime),
+        amap_factory=Depends(get_amap_client_factory)):
     _validate_chat_event(request, runtime[0])
     request = request.model_copy(update={'conv_id': request.conv_id or uuid.uuid4().hex})
     stream_id = uuid.uuid4().hex
@@ -293,10 +308,20 @@ async def chat_stream(request: ChatRequest, runtime=Depends(get_chat_runtime)):
         async def produce():
             with progress_events(offer):
                 try:
-                    result = await _chat_result(request, runtime)
+                    result = await _chat_result(request, runtime, amap_factory)
                     terminal = ('result', result)
                 except HTTPException as exc:
-                    terminal = ('error', {'status': exc.status_code, 'message': exc.detail})
+                    if isinstance(exc.detail, dict):
+                        terminal = ('error', {
+                            'status': exc.status_code,
+                            'code': exc.detail.get('code'),
+                            'message': str(exc.detail.get('message')),
+                        })
+                    else:
+                        terminal = ('error', {
+                            'status': exc.status_code,
+                            'message': str(exc.detail),
+                        })
                 except Exception:
                     terminal = ('error', {'status': 503, 'message': '对话服务暂不可用'})
             if connected:

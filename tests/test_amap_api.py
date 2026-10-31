@@ -11,7 +11,7 @@ from careguide.amap_models import (
     ParkingCandidate,
 )
 from careguide.amap_client import AmapProviderError
-from careguide.api import app, get_amap_client
+from careguide.api import app, get_amap_client, get_amap_client_factory
 from careguide.business_store import BusinessStore
 from careguide.runtime import get_chat_runtime
 from careguide.task_context import SessionMemory
@@ -86,19 +86,18 @@ class ApiEngine:
 
 
 @pytest.fixture
-def chat_api(tmp_path, monkeypatch):
-    import careguide.api as api_module
-
+def chat_api(tmp_path):
     engine = ApiEngine(tmp_path)
     amap = ScriptedAmap()
     app.dependency_overrides[get_chat_runtime] = lambda: (
         engine, SessionMemory(), None
     )
-    monkeypatch.setattr(api_module, 'get_amap_client', lambda: amap)
+    app.dependency_overrides[get_amap_client_factory] = lambda: (lambda: amap)
     try:
         yield TestClient(app), engine, amap
     finally:
         app.dependency_overrides.pop(get_chat_runtime, None)
+        app.dependency_overrides.pop(get_amap_client_factory, None)
 
 
 def decode_sse(text):
@@ -259,8 +258,7 @@ def test_map_selection_scope_version_and_identity_are_enforced(
     ('provider_invalid_response', 503),
 ])
 def test_chat_maps_provider_errors_without_leaking_secrets(
-        tmp_path, monkeypatch, code, status):
-    import careguide.api as api_module
+        tmp_path, code, status):
     engine = ApiEngine(tmp_path)
     amap = ScriptedAmap(hospital_error=AmapProviderError(
         code, f'安全地图错误 {code}'
@@ -268,13 +266,14 @@ def test_chat_maps_provider_errors_without_leaking_secrets(
     app.dependency_overrides[get_chat_runtime] = lambda: (
         engine, SessionMemory(), None
     )
-    monkeypatch.setattr(api_module, 'get_amap_client', lambda: amap)
+    app.dependency_overrides[get_amap_client_factory] = lambda: (lambda: amap)
     try:
         response = TestClient(app).post('/chat', json={
             'message': '查询泰州医院停车场'
         })
     finally:
         app.dependency_overrides.pop(get_chat_runtime, None)
+        app.dependency_overrides.pop(get_amap_client_factory, None)
 
     assert response.status_code == status
     assert response.json()['detail'] == {
@@ -282,6 +281,67 @@ def test_chat_maps_provider_errors_without_leaking_secrets(
     }
     assert 'restapi.amap.com' not in response.text
     assert 'key=' not in response.text.lower()
+
+
+@pytest.mark.parametrize(('code', 'status'), [
+    ('provider_auth_failed', 503),
+    ('provider_rate_limited', 429),
+    ('provider_timeout', 503),
+])
+def test_chat_stream_normalizes_provider_error_frames(
+        tmp_path, code, status):
+    engine = ApiEngine(tmp_path)
+    amap = ScriptedAmap(hospital_error=AmapProviderError(
+        code, f'安全地图错误 {code}'
+    ))
+    app.dependency_overrides[get_chat_runtime] = lambda: (
+        engine, SessionMemory(), None
+    )
+    app.dependency_overrides[get_amap_client_factory] = lambda: (lambda: amap)
+    try:
+        response = TestClient(app).post('/chat/stream', json={
+            'message': '查询泰州医院停车场', 'conv_id': 'provider-error'
+        })
+    finally:
+        app.dependency_overrides.pop(get_chat_runtime, None)
+        app.dependency_overrides.pop(get_amap_client_factory, None)
+
+    event, error = decode_sse(response.text)[-1]
+    assert event == 'error'
+    assert error == {
+        'status': status,
+        'code': code,
+        'message': f'安全地图错误 {code}',
+    }
+    assert isinstance(error['message'], str)
+    assert 'http' not in response.text.lower()
+    assert 'key' not in response.text.lower()
+
+
+@pytest.mark.parametrize('endpoint', ['/chat', '/chat/stream'])
+def test_map_event_without_conversation_is_rejected_before_amap_factory(
+        chat_api, endpoint):
+    client, _engine, _amap = chat_api
+    factory_calls = []
+
+    def forbidden_factory():
+        factory_calls.append(True)
+        raise AssertionError('缺少会话时不得创建 Amap 客户端')
+
+    app.dependency_overrides[get_amap_client_factory] = lambda: forbidden_factory
+    response = client.post(endpoint, json={
+        'message': '选择院区',
+        'map_event': {
+            'kind': 'map_hospital_select',
+            'query_id': 'MAP-query',
+            'candidate_version': 1,
+            'hospital_id': 'H1',
+        },
+    })
+
+    assert response.status_code == 422
+    assert '会话' in response.json()['detail']
+    assert factory_calls == []
 
 
 def test_expired_map_candidate_is_gone_and_does_not_query_parking(chat_api):
@@ -305,23 +365,23 @@ def test_expired_map_candidate_is_gone_and_does_not_query_parking(chat_api):
 
 
 def test_non_map_chat_never_constructs_amap_client(chat_api, monkeypatch):
-    import careguide.api as api_module
     client, engine, _amap = chat_api
     monkeypatch.delenv('CAREGUIDE_AMAP_WEB_SERVICE_KEY', raising=False)
-    monkeypatch.setattr(
-        api_module, 'get_amap_client',
-        lambda: (_ for _ in ()).throw(AssertionError('must stay lazy')),
-    )
+    factory_calls = []
+    def forbidden_factory():
+        factory_calls.append(True)
+        raise AssertionError('must stay lazy')
+    app.dependency_overrides[get_amap_client_factory] = lambda: forbidden_factory
 
     response = client.post('/chat', json={'message': '感冒应该注意什么？'})
 
     assert response.status_code == 200
     assert response.json()['response'] == '普通医疗回答'
     assert len(engine.process_calls) == 1
+    assert factory_calls == []
 
 
-def test_explicit_simulation_never_constructs_amap_client(chat_api, monkeypatch):
-    import careguide.api as api_module
+def test_explicit_simulation_never_constructs_amap_client(chat_api):
     client, engine, _amap = chat_api
     factory_calls = []
 
@@ -329,7 +389,9 @@ def test_explicit_simulation_never_constructs_amap_client(chat_api, monkeypatch)
         factory_calls.append(True)
         raise AssertionError('明确模拟请求不得创建 Amap 客户端')
 
-    monkeypatch.setattr(api_module, 'get_amap_client', forbidden_amap_factory)
+    app.dependency_overrides[get_amap_client_factory] = (
+        lambda: forbidden_amap_factory
+    )
 
     response = client.post('/chat', json={
         'message': '我明天想去泰州市医院看病，需要轮椅，最多走200米'
@@ -362,7 +424,9 @@ def test_real_map_result_precedes_simulation_and_engine_fallbacks(
         engine_calls.append((args, kwargs))
         raise AssertionError('真实地图成功后不得调用普通对话引擎')
 
-    monkeypatch.setattr(api_module, 'get_amap_client', scripted_amap_factory)
+    app.dependency_overrides[get_amap_client_factory] = (
+        lambda: scripted_amap_factory
+    )
     monkeypatch.setattr(api_module, 'parking_chat_response', forbidden_simulation)
     engine.process = forbidden_engine
 
