@@ -109,3 +109,51 @@ def test_dense_runtime_can_apply_dedicated_reranker(tmp_path):
     assert len(hits) == 1
     assert hits[0]['retrieval']['mode'] == 'dense_rerank'
     assert hits[0]['retrieval']['rerank_model'] == 'test-reranker'
+
+
+def test_hybrid_search_report_counts_every_stage(tmp_path):
+    chromadb = pytest.importorskip('chromadb')
+    client = chromadb.PersistentClient(
+        path=str(tmp_path), settings=chromadb.Settings(anonymized_telemetry=False))
+    corpus, embedding = Corpus(), ScriptedTestEmbedding()
+    collection = index_collection(client, corpus, embedding)
+
+    class Reranker:
+        model = 'test-reranker'
+
+        def rerank(self, query, candidates, *, top_n):
+            selected = list(candidates)[:top_n]
+            return ([identity for identity, _ in selected],
+                    [0.9 - index * 0.05 for index in range(len(selected))], {})
+
+    knowledge = MedicalKnowledgeBase(
+        corpus, collection=collection, embedding=embedding, mode='hybrid',
+        reranker=Reranker(), rerank_candidates=20, hybrid_candidates=20)
+
+    result = knowledge.search_with_report(
+        '头痛', list(corpus.records), today=date(2026, 9, 17), top_k=5,
+        risk='general_guidance')
+
+    assert result.report.mode == 'hybrid'
+    assert 0 < result.report.lexical_count <= 20
+    assert 0 < result.report.dense_count <= 20
+    assert result.report.fused_count <= 40
+    assert result.report.reranked is True
+    assert result.report.final_count == len(result.evidence)
+    assert result.report.final_count <= 5
+
+
+def test_search_compatibility_wrapper_returns_evidence_list(tmp_path):
+    chromadb = pytest.importorskip('chromadb')
+    client = chromadb.PersistentClient(
+        path=str(tmp_path), settings=chromadb.Settings(anonymized_telemetry=False))
+    corpus, embedding = Corpus(), ScriptedTestEmbedding()
+    collection = index_collection(client, corpus, embedding)
+    knowledge = MedicalKnowledgeBase(
+        corpus, collection=collection, embedding=embedding, mode='hybrid')
+
+    hits = knowledge.search(
+        '挂号流程', list(corpus.records), today=date(2026, 9, 17), top_k=3)
+
+    assert isinstance(hits, list)
+    assert len(hits) <= 3

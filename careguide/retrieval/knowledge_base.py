@@ -5,11 +5,13 @@ never modifies source files or the Chroma collection. Dense indexing is explicit
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
 from careguide.corpus import Corpus, Record
 from careguide.retrieval.bm25_index import BM25Index
+from careguide.retrieval.evidence_policy import accept_evidence
 
 COLLECTION_NAME = 'careguide_medical_v1'
 
@@ -18,12 +20,30 @@ def versioned_collection_name(corpus):
     return COLLECTION_NAME+'_'+corpus.fingerprint[:12]
 
 
+@dataclass(frozen=True)
+class RetrievalReport:
+    mode: str
+    lexical_count: int
+    dense_count: int
+    fused_count: int
+    reranked: bool
+    filtered_count: int
+    final_count: int
+    degraded_reason: str | None = None
+
+
+@dataclass(frozen=True)
+class RetrievalResult:
+    evidence: tuple[dict, ...]
+    report: RetrievalReport
+
+
 class MedicalKnowledgeBase:
     def __init__(self, corpus: Corpus, *, collection: Any = None, embedding: Any = None,
                  mode: str = 'bm25', min_dense_score: float = -1.0,
                  reranker: Any = None, rerank_candidates: int = 20,
                  dense_weight: float = 4.0, lexical_weight: float = 1.0,
-                 hybrid_candidates: int = 100):
+                 hybrid_candidates: int = 20, min_rerank_score: float = 0.35):
         if mode not in {'bm25', 'dense', 'hybrid'}:
             raise ValueError('Retrieval mode must be bm25, dense or hybrid')
         if not -1 <= min_dense_score <= 1:
@@ -32,6 +52,8 @@ class MedicalKnowledgeBase:
             raise ValueError('Hybrid RRF weights must be positive')
         if hybrid_candidates < 1:
             raise ValueError('Hybrid candidate depth must be positive')
+        if not 0 <= min_rerank_score <= 1:
+            raise ValueError('Rerank threshold must be between 0 and 1')
         if mode != 'bm25' and (collection is None or embedding is None):
             raise ValueError('Dense retrieval requires an explicitly indexed collection and real embedding provider')
         self.corpus, self.collection, self.embedding = corpus, collection, embedding
@@ -41,6 +63,7 @@ class MedicalKnowledgeBase:
         self.dense_weight = float(dense_weight)
         self.lexical_weight = float(lexical_weight)
         self.hybrid_candidates = int(hybrid_candidates)
+        self.min_rerank_score = float(min_rerank_score)
         self.lexical_index = BM25Index()
         self.lexical_index.upsert({
             'chunk_id': record.id, 'content': record.content,
@@ -67,13 +90,26 @@ class MedicalKnowledgeBase:
     def retrieval_text(record: Record) -> str:
         return ' '.join([record.title, *record.keywords, record.content])
 
-    def search(self, query: str, candidates: list[Record], *, today: date, top_k: int = 5) -> list[dict]:
+    def search(self, query: str, candidates: list[Record], *, today: date,
+               top_k: int = 5) -> list[dict]:
+        return list(self.search_with_report(
+            query, candidates, today=today, top_k=top_k,
+            risk='raw_retrieval').evidence)
+
+    def search_with_report(self, query: str, candidates: list[Record], *, today: date,
+                           top_k: int = 5, risk: str = 'general_guidance') -> RetrievalResult:
+        if not str(query).strip():
+            raise ValueError('Retrieval query cannot be empty')
+        if not 1 <= int(top_k) <= 10:
+            raise ValueError('Retrieval top_k must be between 1 and 10')
         # Select scope BEFORE lexical scoring and vector querying. A different
         # hospital or product cannot occupy candidate slots or re-enter via RRF.
         eligible = {r.id: r for r in candidates if self.corpus.fresh(r, today)}
         if not eligible:
-            return []
-        lexical_limit = self.hybrid_candidates if self.mode == 'hybrid' else len(eligible)
+            return RetrievalResult((), RetrievalReport(
+                self.mode, 0, 0, 0, False, 0, 0))
+        candidate_depth = min(self.hybrid_candidates, 20)
+        lexical_limit = candidate_depth if self.mode == 'hybrid' else min(len(eligible), 20)
         lexical = self.lexical_index.search(
             query, top_k=min(len(eligible), lexical_limit),
             eligible_ids=set(eligible)) if self.mode != 'dense' else []
@@ -92,8 +128,9 @@ class MedicalKnowledgeBase:
                 lexical = preferred + [hit for hit in lexical if hit.chunk_id not in preferred_ids]
         dense = []
         if self.mode != 'bm25':
-            dense_limit = (self.hybrid_candidates if self.mode == 'hybrid' else
+            dense_limit = (candidate_depth if self.mode == 'hybrid' else
                            max(top_k, self.rerank_candidates if self.reranker else top_k))
+            dense_limit = min(dense_limit, 20)
             result = self.collection.query(
                 query_embeddings=[self.embedding.embed_query(query)],
                 n_results=min(dense_limit, len(eligible)), where={'record_id': {'$in': list(eligible)}},
@@ -128,18 +165,42 @@ class MedicalKnowledgeBase:
                                     'bm25': self.lexical_weight}})
                 row.update({'dense_rank': rank, 'cosine_score': score})
                 row['rank_score'] += self.dense_weight/(60+rank)
-        initial_k = max(top_k, self.rerank_candidates) if self.reranker else top_k
+        fused_count = len(rows)
+        initial_k = min(20, max(top_k, self.rerank_candidates)) if self.reranker else top_k
         ordered = sorted(rows, key=lambda key: (-rows[key]['rank_score'], key))[:initial_k]
+        reranked = False
         if self.reranker and ordered:
+            rerank_top_n = min(10, len(ordered))
             identities, scores, _ = self.reranker.rerank(
-                query, [(key, eligible[key].content) for key in ordered], top_n=top_k)
+                query, [(key, eligible[key].content) for key in ordered], top_n=rerank_top_n)
             ordered = identities
+            reranked = True
             for key, score in zip(ordered, scores):
                 rows[key]['rerank_model'] = self.reranker.model
                 rows[key]['rerank_score'] = score
                 rows[key]['pre_rerank_mode'] = rows[key]['mode']
                 rows[key]['mode'] = f"{rows[key]['mode']}_rerank"
-        return [{**self.corpus.evidence(eligible[key]), 'retrieval': rows[key]} for key in ordered]
+        evidence, filtered_count = [], 0
+        for key in ordered:
+            item = {**self.corpus.evidence(eligible[key]), 'retrieval': rows[key]}
+            accepted, reason = accept_evidence(
+                item, risk=risk, min_rerank_score=self.min_rerank_score)
+            if not accepted:
+                rows[key]['filtered_reason'] = reason
+                filtered_count += 1
+                continue
+            evidence.append(item)
+            if len(evidence) == top_k:
+                break
+        return RetrievalResult(tuple(evidence), RetrievalReport(
+            mode=self.mode,
+            lexical_count=len(lexical),
+            dense_count=len(dense),
+            fused_count=fused_count,
+            reranked=reranked,
+            filtered_count=filtered_count,
+            final_count=len(evidence),
+        ))
 
 
 def index_collection(client: Any, corpus: Corpus, embedding: Any, *, versioned=False):
