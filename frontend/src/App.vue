@@ -676,7 +676,7 @@ const selectedHospital = ref(null)
 const mapParking = ref([])
 const selectedParking = ref(null)
 const mapRoute = ref(null)
-let parkingSearchToken = 0
+let mapOperationGeneration = 0
 const parkingForm = reactive({
   maxWalkingDistanceM: 200,
   requiresWheelchairAccess: true,
@@ -723,16 +723,22 @@ function mapRequester(path, body) {
 }
 
 async function searchHospitals() {
+  const generation = ++mapOperationGeneration
   parkingBusy.value = true
   selectedHospital.value = null
   selectedParking.value = null
   mapParking.value = []
   mapRoute.value = null
   try {
-    mapHospitals.value = await searchMapHospitals(mapRequester, mapSearch.query.trim(), mapSearch.city.trim())
-    if (!mapHospitals.value.length) showToast('未找到院区，请补充城市或具体院区名')
-  } catch (error) { showToast(error.message) }
-  finally { parkingBusy.value = false }
+    const hospitals = await searchMapHospitals(mapRequester, mapSearch.query.trim(), mapSearch.city.trim())
+    if (generation !== mapOperationGeneration) return
+    mapHospitals.value = hospitals
+    if (!hospitals.length) showToast('未找到院区，请补充城市或具体院区名')
+  } catch (error) {
+    if (generation === mapOperationGeneration) showToast(error.message)
+  } finally {
+    if (generation === mapOperationGeneration) parkingBusy.value = false
+  }
 }
 
 async function selectHospital(hospital) {
@@ -747,7 +753,7 @@ async function expandSelectedHospitalParking() {
 }
 
 async function loadSelectedHospitalParking(hospitalId, radiusM) {
-  const token = ++parkingSearchToken
+  const generation = ++mapOperationGeneration
   parkingBusy.value = true
   if (selectedHospital.value?.hospital_id === hospitalId) {
     mapParking.value = []
@@ -756,15 +762,15 @@ async function loadSelectedHospitalParking(hospitalId, radiusM) {
   }
   try {
     const candidates = await searchMapParking(mapRequester, hospitalId, radiusM)
-    if (token !== parkingSearchToken || selectedHospital.value?.hospital_id !== hospitalId) return
+    if (generation !== mapOperationGeneration || selectedHospital.value?.hospital_id !== hospitalId) return
     mapParking.value = candidates
     selectedParking.value = null
     mapRoute.value = null
     if (!candidates.length) showToast(`高德未返回 ${radiusM / 1000} 公里内的停车场`)
   } catch (error) {
-    if (token === parkingSearchToken && selectedHospital.value?.hospital_id === hospitalId) showToast(error.message)
+    if (generation === mapOperationGeneration && selectedHospital.value?.hospital_id === hospitalId) showToast(error.message)
   } finally {
-    if (token === parkingSearchToken) parkingBusy.value = false
+    if (generation === mapOperationGeneration) parkingBusy.value = false
   }
 }
 
@@ -784,6 +790,8 @@ async function selectChatHospital(selection, hospital) {
 function openChatParkingMap(value) {
   try {
     const handoff = mapHandoff(toRaw(value))
+    ++mapOperationGeneration
+    parkingBusy.value = false
     parkingMode.value = handoff.mode
     selectedHospital.value = handoff.hospital
     mapHospitals.value = [handoff.hospital]
@@ -802,6 +810,8 @@ function mapParkingDistance(candidate) {
 }
 
 function selectParking(parking) {
+  ++mapOperationGeneration
+  parkingBusy.value = false
   selectedParking.value = parking
   mapRoute.value = null
 }
@@ -817,14 +827,26 @@ function formatMapObservation(value) {
 
 async function planSelectedRoute() {
   if (!selectedHospital.value || !selectedParking.value) return
+  const generation = ++mapOperationGeneration
+  const hospitalId = selectedHospital.value.hospital_id
+  const parkingId = selectedParking.value.parking_id
   parkingBusy.value = true
   try {
-    mapRoute.value = await requestMapRoute(
+    const route = await requestMapRoute(
       mapRequester,
       buildParkingToHospitalRoute(selectedHospital.value, selectedParking.value),
     )
-  } catch (error) { showToast(error.message) }
-  finally { parkingBusy.value = false }
+    if (generation !== mapOperationGeneration
+        || selectedHospital.value?.hospital_id !== hospitalId
+        || selectedParking.value?.parking_id !== parkingId) return
+    mapRoute.value = route
+  } catch (error) {
+    if (generation === mapOperationGeneration
+        && selectedHospital.value?.hospital_id === hospitalId
+        && selectedParking.value?.parking_id === parkingId) showToast(error.message)
+  } finally {
+    if (generation === mapOperationGeneration) parkingBusy.value = false
+  }
 }
 
 async function confirmPendingAction(action) {

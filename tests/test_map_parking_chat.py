@@ -177,6 +177,38 @@ def test_create_normalizes_offset_times_and_select_expires_at_boundary(store):
         )
 
 
+def test_create_prunes_expired_map_parking_queries_in_same_transaction(store):
+    expired = store.create_map_parking_query(
+        'alice',
+        'conversation-1',
+        '旧医院',
+        '泰州市',
+        [HOSPITAL],
+        expires_at=NOW + timedelta(minutes=1),
+        now=NOW,
+    )
+
+    current = store.create_map_parking_query(
+        'alice',
+        'conversation-1',
+        '新医院',
+        '泰州市',
+        [HOSPITAL],
+        expires_at=NOW + timedelta(minutes=20),
+        now=NOW + timedelta(minutes=2),
+    )
+
+    with store.connect() as connection:
+        identities = [
+            row['id'] for row in connection.execute(
+                'SELECT id FROM map_parking_queries ORDER BY id'
+            )
+        ]
+
+    assert expired['query_id'] not in identities
+    assert current['query_id'] in identities
+
+
 @pytest.mark.parametrize(
     ('actor', 'conversation'),
     [

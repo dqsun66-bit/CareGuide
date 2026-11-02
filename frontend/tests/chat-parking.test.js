@@ -20,6 +20,7 @@ const hospital = {
   location: { longitude: 119.9, latitude: 32.4 },
   available_spaces: 20,
   data_tier: 'map_poi',
+  source_provider: 'amap',
 }
 
 test('hospital selection emits only the version-bound hospital identity', () => {
@@ -52,6 +53,7 @@ test('hospital selection rejects missing identity, invalid versions, and simulat
 
 test('map handoff preserves real map fields and explicitly retains unknown parking truth', () => {
   const value = {
+    source_provider: 'amap',
     hospital: {
       ...hospital,
       entrance_location: { longitude: 119.91, latitude: 32.41 },
@@ -96,10 +98,12 @@ test('map handoff preserves real map fields and explicitly retains unknown parki
 
 test('map handoff preserves known false and zero truth values', () => {
   const result = mapHandoff({
+    source_provider: 'amap',
     hospital,
     candidates: [{
       parking_id: 'parking-1',
       data_tier: 'map_poi',
+      source_provider: 'amap',
       available_spaces: 0,
       wheelchair_accessible: false,
     }],
@@ -112,6 +116,9 @@ test('map handoff preserves known false and zero truth values', () => {
 test('map handoff rejects malformed, non-map, simulated, and unidentified values', () => {
   assert.throws(() => mapHandoff(null), /地图接力数据/)
   assert.throws(() => mapHandoff({ hospital, candidates: null }), /停车候选列表/)
+  assert.throws(() => mapHandoff({ source_provider: 'evil', hospital, candidates: [] }), /高德/)
+  assert.throws(() => mapHandoff({ source_provider: 'amap', hospital: { ...hospital, source_provider: 'evil' }, candidates: [] }), /高德/)
+  assert.throws(() => mapHandoff({ source_provider: 'amap', hospital, candidates: [{ parking_id: 'P1', data_tier: 'map_poi', source_provider: 'evil' }] }), /高德/)
   assert.throws(() => mapHandoff({ hospital: { ...hospital, hospital_id: undefined }, candidates: [] }), /院区标识/)
   assert.throws(() => mapHandoff({ hospital: { ...hospital, hospital_id: '' }, candidates: [] }), /院区标识/)
   assert.throws(() => mapHandoff({ hospital: { ...hospital, hospital_id: ' ' }, candidates: [] }), /院区标识/)

@@ -50,6 +50,11 @@ export function mapHandoff(value) {
     }
     normalizedId(candidate.parking_id, '停车场标识')
   }
+  if (value.source_provider !== 'amap'
+      || value.hospital.source_provider !== 'amap'
+      || value.candidates.some(candidate => candidate.source_provider !== 'amap')) {
+    throw new Error('地图接力数据必须来自高德地图')
+  }
 
   const snapshot = structuredClone({ hospital: value.hospital, candidates: value.candidates })
   const candidates = snapshot.candidates.map((candidate) => {

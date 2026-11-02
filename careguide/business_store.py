@@ -119,6 +119,10 @@ class BusinessStore:
         with self._lock, self.connect() as connection:
             connection.execute('BEGIN IMMEDIATE')
             connection.execute(
+                'DELETE FROM map_parking_queries WHERE expires_at<=?',
+                (now.isoformat(),),
+            )
+            connection.execute(
                 'INSERT INTO map_parking_queries VALUES (?,?,?,?,?,?)',
                 (query_id, actor, conversation, 1, item['expires_at'],
                  json.dumps(item, ensure_ascii=False)),

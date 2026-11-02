@@ -18,6 +18,8 @@ const failures = []
 let releaseFirstStream
 let releaseParkingExpansion
 const parkingExpansionGate = new Promise(resolve => { releaseParkingExpansion = resolve })
+let releaseOldHospitalSearch
+const oldHospitalSearchGate = new Promise(resolve => { releaseOldHospitalSearch = resolve })
 let version = 1, revision = 1
 const tasks = [
   { id: 'drug', revision: 1, label: '查询药品说明书', status: 'waiting_input', missing_fields: ['specification'], options: [] },
@@ -56,6 +58,9 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/test/release-parking-expansion') {
       releaseParkingExpansion(); res.writeHead(204); res.end(); return
     }
+    if (url.pathname === '/api/test/release-old-hospital-search') {
+      releaseOldHospitalSearch(); res.writeHead(204); res.end(); return
+    }
     if (url.pathname === '/favicon.ico') { res.writeHead(204); res.end(); return }
     if (url.pathname.startsWith('/api/')) {
       const chunks = []
@@ -92,8 +97,8 @@ const server = http.createServer(async (req, res) => {
             conversation_id: 'browser-conversation', request_id: 'map-parking-request',
             response: '已找到真实停车信息', answer: { body: '以下是该院区周边的真实停车场信息。', sources: [] },
             map_parking: body.map_event.hospital_id === 'H2'
-              ? { hospital: emptyMapHospital, candidates: [] }
-              : { hospital: mapHospital, candidates: [mapParkingCandidate] }
+              ? { hospital: emptyMapHospital, candidates: [], source_provider: 'amap' }
+              : { hospital: mapHospital, candidates: [mapParkingCandidate], source_provider: 'amap' }
           }
         } else if (event?.kind === 'answer') {
           assert.equal(event.workflow_id, 'browser-workflow')
@@ -138,6 +143,9 @@ const server = http.createServer(async (req, res) => {
         if (res.destroyed) return
         emit(5, 'result', result)
         res.end(); return
+      } else if (url.pathname === '/api/map/hospitals/search') {
+        await oldHospitalSearchGate
+        result = { simulation: false, hospitals: [{ ...mapHospital, hospital_id: 'H-OLD', name: '迟到的旧院区' }] }
       } else if (url.pathname === '/api/map/hospitals/H2/parking') {
         assert.equal(url.searchParams.get('radius_m'), '3000')
         await parkingExpansionGate
@@ -268,6 +276,8 @@ try {
     kind: 'map_hospital_select', query_id: 'map-query-1', candidate_version: 1, hospital_id: 'H1'
   }])
   assert.equal(requests.some(item => item.path.startsWith('/api/map/')), false)
+  await evaluate(`(() => { const input=document.querySelector('.parking-controls input'); input.value='旧搜索'; input.dispatchEvent(new Event('input',{bubbles:true})); Array.from(document.querySelectorAll('.parking-controls button')).find(button => button.textContent.includes('查询真实院区')).click(); })()`)
+  await until(`Array.from(document.querySelectorAll('.parking-controls button')).some(button => button.textContent.includes('正在查询') && button.disabled)`)
   await evaluate(`Array.from(document.querySelectorAll('.view-nav button')).find(button => button.textContent === '对话').click()`)
   await send('查询空结果医院停车场')
   await until(`document.querySelector('[data-testid="map-hospital-H2"]:not(:disabled)') !== null`)
@@ -275,6 +285,10 @@ try {
   await until(`Array.from(document.querySelectorAll('[data-testid="open-map-parking"]')).at(-1)?.disabled === false`)
   await evaluate(`Array.from(document.querySelectorAll('[data-testid="open-map-parking"]')).at(-1).click()`)
   await until(`document.body.textContent.includes('已确认泰州市人民医院空结果院区，高德未返回1公里停车场')`)
+  await evaluate(`fetch('/api/test/release-old-hospital-search').then(response => response.status)`)
+  await pause(100)
+  assert.equal(await evaluate(`document.querySelector('[data-hospital-id="H2"].active') !== null`), true)
+  assert.equal(await evaluate(`document.querySelector('[data-hospital-id="H-OLD"]') === null`), true)
   await until(`Array.from(document.querySelectorAll('button')).some(button => button.textContent.includes('扩大到3公里搜索') && !button.disabled)`)
   const hospitalSearchesBeforeExpansion = requests.filter(item => item.path === '/api/map/hospitals/search').length
   const oneKmRequestsBeforeExpansion = requests.filter(item => item.path === '/api/map/hospitals/H2/parking' && item.search === '?radius_m=1000').length
@@ -295,7 +309,8 @@ try {
     'old_confirmation_disabled', 'one_current_confirmation', 'reload_and_restore', 'sse_progress_before_final', 'answer_deltas_before_final', 'markdown_and_citation_navigation',
     'sse_stop_keeps_session_without_resubmit', 'chat_map_selection', 'map_event_contract',
     'chat_parking_summary', 'parking_map_handoff_without_refetch', 'parking_intent_bypasses_old_workflow',
-    'empty_parking_expands_selected_hospital_only', 'map_parking_searches_are_serialized'],
+    'empty_parking_expands_selected_hospital_only', 'map_parking_searches_are_serialized',
+    'chat_map_handoff_invalidates_old_map_requests'],
     browser: (await command('Browser.getVersion', {}, null)).product,
     chat_events: requests.filter(item => item.path === '/api/chat/stream').map(item => item.body.workflow_event || { kind: 'initial' }),
     confirmation_requests: 1, paid_calls: 0 }, null, 2))
