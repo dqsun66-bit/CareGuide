@@ -29,12 +29,29 @@ def test_embedding_adapter_uses_medical_instruction_and_validates_vectors():
 
     provider = OpenAICompatibleEmbeddingFunction(api_key='test-only', base_url='https://example.invalid/v1',
         model='test-only', dimensions=4, client=SimpleNamespace(embeddings=SimpleNamespace(create=create)))
+    assert provider.provider_name == 'huawei-modelarts'
     provider.embed_query('挂号材料')
     assert 'sourced medical information' in calls[0]['input'][0]
     assert 'operations' not in calls[0]['input'][0]
     assert provider(['挂号材料'])[0].tolist() == [1.0, 0.0, 0.0, 0.0]
     with pytest.raises(RuntimeError, match='non-finite'):
         provider._validate_vector([float('nan'),0.0,0.0,0.0])
+
+
+def test_embedding_provider_sanitizes_timeout():
+    def create(**kwargs):
+        raise TimeoutError('test-only private symptom')
+
+    provider = OpenAICompatibleEmbeddingFunction(
+        api_key='test-only', base_url='https://example.invalid/v1',
+        model='test-model', dimensions=4,
+        client=SimpleNamespace(embeddings=SimpleNamespace(create=create)))
+
+    with pytest.raises(RuntimeError) as caught:
+        provider.embed_query('private symptom')
+    assert str(caught.value) == 'embedding_timeout'
+    assert 'test-only' not in str(caught.value)
+    assert 'private' not in str(caught.value)
 
 
 @pytest.mark.parametrize('mode', ['dense', 'hybrid'])

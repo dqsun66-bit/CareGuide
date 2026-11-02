@@ -1,27 +1,63 @@
 """Explicit medical retrieval configuration. Does not load any .env file."""
 import os
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
 from careguide.corpus import Corpus
-from careguide.retrieval.knowledge_base import COLLECTION_NAME, MedicalKnowledgeBase
+from careguide.retrieval.knowledge_base import MedicalKnowledgeBase, versioned_collection_name
 from careguide.tools import MedicalToolRegistry
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 OPEN_CORPUS_ROOT = PROJECT_ROOT / 'data' / 'careguide_kuake_rag_v1'
 
 
+@dataclass(frozen=True)
+class RetrievalRuntimeStatus:
+    requested_mode: str
+    active_mode: str
+    embedding_provider: str | None
+    rerank_provider: str | None
+    index_collection: str | None
+    degraded_reason: str | None = None
+
+
+def _required_secret(name: str) -> str:
+    value = os.environ.get(name, '').strip()
+    if not value or value.startswith('YOUR_'):
+        raise ValueError(f'{name} is required')
+    return value
+
+
+def _required_text(name: str) -> str:
+    value = os.environ.get(name, '').strip()
+    if not value or value.startswith('YOUR_'):
+        raise ValueError(f'{name} is required')
+    return value
+
+
+def _positive_integer(name: str, default: str | None = None) -> int:
+    raw = os.environ.get(name, default or '').strip()
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        raise ValueError(f'{name} must be a positive integer') from None
+    if value <= 0:
+        raise ValueError(f'{name} must be a positive integer')
+    return value
+
+
 def semantic_embedding():
     from careguide.retrieval.embedding_provider import OpenAICompatibleEmbeddingFunction
-    key = os.environ.get('CAREGUIDE_EMBEDDING_API_KEY', '')
-    if not key or key.startswith('YOUR_'):
-        raise ValueError('Semantic retrieval requires CAREGUIDE_EMBEDDING_API_KEY')
+    key = _required_secret('CAREGUIDE_EMBEDDING_API_KEY')
     return OpenAICompatibleEmbeddingFunction(
         api_key=key,
-        base_url=os.environ.get('CAREGUIDE_EMBEDDING_BASE_URL', 'https://api.siliconflow.cn/v1'),
-        model=os.environ.get('CAREGUIDE_EMBEDDING_MODEL', 'Qwen/Qwen3-Embedding-0.6B'),
-        dimensions=int(os.environ.get('CAREGUIDE_EMBEDDING_DIMENSIONS', '1024')),
-        encoding_format=os.environ.get('CAREGUIDE_EMBEDDING_FORMAT', 'float'))
+        base_url=os.environ.get('CAREGUIDE_EMBEDDING_BASE_URL',
+                                'https://api.modelarts-maas.com/v1'),
+        model=_required_text('CAREGUIDE_EMBEDDING_MODEL'),
+        dimensions=_positive_integer('CAREGUIDE_EMBEDDING_DIMENSIONS', '1024'),
+        encoding_format=os.environ.get('CAREGUIDE_EMBEDDING_FORMAT', 'float'),
+        provider_name='huawei-modelarts', timeout=30, max_retries=2)
 
 
 def intent_semantic_retriever(mode=None):
@@ -51,16 +87,19 @@ def intent_semantic_retriever(mode=None):
 
 def semantic_reranker():
     from careguide.retrieval.reranker import OpenAICompatibleReranker
-    key = os.environ.get('CAREGUIDE_RERANK_API_KEY') or os.environ.get(
-        'CAREGUIDE_EMBEDDING_API_KEY', '')
-    if not key or key.startswith('YOUR_'):
-        raise ValueError('Reranking requires CAREGUIDE_RERANK_API_KEY or embedding API key')
+    key = os.environ.get('CAREGUIDE_RERANK_API_KEY', '').strip()
+    if not key:
+        key = _required_secret('CAREGUIDE_EMBEDDING_API_KEY')
+    elif key.startswith('YOUR_'):
+        raise ValueError('CAREGUIDE_RERANK_API_KEY is required')
     return OpenAICompatibleReranker(
         api_key=key,
         base_url=os.environ.get('CAREGUIDE_RERANK_BASE_URL') or os.environ.get(
-            'CAREGUIDE_EMBEDDING_BASE_URL', 'https://api.siliconflow.cn/v1'),
-        model=os.environ.get('CAREGUIDE_RERANK_MODEL', 'Qwen/Qwen3-Reranker-0.6B'),
+            'CAREGUIDE_EMBEDDING_BASE_URL', 'https://api.modelarts-maas.com/v1'),
+        model=_required_text('CAREGUIDE_RERANK_MODEL'),
         concurrency=int(os.environ.get('CAREGUIDE_RERANK_CONCURRENCY', '8')),
+        candidate_limit=min(_positive_integer('CAREGUIDE_RERANK_CANDIDATES', '20'), 20),
+        provider_name='huawei-modelarts', timeout=30, max_retries=2,
     )
 
 
@@ -68,6 +107,46 @@ def chroma_client():
     import chromadb
     return chromadb.PersistentClient(path=str(PROJECT_ROOT/'data'/'chroma'),
                                     settings=chromadb.Settings(anonymized_telemetry=False))
+
+
+def build_retrieval_knowledge(corpus: Corpus, *, client=None):
+    mode = os.environ.get('CAREGUIDE_RETRIEVAL_MODE', 'bm25').strip().casefold()
+    if mode not in {'bm25', 'dense', 'hybrid'}:
+        raise ValueError('Unknown retrieval mode')
+    if mode == 'bm25':
+        knowledge = MedicalKnowledgeBase(corpus, mode='bm25')
+        return knowledge, RetrievalRuntimeStatus(
+            mode, 'bm25', None, None, None, None)
+
+    embedding = semantic_embedding()
+    client = client or chroma_client()
+    name = versioned_collection_name(corpus)
+    names = {getattr(collection, 'name', str(collection))
+             for collection in client.list_collections()}
+    if name not in names:
+        raise ValueError('hybrid_index_unavailable')
+    collection = client.get_collection(name, embedding_function=None)
+    reranker = None
+    if os.environ.get('CAREGUIDE_RERANK_ENABLED', 'false').strip().casefold() == 'true':
+        reranker = semantic_reranker()
+    try:
+        knowledge = MedicalKnowledgeBase(
+            corpus, mode=mode, collection=collection, embedding=embedding,
+            min_dense_score=float(os.environ.get('CAREGUIDE_MIN_DENSE_SCORE', '-1.0')),
+            dense_weight=float(os.environ.get('CAREGUIDE_RRF_DENSE_WEIGHT', '4')),
+            lexical_weight=float(os.environ.get('CAREGUIDE_RRF_BM25_WEIGHT', '1')),
+            hybrid_candidates=min(_positive_integer('CAREGUIDE_HYBRID_CANDIDATES', '20'), 20),
+            reranker=reranker,
+            rerank_candidates=min(_positive_integer('CAREGUIDE_RERANK_CANDIDATES', '20'), 20),
+        )
+    except ValueError:
+        raise ValueError('hybrid_index_invalid') from None
+    status = RetrievalRuntimeStatus(
+        requested_mode=mode, active_mode=mode,
+        embedding_provider=embedding.provider_name,
+        rerank_provider=getattr(reranker, 'provider_name', None),
+        index_collection=name, degraded_reason=None)
+    return knowledge, status
 
 
 @lru_cache(maxsize=1)
@@ -81,26 +160,10 @@ def get_registry():
     from careguide.knowledge_workflow import KnowledgeWorkflow
     corpus = KnowledgeWorkflow(BusinessStore(os.environ.get('CAREGUIDE_BUSINESS_DB',
         str(PROJECT_ROOT/'data'/'runtime'/'medical.sqlite3')))).extend(corpus)
-    mode = os.environ.get('CAREGUIDE_RETRIEVAL_MODE', 'bm25').strip().casefold()
-    kwargs = {}
-    if mode in {'dense', 'hybrid'}:
-        # Attach only. Never implicitly create, rebuild or fall back to hash vectors.
-        from careguide.retrieval.knowledge_base import versioned_collection_name
-        client = chroma_client()
-        names = {collection.name for collection in client.list_collections()}
-        name = versioned_collection_name(corpus) if versioned_collection_name(corpus) in names else COLLECTION_NAME
-        kwargs = {'collection': client.get_collection(name, embedding_function=None),
-                  'embedding': semantic_embedding(),
-                  'min_dense_score': float(os.environ.get('CAREGUIDE_MIN_DENSE_SCORE', '-1.0')),
-                  'dense_weight': float(os.environ.get('CAREGUIDE_RRF_DENSE_WEIGHT', '4')),
-                  'lexical_weight': float(os.environ.get('CAREGUIDE_RRF_BM25_WEIGHT', '1')),
-                  'hybrid_candidates': int(os.environ.get(
-                      'CAREGUIDE_HYBRID_CANDIDATES', '100'))}
-        if os.environ.get('CAREGUIDE_RERANK_ENABLED', 'false').strip().casefold() == 'true':
-            kwargs.update({'reranker': semantic_reranker(),
-                           'rerank_candidates': int(os.environ.get(
-                               'CAREGUIDE_RERANK_CANDIDATES', '20'))})
-    return MedicalToolRegistry(MedicalKnowledgeBase(corpus, mode=mode, **kwargs))
+    knowledge, status = build_retrieval_knowledge(corpus)
+    registry = MedicalToolRegistry(knowledge)
+    registry.retrieval_status = status
+    return registry
 
 
 @lru_cache(maxsize=1)

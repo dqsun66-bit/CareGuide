@@ -27,7 +27,7 @@ class OpenAICompatibleEmbeddingFunction:
         model: str,
         dimensions: int,
         encoding_format: str = "float",
-        provider_name: str = "openai-compatible",
+        provider_name: str = "huawei-modelarts",
         query_instruction: str = DEFAULT_QUERY_INSTRUCTION,
         batch_size: int = 64,
         timeout: float = 30.0,
@@ -45,6 +45,12 @@ class OpenAICompatibleEmbeddingFunction:
             raise ValueError("embedding dimensions must be positive")
         if int(batch_size) <= 0:
             raise ValueError("embedding batch_size must be positive")
+        if int(batch_size) > 64:
+            raise ValueError("embedding batch_size cannot exceed 64")
+        if not 0 < float(timeout) <= 30:
+            raise ValueError("embedding timeout must be between 0 and 30 seconds")
+        if not 0 <= int(max_retries) <= 2:
+            raise ValueError("embedding max_retries must be between 0 and 2")
         if encoding_format != "float":
             raise ValueError("CareGuide requires float embeddings")
 
@@ -100,13 +106,28 @@ class OpenAICompatibleEmbeddingFunction:
         vectors: List[List[float]] = []
         for start in range(0, len(texts), self.batch_size):
             batch = texts[start:start + self.batch_size]
-            response = self._client.embeddings.create(
-                model=self.model,
-                input=batch,
-                dimensions=self.dimensions,
-                encoding_format=self.encoding_format,
-                **({'timeout': timeout} if timeout is not None else {}),
-            )
+            try:
+                response = self._client.embeddings.create(
+                    model=self.model,
+                    input=batch,
+                    dimensions=self.dimensions,
+                    encoding_format=self.encoding_format,
+                    **({'timeout': timeout} if timeout is not None else {}),
+                )
+            except Exception as exc:
+                name = type(exc).__name__.casefold()
+                status = getattr(exc, "status_code", None)
+                if isinstance(exc, TimeoutError) or "timeout" in name:
+                    code = "embedding_timeout"
+                elif status == 429 or "ratelimit" in name:
+                    code = "embedding_rate_limited"
+                elif status in {503, 504}:
+                    code = "embedding_unavailable"
+                elif status in {401, 403}:
+                    code = "embedding_authentication_failed"
+                else:
+                    code = "embedding_provider_error"
+                raise RuntimeError(code) from None
             if self.response_observer is not None:
                 self.response_observer(response)
             data = list(getattr(response, "data", None) or [])
