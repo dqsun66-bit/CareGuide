@@ -9,10 +9,13 @@ from fastapi.testclient import TestClient
 
 from careguide.agent_orchestrator import AgentOrchestrator
 from careguide.api import app
+from careguide.corpus import Corpus
 from careguide.domain import IntentCategory
 from careguide.intent_recognizer import IntentRecognizer, IntentResult
+from careguide.retrieval.knowledge_base import MedicalKnowledgeBase
 from careguide.runtime import get_chat_runtime, get_registry
 from careguide.task_context import SessionMemory
+from careguide.tools import MedicalToolRegistry
 from careguide.trace_store import validate_trace_completeness
 from careguide.tool_manager import CircuitState, MCPToolManager, Tool
 
@@ -145,7 +148,7 @@ def test_confirmed_campus_followup_resolves_model_clarification():
 def test_provider_failure_after_completed_call_preserves_evidence():
     client = ScriptedClient([tool_reply('search_care_guidance', {'query': '头痛记录'}), RuntimeError('down')])
     engine = AgentOrchestrator(FixedRecognizer(result(IntentCategory.SYMPTOM_QUERY)), get_registry(), client=client)
-    answer = asyncio.run(engine.process('就诊准备', 'user', 'conv'))
+    answer = asyncio.run(engine.process('反复头痛如何记录就医信息', 'user', 'conv'))
     assert answer['evidence']
     assert engine.traces.get(answer['request_id'])['execution']['tool_calls']
 
@@ -164,9 +167,56 @@ def test_provider_cannot_repeat_read_tool_with_paraphrased_query():
     assert len(calls) == 1
     assert calls[0]['tool_name'] == 'search_care_guidance'
     assert calls[0]['input']['query'] == '反复头痛，就诊前怎么记录？'
-    assert calls[0]['input']['top_k'] == 1
+    assert calls[0]['input']['top_k'] == 5
     assert len(client.calls) == 2
     assert '工具调用预算已用完' not in answer['response']
+
+
+def test_generic_triage_request_asks_for_symptom_before_planning():
+    recognizer = FixedRecognizer(result(IntentCategory.SYMPTOM_QUERY))
+    engine = AgentOrchestrator(
+        recognizer, MedicalToolRegistry(MedicalKnowledgeBase(Corpus())))
+
+    answer = asyncio.run(engine.process(
+        '请先判断是否需要紧急就医，再告诉我挂什么科。', 'user', 'conv'))
+
+    assert answer['workflow_status'] == 'waiting_input'
+    assert '主要症状' in answer['response']
+    assert answer['evidence'] == []
+    assert answer['tools_used'] == []
+    assert recognizer.histories == []
+
+
+def test_thunderclap_headache_preempts_models_and_retrieval():
+    recognizer = FixedRecognizer(result(IntentCategory.SYMPTOM_QUERY))
+    engine = AgentOrchestrator(
+        recognizer, MedicalToolRegistry(MedicalKnowledgeBase(Corpus())))
+
+    answer = asyncio.run(engine.process(
+        '突然出现一生中最严重的头痛，几秒钟达到高峰', 'user', 'conv'))
+
+    assert answer['primary_agent'] == 'triage'
+    assert answer['safety']['disposition'] == 'emergency'
+    assert answer['recommended_department'] == '急诊'
+    assert answer['tools_used'] == []
+    assert answer['retrieval']['mode'] == 'not_used'
+    assert recognizer.histories == []
+
+
+def test_described_mild_headache_runs_bounded_retrieval_with_navigation():
+    engine = AgentOrchestrator(
+        FixedRecognizer(result(IntentCategory.SYMPTOM_QUERY)),
+        MedicalToolRegistry(MedicalKnowledgeBase(Corpus())))
+
+    answer = asyncio.run(engine.process(
+        '今天上午头痛4分，没有发烧、呕吐、肢体无力，也没有受伤',
+        'user', 'conv'))
+
+    assert answer['safety']['disposition'] == 'non_emergency_information'
+    assert answer['recommended_department'] == '神经内科'
+    assert answer['retrieval']['mode'] == 'bm25'
+    assert answer['retrieval']['final_count'] <= 5
+    assert answer['tools_used'] == ['search_care_guidance']
 
 
 def test_multirole_collaboration_keeps_individual_scopes_and_skills():

@@ -20,6 +20,42 @@ from careguide.task_context import SessionMemory
 ACTOR, CONVERSATION = 'example-user', 'example-conversation'
 
 
+def test_runtime_generic_triage_question_never_creates_department_task(tmp_path):
+    runtime, provider = build(tmp_path, [])
+
+    response = asyncio.run(runtime.process(
+        '请先判断是否需要紧急就医，再告诉我挂什么科。',
+        ACTOR, CONVERSATION))
+
+    assert response['workflow_status'] == 'waiting_input'
+    assert '主要症状' in response['response']
+    assert response['evidence'] == []
+    assert response['tools_used'] == []
+    assert provider.calls == []
+    assert runtime.store.latest(ACTOR, CONVERSATION) is None
+
+
+def test_runtime_thunderclap_preempts_existing_wait_before_provider_call(tmp_path):
+    text, plan = task_plan(waiting=True)
+    runtime, provider = build(tmp_path, [plan])
+
+    async def run():
+        first = await runtime.process(text, ACTOR, CONVERSATION)
+        response = await runtime.process(
+            '突然出现一生中最严重的头痛，几秒钟达到高峰',
+            ACTOR, CONVERSATION)
+        state = runtime.store.get(
+            first['workflow']['id'], ACTOR, CONVERSATION)
+        assert response['safety']['disposition'] == 'emergency'
+        assert response['tools_used'] == []
+        assert state.status == 'urgent_handoff'
+        assert all(task.status != TaskStatus.WAITING_INPUT
+                   for task in state.tasks.values())
+        assert len(provider.calls) == 1
+
+    asyncio.run(run())
+
+
 def test_no_slots_cannot_silently_change_date_but_explicit_user_change_preserves_drug_result(tmp_path):
     today = datetime.now(timezone(timedelta(hours=8))).date()
     tomorrow, later = [(today+timedelta(days=value)).isoformat() for value in (1, 2)]

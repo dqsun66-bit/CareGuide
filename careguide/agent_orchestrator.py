@@ -23,6 +23,8 @@ from careguide.task_context import TaskContext, WorkflowStatus
 from careguide.tool_manager import MCPToolManager, Tool, ToolResult
 from careguide.orchestration.budget import BudgetExhausted, budgeted_call
 from careguide.tools import ARGUMENT_TYPES, MedicalToolRegistry
+from careguide.medical_triage import (evaluate_headache_triage,
+                                      is_headache_triage_request)
 from careguide.trace_store import TRACE_VERSION, TraceStore, validate_trace_completeness
 
 
@@ -74,12 +76,15 @@ class AgentOrchestrator:
                     schema=function['parameters'], cache_ttl=0, timeout_s=10))
         async def knowledge_handler(params, context):
             if self.knowledge_backend is not None:
-                result = await self.knowledge_backend.search(params['query'], top_k=10)
+                result = await self.knowledge_backend.search(params['query'], top_k=5)
                 return result.get('evidence', [])
             today = datetime.now(timezone.utc).date()
-            items = await asyncio.to_thread(registry.knowledge.search, params['query'],
-                list(registry.corpus.records), today=today, top_k=10)
-            return [{**item, 'chunk_id': item['record_id'], 'title': item['record_id']} for item in items]
+            search = await asyncio.to_thread(
+                registry.knowledge.search_with_report, params['query'],
+                list(registry.corpus.records), today=today, top_k=5,
+                risk='general_guidance')
+            return [{**item, 'chunk_id': item['record_id'], 'title': item['record_id']}
+                    for item in search.evidence]
         self.tool_manager.register(Tool('knowledge_search', '检索带来源的资料，不改变产品或医院范围',
             knowledge_handler, {'type': 'object', 'properties': {'query': {'type': 'string'}},
                                 'required': ['query']}, cache_ttl=0, supports_rerank=True))
@@ -167,10 +172,9 @@ class AgentOrchestrator:
                     else:
                         args.pop(key, None)
             if name == 'search_care_guidance':
-                # Agent answers render retrieved passages directly. Keep this
-                # contract aligned with the frozen offline path and prevent a
-                # broad candidate list from becoming the final answer.
-                args['top_k'] = 1
+                requested_top_k = args.get('top_k', 5)
+                if type(requested_top_k) is int:
+                    args['top_k'] = min(requested_top_k, 5)
             # Strict full Pydantic validation before the generic manager/cache.
             ARGUMENT_TYPES[name].model_validate(args)
             outcome = await self._invoke_tool(agent, name, args)
@@ -305,7 +309,9 @@ class AgentOrchestrator:
     def _call_signature(call, task):
         name, arguments = call['name'], dict(call.get('input', {}))
         if name == 'search_care_guidance':
-            arguments['top_k'] = 1
+            requested_top_k = arguments.get('top_k', 5)
+            if type(requested_top_k) is int:
+                arguments['top_k'] = min(requested_top_k, 5)
         if name in ARGUMENT_TYPES:
             fields = ARGUMENT_TYPES[name].model_fields
             if task.planned_action == name and 'section' in fields and 'section' in task.entities:
@@ -340,10 +346,72 @@ class AgentOrchestrator:
             if agent == AgentType.TRIAGE or len(message) > 5:
                 arguments['query'] = message
         if name == 'search_care_guidance':
-            # The offline renderer displays retrieved passages directly and
-            # cannot synthesize a clean answer from a long candidate list.
-            arguments['top_k'] = 1
+            arguments['top_k'] = 5
         return {'id': 'offline-'+uuid.uuid4().hex[:8], 'name': name, 'input': arguments}
+
+    def _deterministic_triage_response(self, decision, message, user_id, conv_id,
+                                       identity, started, start):
+        status = 'urgent_handoff' if decision.status == 'emergency' else 'waiting_input'
+        if decision.status == 'emergency':
+            text = ('这些描述属于需要立即线下评估的危险信号。请尽快前往急诊；'
+                    '如症状正在加重、意识异常或行动困难，请联系当地急救。'
+                    'CareGuide 不能代替急救或医生诊断。')
+        else:
+            text = '\n'.join(decision.questions)
+        elapsed = (time.monotonic()-start)*1000
+        safety = {'disposition': decision.status,
+                  'red_flags': list(decision.red_flags),
+                  'questions': list(decision.questions)}
+        retrieval = {'mode': 'not_used', 'lexical_count': 0, 'dense_count': 0,
+                     'fused_count': 0, 'reranked': False, 'filtered_count': 0,
+                     'final_count': 0, 'degraded_reason': None}
+        routing = {'primary_agent': 'triage', 'supporting_agents': [],
+                   'routing_reason': 'deterministic_medical_safety_gate',
+                   'routing_confidence': 1.0}
+        trace = {'trace_version': TRACE_VERSION, 'request_id': identity,
+            'conversation_id': conv_id, 'timestamp': started, 'input': message,
+            'user_id': user_id,
+            'task_understanding': {'task_type': 'symptom_safety_triage', 'entities': {},
+                'missing_fields': list(decision.questions),
+                'workflow_status_after_understanding': status,
+                'safety': safety},
+            'routing': routing,
+            'execution': {'execution_waves': [], 'tool_calls': [],
+                          'retrieval': retrieval},
+            'evidence': [], 'side_effects': [], 'started_at': started,
+            'finished_at': now(), 'total_latency_ms': elapsed, 'status': status,
+            'final': {'workflow_status': status, 'final_response': text,
+                'agent_types': ['triage'], 'primary_agent': 'triage',
+                'supporting_agents': [], 'total_tool_calls': 0,
+                'total_latency_ms': elapsed}}
+        if not validate_trace_completeness(trace)['complete']:
+            raise RuntimeError('Internal triage trace contract incomplete')
+        self.traces.append(trace)
+        return {'request_id': identity, 'conv_id': conv_id, 'response': text,
+            'intent': 'symptom_query', 'intents': ['symptom_query'],
+            'agent_type': 'triage', 'agent_types': ['triage'], **routing,
+            'workflow_status': status, 'escalated': decision.status == 'emergency',
+            'latency_ms': elapsed, 'knowledge_used': False, 'evidence': [],
+            'retrieval_backend': 'not_used', 'retrieval': retrieval,
+            'safety': safety, 'recommended_department': decision.department,
+            'simulation': False, 'action_requests': [], 'appointment': [],
+            'errors': [], 'integrations': {
+                'knowledge': {'backend': 'not_used', 'status': 'not_used'},
+                'hospital': {'backend': 'disabled', 'status': 'not_used',
+                             'simulation': True}},
+            'tools_used': [], 'medical_answering_enabled': False,
+            'handoff': None, 'urgency': ('CRITICAL' if decision.status == 'emergency'
+                                        else 'UNKNOWN'),
+            'fine_intent': 'symptom_safety_triage', 'fine_intents': [],
+            'medical_query_category': None, 'qic_intent': None,
+            'careguide_intent': None, 'qic_confidence': None,
+            'agent_route': 'triage', 'business_action': None, 'slots': {},
+            'boundary': ('urgent_handoff' if decision.status == 'emergency' else None),
+            'entities': {}, 'intent_confidence': 1.0, 'intent_source_scores': {},
+            'consultation_summary': {'user_request': message, 'scope': {},
+                'missing_fields': list(decision.questions), 'evidence_ids': [],
+                'clinical_assessment_performed': False},
+            'execution_mode': 'deterministic_safety_gate'}
 
     async def _run_agent(self, agent, message, history, task):
         stats = self.stats[agent]
@@ -479,6 +547,11 @@ class AgentOrchestrator:
     async def process(self, message, user_id, conv_id, history=None, *, understood=None):
         start, started, identity = time.monotonic(), now(), uuid.uuid4().hex
         history = history or []
+        triage = (evaluate_headache_triage(message, history)
+                  if is_headache_triage_request(message, history) else None)
+        if triage is not None and not triage.run_rag:
+            return self._deterministic_triage_response(
+                triage, message, user_id, conv_id, identity, started, start)
         understood = understood or await self.recognizer.recognize(message, history)
         task = TaskContext.from_intent_result(understood)
         task.request_id, task.actor_user_id, task.conversation_id = identity, user_id, conv_id
@@ -525,6 +598,15 @@ class AgentOrchestrator:
                         if call['tool_name'] == 'get_appointment']
         retrieval_statuses = [call['output'].get('status') for call in calls
                               if call['output'].get('retrieval_backend')]
+        retrieval = next((call['output'].get('retrieval') for call in calls
+                          if call['output'].get('retrieval')), None) or {
+            'mode': 'not_used', 'lexical_count': 0, 'dense_count': 0,
+            'fused_count': 0, 'reranked': False, 'filtered_count': 0,
+            'final_count': 0, 'degraded_reason': None}
+        safety = ({'disposition': triage.status,
+                   'red_flags': list(triage.red_flags), 'questions': []}
+                  if triage else {'disposition': 'not_assessed',
+                                  'red_flags': [], 'questions': []})
         hospital_backend = getattr(self.appointment_service, 'backend', None)
         integrations = {
             'knowledge': {'backend': getattr(self.knowledge_backend, 'name', 'embedded'),
@@ -628,7 +710,9 @@ class AgentOrchestrator:
                      'workflow_status_after_understanding': understood.disposition,
                      'requested_action': task.requested_action, 'intent_result': understood.to_dict()},
                  'routing': routing, 'execution': {'execution_waves': waves,
-                                                   'tool_calls': calls},
+                                                   'tool_calls': calls,
+                                                   'retrieval': retrieval,
+                                                   'safety': safety},
                  'evidence': evidence, 'side_effects': side_effects, 'started_at': started, 'finished_at': now(),
                  'total_latency_ms': elapsed, 'status': status,
                  'final': {'workflow_status': status, 'final_response': text, 'agent_types': [a.value for a in agents],
@@ -643,6 +727,8 @@ class AgentOrchestrator:
                 'agent_types': [a.value for a in agents], **routing, 'workflow_status': status,
                 'escalated': status in {'urgent_handoff', 'escalated'}, 'latency_ms': elapsed,
                 'knowledge_used': bool(evidence), 'evidence': evidence,
+                'retrieval': retrieval, 'safety': safety,
+                'recommended_department': triage.department if triage else None,
                 'retrieval_backend': getattr(self.knowledge_backend, 'name', 'embedded'),
                 'simulation': bool(action_requests or appointments or business_action in hospital_intents),
                 'action_requests': action_requests, 'appointment': appointments,

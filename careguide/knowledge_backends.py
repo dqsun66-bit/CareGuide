@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import Any, Protocol
 
@@ -38,10 +38,13 @@ class EmbeddedKnowledgeBackend:
         for key, value in (filters or {}).items():
             if records and value and hasattr(records[0], key):
                 records = [record for record in records if getattr(record, key, None) == value]
-        hits = self.knowledge.search(query, records,
-                                     today=datetime.now(timezone.utc).date(), top_k=top_k)
+        search = self.knowledge.search_with_report(
+            query, records, today=datetime.now(timezone.utc).date(),
+            top_k=min(top_k, 5), risk='general_guidance')
+        hits = list(search.evidence)
         return {"status": "found" if hits else "not_covered", "evidence": hits,
-                "retrieval_backend": self.name, "message": "" if hits else "未检索到适用资料。"}
+                "retrieval_backend": self.name, "retrieval": asdict(search.report),
+                "message": "" if hits else "未检索到适用资料。"}
 
     async def health(self) -> dict[str, Any]:
         return {"status": "ok", "backend": self.name, "record_count": len(self.records)}

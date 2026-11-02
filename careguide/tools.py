@@ -6,6 +6,7 @@ The registry advertises only handlers that actually exist.
 from __future__ import annotations
 
 import re
+from dataclasses import asdict
 from datetime import date, datetime, timezone
 from typing import Annotated, Literal
 
@@ -179,11 +180,17 @@ class MedicalToolRegistry:
     def _search(self, query, records, today, top_k):
         if records and not any(self.corpus.fresh(r, today) for r in records):
             return self._read(records, today)
-        hits = self.knowledge.search(query, records, today=today, top_k=top_k)
+        search = self.knowledge.search_with_report(
+            query, records, today=today, top_k=top_k,
+            risk='general_guidance')
+        hits = list(search.evidence)
+        retrieval = asdict(search.report)
         if not hits:
-            return result('not_covered', '未检索到适用资料，无法核实；不代表症状安全或没有风险。')
+            return result('not_covered', '未检索到适用资料，无法核实；不代表症状安全或没有风险。',
+                          retrieval=retrieval, retrieval_mode=search.report.mode)
         return result('found', '检索结果是相关资料片段，不保证覆盖问题全部信息，也不是个人诊疗结论。',
-                      evidence=hits, retrieval_mode=self.knowledge.mode)
+                      evidence=hits, retrieval=retrieval,
+                      retrieval_mode=search.report.mode)
 
     def lookup_department(self, args: DepartmentArgs, today: date) -> dict:
         records, problem = self._hospital_scope(

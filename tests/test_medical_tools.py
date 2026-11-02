@@ -114,6 +114,9 @@ def test_general_care_search_has_no_unrequested_hospital_scope(registry):
     assert result['evidence'][0]['record_id'] == 'headache-diary'
     assert all(e['kind'] == 'care_guidance' for e in result['evidence'])
     assert all(e['citation']['jurisdiction'] == 'GB' for e in result['evidence'])
+    assert result['retrieval']['mode'] == 'bm25'
+    assert result['retrieval']['final_count'] == len(result['evidence'])
+    assert result['retrieval']['final_count'] <= 5
 
 
 def test_unknown_topic_has_no_fabricated_answer(registry):

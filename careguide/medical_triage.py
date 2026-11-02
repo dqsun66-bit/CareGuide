@@ -32,6 +32,30 @@ _DANGER_TERMS = (
 )
 
 
+def is_headache_triage_request(message: str, history: list[dict]) -> bool:
+    """Return whether this turn asks for live symptom safety/navigation.
+
+    General educational queries such as "头痛日记怎么记录" stay in ordinary
+    retrieval.  First-person/current symptoms and explicit urgency or department
+    questions enter the deterministic safety gate.
+    """
+    current = str(message).strip()
+    prior = _recent_user_text(history)
+    explicit = bool(re.search(
+        r"判断.*(?:紧急|急症)|是否.*(?:紧急|急症)|需要紧急就医|"
+        r"挂什么科|看什么科|看哪个科",
+        current,
+    ))
+    current_symptom = bool(re.search(
+        r"(?:我|本人|患者|现在|今天|刚刚|突然)[^。！？\n]{0,24}"
+        r"(?:头痛|头疼|头有点疼)|(?:头痛|头疼|头有点疼)[^。！？\n]{0,16}"
+        r"(?:了|不舒服|[0-9一二三四五六七八九十]+分)",
+        current,
+    ))
+    contextual = explicit and any(term in prior for term in _HEADACHE_TERMS)
+    return explicit or current_symptom or contextual
+
+
 def _recent_user_text(history: Iterable[dict]) -> str:
     return "\n".join(
         str(turn.get("content", ""))

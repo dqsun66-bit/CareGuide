@@ -31,6 +31,8 @@ from careguide.orchestration.store import VersionConflict, WorkflowExpired, Work
 from careguide.orchestration.worker import TaskWorker
 from careguide.trace_store import TRACE_VERSION, validate_trace_completeness
 from careguide.task_context import TaskContext
+from careguide.medical_triage import (evaluate_headache_triage,
+                                      is_headache_triage_request)
 
 
 class Flow(TypedDict, total=False):
@@ -201,6 +203,12 @@ class OrchestrationRuntime:
         history = history or []
         state = (self.store.get(workflow_event['workflow_id'], user_id, conv_id)
                  if workflow_event else self.store.latest(user_id, conv_id))
+        triage = (evaluate_headache_triage(message, history)
+                  if is_headache_triage_request(message, history) else None)
+        if triage is not None and not triage.run_rag:
+            if triage.status == 'emergency' and state:
+                self._preempt(state)
+            return await self.engine.process(message, user_id, conv_id, history)
         # Existing emergency rules run before planning or accepting a reply.
         # The full recognizer remains responsible for contextual boundary signals.
         urgent = IntentRecognizer._pattern(message).get('urgent')
