@@ -4,7 +4,7 @@
 
 CareGuide 是一个用于医疗资料查询和预约流程演示的 Agent 项目。用户可以在网页中提问并查看回答所依据的资料，也可以查询合成医院里的科室、医生和号源，在确认后模拟创建、改期或取消预约。行程页可使用高德地图查找真实院区、周边停车场和普通道路路线。
 
-系统采用 Orchestrator–Workers 架构：独立轻量理解层结合规则、CareGuide-13 本地 RoBERTa 候选和业务示例语义检索，提取目标及参数；主编排器管理计划，分诊、用药、预约及急症提示角色各自处理职责内任务。知识检索默认使用 BM25，也可启用 Dense 检索、加权 RRF 和 Qwen Reranker。项目不连接真实医院业务系统，也不使用真实患者数据；检索资料未经临床审核，不用于诊断、处方或个体化剂量建议。高德 POI 不代表实时车位或已核实无障碍通行。
+系统采用 Orchestrator–Workers 架构：独立轻量理解层结合规则、CareGuide-13 本地 RoBERTa 候选和业务示例语义检索，提取目标及参数；主编排器管理计划，分诊、用药、预约及急症提示角色各自处理职责内任务。医疗知识检索支持 BM25、华为 ModelArts Embedding、加权 RRF 与 ModelArts Rerank；未配置华为服务时可显式使用 BM25 开发模式。项目不连接真实医院业务系统，也不使用真实患者数据；检索资料未经临床审核，不用于诊断、处方或个体化剂量建议。高德 POI 不代表实时车位或已核实无障碍通行。
 
 ## 系统架构
 
@@ -79,7 +79,28 @@ docker compose --env-file .env \
   --profile memory --profile integrations up -d --build
 ```
 
-Dense/Hybrid 检索需要配置 Embedding 服务并显式建立版本化 Chroma 索引；Reranker 和 Transformer 模式也需要各自的模型服务或本地 checkpoint。模型权重和 API 密钥不随仓库发布，配置模板见 [`.env.example`](.env.example)。
+### 华为混合医疗 RAG
+
+Dense/Hybrid 检索必须先配置华为 ModelArts MaaS Embedding 与 Rerank，并显式建立与语料指纹绑定的 Chroma 索引。运行时不会自动创建索引，也不会把旧索引当成新知识库使用。模型权重和 API 密钥不随仓库发布，配置名见 [`.env.example`](.env.example)。先执行不产生外部调用的检查：
+
+```powershell
+.venv\Scripts\python.exe -m pip install -r requirements-semantic.txt
+.venv\Scripts\python.exe scripts/index_medical.py --corpus-dir data/careguide_kuake_rag_v1 --versioned
+.venv\Scripts\python.exe scripts/validate_huawei_hybrid_rag.py --dry-run
+```
+
+确认 `.env` 中的端点、模型名、维度和密钥属于当前 ModelArts 服务后，将 `CAREGUIDE_RETRIEVAL_MODE` 改为 `hybrid`。以下命令会产生真实 API 调用和可能的费用；端点应以 ModelArts 控制台为该部署分配的 OpenAI 兼容地址为准：
+
+```powershell
+.venv\Scripts\python.exe scripts/index_medical.py --config-file .env `
+  --corpus-dir data/careguide_kuake_rag_v1 --versioned --apply
+.venv\Scripts\python.exe scripts/validate_huawei_hybrid_rag.py `
+  --config-file .env --corpus-dir data/careguide_kuake_rag_v1 --apply
+```
+
+验证脚本固定检查四个头痛场景：信息不足先追问、完整轻症使用 Hybrid + Rerank、危险信号跳过 RAG、无症状上下文不猜科室；同时拒绝无关妊娠资料。`--dry-run` 不调用模型，真实联调必须同时提供 `--config-file` 与 `--apply`。
+
+Transformer 意图模式另需本地 checkpoint。高德地图 Key、聊天模型 Key 与医疗 RAG Key 相互独立。
 
 ## 评测结果
 

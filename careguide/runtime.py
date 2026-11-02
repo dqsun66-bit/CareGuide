@@ -109,6 +109,18 @@ def chroma_client():
                                     settings=chromadb.Settings(anonymized_telemetry=False))
 
 
+def load_runtime_corpus(corpus_dir=None):
+    """Load the exact corpus whose fingerprint is bound to the runtime index."""
+    corpus_root = Path(corpus_dir or os.environ.get('CAREGUIDE_CORPUS_DIR')
+                       or OPEN_CORPUS_ROOT)
+    corpus = Corpus(corpus_root)
+    from careguide.business_store import BusinessStore
+    from careguide.knowledge_workflow import KnowledgeWorkflow
+    store = BusinessStore(os.environ.get(
+        'CAREGUIDE_BUSINESS_DB', str(PROJECT_ROOT/'data'/'runtime'/'medical.sqlite3')))
+    return KnowledgeWorkflow(store).extend(corpus)
+
+
 def build_retrieval_knowledge(corpus: Corpus, *, client=None):
     mode = os.environ.get('CAREGUIDE_RETRIEVAL_MODE', 'bm25').strip().casefold()
     if mode not in {'bm25', 'dense', 'hybrid'}:
@@ -154,12 +166,7 @@ def get_registry():
     # Keep Corpus() as the frozen V1 compatibility baseline.  The product
     # runtime defaults to the versioned open-data corpus and can still select
     # any frozen corpus explicitly through CAREGUIDE_CORPUS_DIR.
-    corpus_root = Path(os.environ.get('CAREGUIDE_CORPUS_DIR') or OPEN_CORPUS_ROOT)
-    corpus = Corpus(corpus_root)
-    from careguide.business_store import BusinessStore
-    from careguide.knowledge_workflow import KnowledgeWorkflow
-    corpus = KnowledgeWorkflow(BusinessStore(os.environ.get('CAREGUIDE_BUSINESS_DB',
-        str(PROJECT_ROOT/'data'/'runtime'/'medical.sqlite3')))).extend(corpus)
+    corpus = load_runtime_corpus()
     knowledge, status = build_retrieval_knowledge(corpus)
     registry = MedicalToolRegistry(knowledge)
     registry.retrieval_status = status
