@@ -3,6 +3,8 @@ data/medical_v1/*.json -text
 data/medical_zhongda_v1/*.json -text
 data/medical_zhongda_v2/*.json -text
 data/careguide_kuake_rag_v1/*.json -text
+data/eval/careguide_kuake_rag_v1/*.json -text
+data/eval/careguide_kuake_rag_v1/*.jsonl -text
 data/eval/zhongda_retrieval_dev/*.jsonl -text
 data/eval/medical_intent_v1/*.json -text
 data/eval/medical_intent_v1/*.jsonl -text
