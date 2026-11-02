@@ -103,6 +103,8 @@ def parking_chat_response(message: str, user_id: str, conv_id: str, traces) -> d
     needs_access = '轮椅' in message
     if not hospital or not (distance_match or needs_access):
         return None
+    if traces is None:
+        return None
     max_distance = int(distance_match.group(1)) if distance_match else None
     started = time.monotonic()
     started_at = datetime.now(timezone.utc).isoformat()

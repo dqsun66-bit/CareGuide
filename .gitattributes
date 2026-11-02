@@ -1,4 +1,8 @@
 # Corpus hashes cover exact bytes; preserve them across Windows checkouts.
+data/eval/**/*.json -text
+data/eval/**/*.jsonl -text
+data/external/**/*.json -text
+data/external/**/*.jsonl -text
 data/medical_v1/*.json -text
 data/medical_zhongda_v1/*.json -text
 data/medical_zhongda_v2/*.json -text

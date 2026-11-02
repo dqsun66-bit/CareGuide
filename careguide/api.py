@@ -219,8 +219,9 @@ async def _execute_chat_result(request, runtime, amap_factory=None):
                 result = await engine.process(request.message, request.user_id, conv_id, history,
                     workflow_event=event.model_dump())
             else:
+                traces = getattr(engine, 'traces', None)
                 result = map_result or parking_chat_response(
-                    request.message, request.user_id, conv_id, engine.traces,
+                    request.message, request.user_id, conv_id, traces,
                 ) or await engine.process(request.message, request.user_id, conv_id, history)
             emit('stage', stage='saving', message='结果已生成，正在保存会话')
             try:
