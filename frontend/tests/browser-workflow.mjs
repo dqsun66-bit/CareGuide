@@ -48,7 +48,13 @@ const response = () => ({ conversation_id: 'browser-conversation', request_id: '
   answer: { body: '## 当前查询\n\n可继续当前任务。[S1]',
     sources: [{ id: 'S1', task_id: 'drug', title: '浏览器测试资料', excerpt: '仅用于验证引用定位。' }] },
   response: '可继续当前任务', workflow_status: actions.some(item => item.status === 'pending_confirmation') ? 'pending_confirmation' : 'waiting_user',
-  workflow: workflow(), action_requests: actions, evidence: [], agent_types: ['appointment', 'medication'], simulation: true })
+  workflow: workflow(), action_requests: actions, evidence: [], agent_types: ['appointment', 'medication'],
+  primary_agent: 'triage', knowledge_used: true, retrieval_backend: 'embedded',
+  retrieval: { mode: 'hybrid', lexical_count: 20, dense_count: 20, fused_count: 27,
+    reranked: true, filtered_count: 7, final_count: 3, degraded_reason: null },
+  safety: { disposition: 'non_emergency_information', red_flags: [] },
+  recommended_department: '神经内科', simulation: true,
+  provider_error: 'Bearer browser-secret-must-not-render' })
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost')
@@ -229,6 +235,11 @@ try {
   assert.equal(await evaluate(`document.querySelector('.action-card form input') === null`), true)
   await evaluate(`fetch('/api/test/release-stream').then(response => response.status)`)
   await until(`document.querySelector('.action-card form input:not(:disabled)') !== null`)
+  await until(`document.body.textContent.includes('混合检索') && document.body.textContent.includes('BM25 20')`)
+  assert.equal(await evaluate(`document.body.textContent.includes('向量 20')`), true)
+  assert.equal(await evaluate(`document.body.textContent.includes('Rerank 已完成')`), true)
+  assert.equal(await evaluate(`document.body.textContent.includes('证据 3')`), true)
+  assert.equal(await evaluate(`document.body.textContent.includes('browser-secret-must-not-render')`), false)
   assert.equal(await evaluate(`document.querySelector('.answer-markdown h2')?.textContent`), '当前查询')
   await evaluate(`document.querySelector('.source-reference').click()`)
   await until(`document.querySelector('.answer-sources article.selected')?.textContent.includes('引用定位')`)

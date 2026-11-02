@@ -167,6 +167,9 @@ export function normalizeChatResponse(type, raw) {
     latencyMs: Number(payload.latency_ms ?? payload.latencyMs ?? 0),
     knowledgeUsed: toBoolean(payload.knowledge_used ?? payload.knowledgeUsed),
     retrievalBackend: payload.retrieval_backend || payload.retrievalBackend || '',
+    retrieval: normalizeRetrieval(payload.retrieval),
+    safety: normalizeSafety(payload.safety),
+    recommendedDepartment: payload.recommended_department || payload.recommendedDepartment || '',
     simulation: toBoolean(payload.simulation),
     actionRequests: asArray(payload.action_requests ?? payload.actionRequests),
     workflow: payload.workflow || null,
@@ -180,6 +183,29 @@ export function normalizeChatResponse(type, raw) {
     verified: payload.verified,
     grounded: payload.grounded,
     raw: payload
+  }
+}
+
+function normalizeRetrieval(value) {
+  const item = asObject(value)
+  return {
+    mode: item.mode || 'not_used',
+    lexicalCount: Number(item.lexical_count ?? item.lexicalCount ?? 0),
+    denseCount: Number(item.dense_count ?? item.denseCount ?? 0),
+    fusedCount: Number(item.fused_count ?? item.fusedCount ?? 0),
+    reranked: toBoolean(item.reranked),
+    filteredCount: Number(item.filtered_count ?? item.filteredCount ?? 0),
+    finalCount: Number(item.final_count ?? item.finalCount ?? 0),
+    degradedReason: item.degraded_reason ?? item.degradedReason ?? null
+  }
+}
+
+function normalizeSafety(value) {
+  const item = asObject(value)
+  return {
+    disposition: item.disposition || 'not_assessed',
+    redFlags: asArray(item.red_flags ?? item.redFlags),
+    questions: asArray(item.questions)
   }
 }
 

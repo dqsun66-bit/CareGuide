@@ -56,6 +56,26 @@ def test_stream_and_json_use_same_workers_budgets_and_final_contract(runtime):
     asyncio.run(run())
 
 
+def test_stream_and_json_expose_identical_triage_and_retrieval_contract(runtime):
+    async def run():
+        payload = {'message': '请先判断是否需要紧急就医，再告诉我挂什么科。',
+                   'user_id': 'triage-user'}
+        async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
+            streamed = decode((await client.post('/chat/stream', json=payload)).text)[-1]
+            plain = (await client.post('/chat', json={**payload, 'user_id': 'triage-json'})).json()
+
+        assert streamed[0] == 'result'
+        terminal = streamed[1]
+        assert terminal['safety'] == plain['safety']
+        assert terminal['retrieval'] == plain['retrieval']
+        assert terminal['safety']['disposition'] == 'needs_clarification'
+        assert terminal['retrieval']['mode'] == 'not_used'
+        assert terminal['retrieval']['final_count'] == 0
+
+    asyncio.run(run())
+
+
 def test_real_progress_precedes_worker_completion_and_disconnect_preserves_execution(runtime):
     async def run():
         engine = runtime[0]

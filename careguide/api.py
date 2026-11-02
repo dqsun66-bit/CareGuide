@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import asyncio
 import uuid
 import os
+from dataclasses import asdict, is_dataclass
 from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import Literal
@@ -683,9 +684,15 @@ async def health(runtime=Depends(get_chat_runtime)):
     knowledge, hospital, memory_status = await asyncio.gather(
         engine.knowledge_backend.health(), engine.appointment_service.backend.health(),
         memory.health())
+    retrieval_status = getattr(engine.registry, 'retrieval_status', None)
+    retrieval = (asdict(retrieval_status) if is_dataclass(retrieval_status)
+                 else {'requested_mode': engine.registry.knowledge.mode,
+                       'active_mode': engine.registry.knowledge.mode,
+                       'degraded_reason': None})
     return {'status': 'ok', 'stage': 'medical_chat_runtime',
             'integrations': {'intent_classifier': intent,
-                             'knowledge': knowledge, 'hospital': hospital,
+                             'knowledge': knowledge, 'retrieval': retrieval,
+                             'hospital': hospital,
                              'memory': memory_status,
                              'amap': {'configured': _amap_configured()}}}
 
@@ -740,7 +747,10 @@ def get_capabilities(registry: MedicalToolRegistry = Depends(get_registry),
                      runtime=Depends(get_chat_runtime)):
     engine = runtime[0]
     intent = _intent_classifier_status(engine)
+    retrieval_status = getattr(registry, 'retrieval_status', None)
     return {**capabilities(), 'retrieval_mode': registry.knowledge.mode,
+            'retrieval_status': (asdict(retrieval_status)
+                                 if is_dataclass(retrieval_status) else None),
             'intent_classifier_backend': intent['backend'],
             'intent_classifier_model': intent['model'],
             'knowledge_backend': engine.knowledge_backend.name,

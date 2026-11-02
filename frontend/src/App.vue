@@ -287,6 +287,23 @@
                   <div><dt>模拟操作</dt><dd :class="lastResponse.simulation ? 'danger' : 'muted'">{{ lastResponse.simulation ? '是' : '否' }}</dd></div>
                   <div><dt>转人工</dt><dd :class="lastResponse.escalated ? 'danger' : 'muted'">{{ lastResponse.escalated ? '是' : '否' }}</dd></div>
                 </dl>
+                <div v-if="lastResponse.retrieval.mode !== 'not_used'" class="retrieval-summary">
+                  <strong>{{ retrievalModeLabel(lastResponse.retrieval) }}</strong>
+                  <div class="retrieval-metrics">
+                    <span>BM25 {{ lastResponse.retrieval.lexicalCount }}</span>
+                    <span>向量 {{ lastResponse.retrieval.denseCount }}</span>
+                    <span>融合 {{ lastResponse.retrieval.fusedCount }}</span>
+                    <span>Rerank {{ lastResponse.retrieval.reranked ? '已完成' : '未执行' }}</span>
+                    <span>证据 {{ lastResponse.retrieval.finalCount }}</span>
+                  </div>
+                  <p v-if="lastResponse.retrieval.degradedReason" class="retrieval-warning">
+                    降级原因：{{ lastResponse.retrieval.degradedReason }}
+                  </p>
+                </div>
+                <div v-if="lastResponse.safety.disposition !== 'not_assessed'" class="safety-summary">
+                  <span>安全分流：{{ safetyLabel(lastResponse.safety.disposition) }}</span>
+                  <span v-if="lastResponse.recommendedDepartment">建议科室：{{ lastResponse.recommendedDepartment }}</span>
+                </div>
                 <p v-if="lastResponse.routingReason" class="routing-reason">{{ lastResponse.routingReason }}</p>
                 <div v-if="lastTrace?.trace" class="trace-call-list">
                   <div class="trace-call-title">工具调用</div>
@@ -1183,6 +1200,20 @@ async function loadToolTrace(requestId) {
 function formatPercent(value) {
   const number = Number(value || 0)
   return `${(number <= 1 ? number * 100 : number).toFixed(1)}%`
+}
+
+function retrievalModeLabel(retrieval) {
+  if (retrieval.degradedReason || retrieval.mode === 'bm25_degraded') return 'BM25降级'
+  if (retrieval.mode === 'hybrid' && retrieval.reranked) return '混合检索'
+  if (retrieval.mode === 'hybrid') return 'Rerank不可用'
+  if (retrieval.mode === 'dense') return '向量检索'
+  if (retrieval.mode === 'bm25') return 'BM25检索'
+  return '未使用检索'
+}
+
+function safetyLabel(value) {
+  return ({ emergency: '建议立即急诊', needs_clarification: '需要补充信息',
+    non_emergency_information: '未发现已询问的危险信号' })[value] || value
 }
 
 function formatJson(value) {
