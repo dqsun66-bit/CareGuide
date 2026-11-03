@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager, contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 import json
+import math
 from pathlib import Path
 import sqlite3
 import time
@@ -217,7 +218,11 @@ class BudgetLedger:
             timeout_s = min(30, self.limits.request_seconds) if kind in {'model', 'tool'} else 0
         deadline = _REQUEST_DEADLINE.get()
         if deadline is not None:
-            remaining = deadline-time.monotonic()
+            # Absolute monotonic timestamps can round the deadline upward.
+            # Move it down by one representable value so the provider timeout
+            # stays strictly inside the caller's wall-clock budget.
+            safe_deadline = math.nextafter(deadline, -math.inf)
+            remaining = max(0.0, safe_deadline-time.monotonic())
             if remaining <= 0:
                 raise BudgetExhausted('request_deadline')
             if timeout_s > 0:

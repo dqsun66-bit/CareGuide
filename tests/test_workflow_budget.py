@@ -89,6 +89,22 @@ def test_timeout_marks_unknown_and_charges_reserved_execution_time(tmp_path):
     assert summary['used']['tool'] == 1
 
 
+def test_request_deadline_rounding_never_expands_provider_timeout(tmp_path, monkeypatch):
+    from careguide.orchestration import budget as budget_module
+    from careguide.orchestration.budget import use_budget
+
+    budget = ledger(tmp_path)
+    clock = float(2**35)
+    monkeypatch.setattr(budget_module.time, 'monotonic', lambda: clock)
+
+    async def run():
+        with use_budget(budget, deadline=clock + 0.8):
+            async with budget.call('model', timeout_s=3) as ticket:
+                assert 0 < ticket.timeout_s <= 0.8
+
+    asyncio.run(run())
+
+
 def test_cancellation_does_not_return_budget_or_claim_remote_work_stopped(tmp_path):
     budget = ledger(tmp_path)
     async def run():
