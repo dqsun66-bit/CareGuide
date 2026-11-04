@@ -4,7 +4,9 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
+import subprocess
 
 import pytest
 
@@ -288,6 +290,31 @@ def test_atomic_writer_rejects_symlink_swapped_in_after_source_check(tmp_path, m
         write_corpus(target, hospitals=hospitals, sources=sources, records=records,
                      verification=verification, built_at=NOW, snapshot_root=snapshot_root)
     assert checks == 2
+    assert not target.exists()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows junction behavior")
+def test_atomic_writer_rejects_snapshot_root_junction(tmp_path):
+    hospitals, sources, records, verification = _payloads()
+    real_root = tmp_path / "real-snapshot-source"
+    hospital_dir = real_root / "js_taizhou_003"
+    hospital_dir.mkdir(parents=True)
+    (hospital_dir / "src_tz2_grade.html").write_bytes(GRADE_SNAPSHOT)
+    (hospital_dir / "src_tz2_contact.html").write_bytes(SNAPSHOT)
+    junction = tmp_path / "junction-snapshot-source"
+    created = subprocess.run(
+        ["cmd.exe", "/d", "/c", "mklink", "/J", str(junction), str(real_root)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if created.returncode != 0:
+        pytest.skip("Junction creation is unavailable")
+
+    target = tmp_path / "published"
+    with pytest.raises(ValueError, match="symlink or junction"):
+        write_corpus(target, hospitals=hospitals, sources=sources, records=records,
+                     verification=verification, built_at=NOW, snapshot_root=junction)
     assert not target.exists()
 
 

@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 from pathlib import PurePosixPath
 import shutil
+import stat
 import tempfile
 from typing import Iterable, Mapping, Sequence
 from urllib.parse import urlparse
@@ -290,8 +291,11 @@ def _write_json(path: Path, value: Sequence | Mapping) -> None:
 
 def _is_link_or_junction(path: Path) -> bool:
     """Return whether *path* can redirect traversal outside its parent tree."""
-    is_junction = getattr(path, "is_junction", None)
-    return path.is_symlink() or bool(is_junction and is_junction())
+    metadata = os.lstat(path)
+    attributes = getattr(metadata, "st_file_attributes", 0)
+    reparse_point = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x0400)
+    reparse_tag = getattr(metadata, "st_reparse_tag", 0)
+    return path.is_symlink() or bool(attributes & reparse_point) or bool(reparse_tag)
 
 
 def _assert_snapshot_tree_safe(snapshot_root: Path) -> None:
