@@ -19,3 +19,4 @@ data/eval/results/
 .aris/
 .study/
 .worktrees/
+*.part
