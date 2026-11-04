@@ -335,7 +335,9 @@ def write_corpus(
     try:
         if snapshot_root and snapshot_root.exists():
             _assert_snapshot_tree_safe(snapshot_root)
-            shutil.copytree(snapshot_root, temporary / "snapshots")
+            copied_snapshots = temporary / "snapshots"
+            shutil.copytree(snapshot_root, copied_snapshots, symlinks=True)
+            _assert_snapshot_tree_safe(copied_snapshots)
         values = {
             "hospitals.json": [Hospital.model_validate(item) for item in hospitals],
             "sources.json": [Source.model_validate(item) for item in sources],

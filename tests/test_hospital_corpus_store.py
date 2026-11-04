@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from careguide.hospital_corpus import store as corpus_store
 from careguide.hospital_corpus.store import HospitalCorpus, write_corpus
 from careguide.hospital_corpus.normalize import normalize_text
 
@@ -254,6 +255,39 @@ def test_atomic_writer_rejects_snapshot_source_symlink(tmp_path):
     with pytest.raises(ValueError, match="snapshot source contains a symlink"):
         write_corpus(target, hospitals=hospitals, sources=sources, records=records,
                      verification=verification, built_at=NOW, snapshot_root=snapshot_root)
+    assert not target.exists()
+
+
+def test_atomic_writer_rejects_symlink_swapped_in_after_source_check(tmp_path, monkeypatch):
+    hospitals, sources, records, verification = _payloads()
+    snapshot_root = tmp_path / "snapshot-source"
+    hospital_dir = snapshot_root / "js_taizhou_003"
+    hospital_dir.mkdir(parents=True)
+    (hospital_dir / "src_tz2_grade.html").write_bytes(GRADE_SNAPSHOT)
+    contact = hospital_dir / "src_tz2_contact.html"
+    contact.write_bytes(SNAPSHOT)
+    outside = tmp_path / "outside-contact.html"
+    outside.write_bytes(b"must not be ingested")
+    original_check = corpus_store._assert_snapshot_tree_safe
+    checks = 0
+
+    def check_then_swap(path):
+        nonlocal checks
+        checks += 1
+        original_check(path)
+        if checks == 1:
+            contact.unlink()
+            try:
+                contact.symlink_to(outside)
+            except OSError as exc:
+                pytest.skip(f"Symlink creation is unavailable: {exc}")
+
+    monkeypatch.setattr(corpus_store, "_assert_snapshot_tree_safe", check_then_swap)
+    target = tmp_path / "published"
+    with pytest.raises(ValueError, match="snapshot source contains a symlink"):
+        write_corpus(target, hospitals=hospitals, sources=sources, records=records,
+                     verification=verification, built_at=NOW, snapshot_root=snapshot_root)
+    assert checks == 2
     assert not target.exists()
 
 
