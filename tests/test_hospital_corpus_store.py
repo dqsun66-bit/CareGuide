@@ -9,13 +9,17 @@ from pathlib import Path
 import pytest
 
 from careguide.hospital_corpus.store import HospitalCorpus, write_corpus
+from careguide.hospital_corpus.normalize import normalize_text
 
 
 CN_TZ = timezone(timedelta(hours=8))
 NOW = datetime(2026, 11, 4, 15, 0, tzinfo=CN_TZ)
 SNAPSHOT = b"official hospital snapshot"
 SNAPSHOT_SHA = hashlib.sha256(SNAPSHOT).hexdigest()
+GRADE_SNAPSHOT = b"official health authority grade notice"
+GRADE_SNAPSHOT_SHA = hashlib.sha256(GRADE_SNAPSHOT).hexdigest()
 FILES = ("hospitals.json", "sources.json", "records.json", "verification.json")
+RECORD_CONTENT = "医院官网列明主院区位于江苏省泰州市姜堰区健康路27号，并公开就医、咨询和预约服务电话；具体服务时间应以医院最新公告为准。"
 
 
 def _dump(path: Path, value) -> None:
@@ -30,17 +34,34 @@ def _payloads():
         "city": "泰州",
         "hospital_type": "general",
         "grade": "三级甲等",
-        "grade_source_id": "src_tz2_official",
+        "grade_source_id": "src_tz2_grade",
         "official_domains": ["www.jyry.com"],
         "campuses": [{
             "campus_id": "js_taizhou_003_main",
             "official_name": "主院区",
             "address": "江苏省泰州市姜堰区健康路27号",
-            "address_source_id": "src_tz2_official",
+            "address_source_id": "src_tz2_contact",
         }],
     }]
     sources = [{
-        "source_id": "src_tz2_official",
+        "source_id": "src_tz2_grade",
+        "hospital_id": "js_taizhou_003",
+        "campus_id": None,
+        "title": "泰州二院成功晋升三级甲等综合医院",
+        "url": "https://wjw.taizhou.gov.cn/grade-notice",
+        "source_tier": "health_authority",
+        "category": "identity",
+        "published_at": "2025-07-24",
+        "valid_until": "2027-07-24",
+        "collected_at": NOW.isoformat(),
+        "reviewed_at": NOW.isoformat(),
+        "review_status": "verified_official",
+        "snapshot_path": "snapshots/js_taizhou_003/src_tz2_grade.html",
+        "http_status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "retrieved_sha256": GRADE_SNAPSHOT_SHA,
+    }, {
+        "source_id": "src_tz2_contact",
         "hospital_id": "js_taizhou_003",
         "campus_id": "js_taizhou_003_main",
         "title": "泰州市第二人民医院官网",
@@ -52,7 +73,7 @@ def _payloads():
         "collected_at": NOW.isoformat(),
         "reviewed_at": NOW.isoformat(),
         "review_status": "verified_official",
-        "snapshot_path": "snapshots/js_taizhou_003/src_tz2_official.html",
+        "snapshot_path": "snapshots/js_taizhou_003/src_tz2_contact.html",
         "http_status": 200,
         "content_type": "text/html; charset=utf-8",
         "retrieved_sha256": SNAPSHOT_SHA,
@@ -64,15 +85,15 @@ def _payloads():
         "city": "泰州",
         "category": "contact",
         "title": "主院区地址与预约咨询",
-        "content": "医院官网列明主院区位于江苏省泰州市姜堰区健康路27号，并公开就医、咨询和预约服务电话；具体服务时间应以医院最新公告为准。",
-        "source_id": "src_tz2_official",
+        "content": RECORD_CONTENT,
+        "source_id": "src_tz2_contact",
         "source_url": "https://www.jyry.com/",
         "source_tier": "hospital_official",
         "published_at": None,
         "collected_at": NOW.isoformat(),
         "reviewed_at": NOW.isoformat(),
         "review_status": "verified_official",
-        "content_hash": hashlib.sha256("record".encode()).hexdigest(),
+        "content_hash": hashlib.sha256(normalize_text(RECORD_CONTENT).encode()).hexdigest(),
         "language": "zh-CN",
     }]
     return hospitals, sources, records, []
@@ -80,9 +101,10 @@ def _payloads():
 
 def _write_fixture(root: Path, mutate=None, *, corrupt_manifest=False) -> Path:
     root.mkdir()
-    snapshot = root / "snapshots/js_taizhou_003/src_tz2_official.html"
+    snapshot = root / "snapshots/js_taizhou_003/src_tz2_contact.html"
     snapshot.parent.mkdir(parents=True)
     snapshot.write_bytes(SNAPSHOT)
+    (snapshot.parent / "src_tz2_grade.html").write_bytes(GRADE_SNAPSHOT)
     hospitals, sources, records, verification = _payloads()
     if mutate:
         mutate(hospitals, sources, records, verification, root)
@@ -109,7 +131,7 @@ def _write_fixture(root: Path, mutate=None, *, corrupt_manifest=False) -> Path:
 def test_valid_corpus_loads_and_validates(tmp_path):
     corpus = HospitalCorpus.load(_write_fixture(tmp_path / "corpus"))
     assert corpus.manifest.version == "jiangsu-hospitals-v1"
-    assert corpus.record("js_taizhou_003_contact_0001").source_id == "src_tz2_official"
+    assert corpus.record("js_taizhou_003_contact_0001").source_id == "src_tz2_contact"
     assert corpus.validate(today=date(2026, 11, 4)).errors == ()
 
 
@@ -142,10 +164,13 @@ def test_load_rejects_manifest_count_mismatch(tmp_path):
     [
         (lambda _h, _s, r, _v, _p: r[0].update(source_id="missing"), "unknown source"),
         (lambda _h, _s, r, _v, _p: r[0].update(campus_id="js_taizhou_003_other"), "unknown campus"),
-        (lambda _h, s, _r, _v, _p: s[0].update(url="https://evil.example/"), "unapproved source host"),
-        (lambda _h, s, _r, _v, _p: s[0].update(valid_until="2026-01-01"), "expired source"),
+        (lambda _h, s, _r, _v, _p: s[1].update(url="https://evil.example/"), "unapproved source host"),
+        (lambda _h, s, _r, _v, _p: s[1].update(valid_until="2026-01-01"), "expired source"),
         (lambda _h, _s, r, _v, _p: r[0].update(source_url="https://www.jyry.com/other"), "source URL mismatch"),
-        (lambda _h, s, _r, _v, _p: s[0].update(review_status="needs_review", reviewed_at=None), "not verified"),
+        (lambda _h, s, _r, _v, _p: s[1].update(review_status="needs_review", reviewed_at=None), "not verified"),
+        (lambda _h, s, _r, _v, _p: s[0].update(source_tier="map_provider"), "map source cannot authorize"),
+        (lambda _h, s, _r, _v, _p: s[1].update(category="appointment"), "category mismatch"),
+        (lambda _h, _s, r, _v, _p: r[0].update(content=RECORD_CONTENT + "信息被修改。"), "content hash mismatch"),
     ],
 )
 def test_validation_reports_provenance_errors(tmp_path, mutation, expected):
@@ -156,17 +181,50 @@ def test_validation_reports_provenance_errors(tmp_path, mutation, expected):
 
 def test_validation_reports_missing_or_modified_snapshot(tmp_path):
     def remove_snapshot(_h, _s, _r, _v, root):
-        (root / "snapshots/js_taizhou_003/src_tz2_official.html").unlink()
+        (root / "snapshots/js_taizhou_003/src_tz2_contact.html").unlink()
 
     missing = HospitalCorpus.load(_write_fixture(tmp_path / "missing", remove_snapshot))
     assert any("missing snapshot" in error for error in missing.validate(today=date(2026, 11, 4)).errors)
 
     def alter_snapshot(_h, _s, _r, _v, root):
-        (root / "snapshots/js_taizhou_003/src_tz2_official.html").write_bytes(b"changed")
+        (root / "snapshots/js_taizhou_003/src_tz2_contact.html").write_bytes(b"changed")
 
     altered = HospitalCorpus.load(_write_fixture(tmp_path / "altered", alter_snapshot))
     assert any("snapshot hash mismatch" in error
                for error in altered.validate(today=date(2026, 11, 4)).errors)
+
+
+def test_validation_rejects_snapshot_symlink_escaping_root(tmp_path):
+    outside = tmp_path / "outside.html"
+    outside.write_bytes(SNAPSHOT)
+
+    def link_outside(_h, sources, _r, _v, root):
+        original = root / "snapshots/js_taizhou_003/src_tz2_contact.html"
+        original.unlink()
+        try:
+            original.symlink_to(outside)
+        except OSError as exc:
+            pytest.skip(f"Symlink creation is unavailable: {exc}")
+        sources[1]["retrieved_sha256"] = hashlib.sha256(outside.read_bytes()).hexdigest()
+
+    corpus = HospitalCorpus.load(_write_fixture(tmp_path / "corpus", link_outside))
+    assert any("snapshot escapes corpus root" in error
+               for error in corpus.validate(today=date(2026, 11, 4)).errors)
+
+
+def test_load_authenticates_and_parses_each_data_file_from_one_read(tmp_path, monkeypatch):
+    root = _write_fixture(tmp_path / "corpus")
+    original_open = Path.open
+    reads = {filename: 0 for filename in FILES}
+
+    def counting_open(path, *args, **kwargs):
+        if path.name in reads:
+            reads[path.name] += 1
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", counting_open)
+    HospitalCorpus.load(root)
+    assert reads == {filename: 1 for filename in FILES}
 
 
 def test_atomic_writer_refuses_invalid_assets_without_partial_target(tmp_path):
@@ -193,8 +251,23 @@ def test_validation_cli_prints_metadata_without_record_bodies(tmp_path, capsys):
         "expired_source_ids": [],
         "hospital_count": 1,
         "record_count": 1,
-        "source_count": 1,
+        "source_count": 2,
         "status": "valid",
         "warnings": [],
     }
     assert "主院区地址与预约咨询" not in output
+
+
+def test_validation_cli_handles_non_list_top_level_json(tmp_path, capsys):
+    root = _write_fixture(tmp_path / "corpus")
+    _dump(root / "records.json", None)
+    manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+    manifest["files"]["records.json"] = hashlib.sha256((root / "records.json").read_bytes()).hexdigest()
+    _dump(root / "manifest.json", manifest)
+
+    from scripts.validate_jiangsu_hospital_corpus import main
+
+    assert main(["--corpus-dir", str(root), "--today", "2026-11-04"]) == 1
+    assert json.loads(capsys.readouterr().out) == {
+        "error_type": "corpus_load_failed", "status": "invalid"
+    }

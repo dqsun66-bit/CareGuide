@@ -171,9 +171,11 @@ class Source(StrictModel):
     @field_validator("snapshot_path")
     @classmethod
     def validate_snapshot_path(cls, value: str) -> str:
+        if "\\" in value:
+            raise ValueError("Snapshot path must be a portable relative path")
         path = PurePosixPath(value)
         if path.is_absolute() or ".." in path.parts or not path.parts or path.parts[0] != "snapshots":
-            raise ValueError("Snapshot path must be relative to snapshots")
+            raise ValueError("Snapshot path must be a portable relative path under snapshots")
         return value
 
     @model_validator(mode="after")

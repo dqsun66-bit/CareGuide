@@ -6,6 +6,7 @@ from datetime import date, datetime
 import hashlib
 import json
 from pathlib import Path
+from pathlib import PurePosixPath
 import shutil
 import tempfile
 from typing import Iterable, Mapping, Sequence
@@ -14,13 +15,16 @@ from urllib.parse import urlparse
 from .dedup import duplicate_groups
 from .models import (
     CorpusManifest,
+    Category,
     Hospital,
     KnowledgeRecord,
     ReviewStatus,
     Source,
+    SourceTier,
     VerificationEntry,
 )
 from .normalize import canonical_url
+from .normalize import normalize_text
 
 
 DATA_FILES = ("hospitals.json", "sources.json", "records.json", "verification.json")
@@ -48,6 +52,16 @@ def _hash_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _read_authenticated_list(path: Path, expected_hash: str) -> list:
+    raw = path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != expected_hash:
+        raise ValueError(f"Corpus integrity mismatch: {path.name}")
+    value = json.loads(raw.decode("utf-8"))
+    if not isinstance(value, list):
+        raise ValueError(f"Corpus data file must contain a list: {path.name}")
+    return value
+
+
 def _unique_index(items: Iterable, identity: str, label: str) -> dict[str, object]:
     result: dict[str, object] = {}
     for item in items:
@@ -63,6 +77,57 @@ def _source_host_allowed(source: Source, hospital: Hospital) -> bool:
     if host in hospital.official_domains:
         return True
     return any(host.endswith(suffix) and host != suffix.removeprefix(".") for suffix in GOVERNMENT_SUFFIXES)
+
+
+AUTHORITATIVE_TIERS = {
+    SourceTier.HOSPITAL_OFFICIAL,
+    SourceTier.HEALTH_AUTHORITY,
+    SourceTier.GOVERNMENT,
+}
+
+
+def _evidence_errors(
+    *,
+    label: str,
+    source: Source,
+    hospital_id: str,
+    campus_id: str | None,
+    categories: set[Category],
+) -> list[str]:
+    errors: list[str] = []
+    if source.hospital_id != hospital_id:
+        errors.append(f"{label}: evidence belongs to another hospital")
+    if campus_id is not None and source.campus_id not in {None, campus_id}:
+        errors.append(f"{label}: evidence belongs to another campus")
+    if source.review_status != ReviewStatus.VERIFIED_OFFICIAL:
+        errors.append(f"{label}: evidence is not verified")
+    if source.source_tier == SourceTier.MAP_PROVIDER:
+        errors.append(f"{label}: map source cannot authorize official facts")
+    elif source.source_tier not in AUTHORITATIVE_TIERS:
+        errors.append(f"{label}: source tier is not authoritative")
+    if source.category not in categories:
+        errors.append(f"{label}: evidence category mismatch")
+    return errors
+
+
+def _safe_snapshot(root: Path, portable_path: str) -> tuple[Path | None, str | None]:
+    root = root.resolve()
+    snapshot_root = (root / "snapshots").resolve()
+    relative = PurePosixPath(portable_path)
+    candidate = root.joinpath(*relative.parts)
+    if not candidate.exists():
+        return candidate, None
+    try:
+        resolved = candidate.resolve(strict=True)
+        resolved.relative_to(snapshot_root)
+    except (OSError, ValueError):
+        return None, "snapshot escapes corpus root"
+    cursor = candidate
+    while cursor != root:
+        if cursor.is_symlink():
+            return None, "snapshot symlinks are not allowed"
+        cursor = cursor.parent
+    return resolved, None
 
 
 class HospitalCorpus:
@@ -90,15 +155,15 @@ class HospitalCorpus:
     def load(cls, root: Path | str) -> "HospitalCorpus":
         root = Path(root)
         manifest = CorpusManifest.model_validate(_read_json(root / "manifest.json"))
-        for filename, expected in manifest.files.items():
-            actual = _hash_file(root / filename)
-            if actual != expected:
-                raise ValueError(f"Corpus integrity mismatch: {filename}")
-        hospitals = tuple(Hospital.model_validate(value) for value in _read_json(root / "hospitals.json"))
-        sources = tuple(Source.model_validate(value) for value in _read_json(root / "sources.json"))
-        records = tuple(KnowledgeRecord.model_validate(value) for value in _read_json(root / "records.json"))
+        payloads = {
+            filename: _read_authenticated_list(root / filename, expected)
+            for filename, expected in manifest.files.items()
+        }
+        hospitals = tuple(Hospital.model_validate(value) for value in payloads["hospitals.json"])
+        sources = tuple(Source.model_validate(value) for value in payloads["sources.json"])
+        records = tuple(KnowledgeRecord.model_validate(value) for value in payloads["records.json"])
         verification = tuple(
-            VerificationEntry.model_validate(value) for value in _read_json(root / "verification.json")
+            VerificationEntry.model_validate(value) for value in payloads["verification.json"]
         )
         corpus = cls(root, manifest, hospitals, sources, records, verification)
         actual_counts = (
@@ -128,11 +193,29 @@ class HospitalCorpus:
             for hospital in self.hospitals for campus in hospital.campuses
         }
         for hospital in self.hospitals:
-            if hospital.grade_source_id not in self._sources:
+            grade_source = self._sources.get(hospital.grade_source_id)
+            if grade_source is None:
                 errors.append(f"hospital {hospital.hospital_id}: unknown grade source")
+            else:
+                errors.extend(_evidence_errors(
+                    label=f"hospital {hospital.hospital_id} grade",
+                    source=grade_source,
+                    hospital_id=hospital.hospital_id,
+                    campus_id=None,
+                    categories={Category.IDENTITY},
+                ))
             for campus in hospital.campuses:
-                if campus.address_source_id not in self._sources:
+                address_source = self._sources.get(campus.address_source_id)
+                if address_source is None:
                     errors.append(f"campus {campus.campus_id}: unknown address source")
+                else:
+                    errors.extend(_evidence_errors(
+                        label=f"campus {campus.campus_id} address",
+                        source=address_source,
+                        hospital_id=hospital.hospital_id,
+                        campus_id=campus.campus_id,
+                        categories={Category.CAMPUS, Category.CONTACT},
+                    ))
         for source in self.sources:
             hospital = self._hospitals.get(source.hospital_id)
             if hospital is None:
@@ -145,8 +228,10 @@ class HospitalCorpus:
             if source.valid_until < today:
                 expired.append(source.source_id)
                 errors.append(f"source {source.source_id}: expired source")
-            snapshot = self.root / Path(source.snapshot_path)
-            if not snapshot.is_file():
+            snapshot, snapshot_error = _safe_snapshot(self.root, source.snapshot_path)
+            if snapshot_error:
+                errors.append(f"source {source.source_id}: {snapshot_error}")
+            elif snapshot is None or not snapshot.is_file():
                 errors.append(f"source {source.source_id}: missing snapshot")
             elif _hash_file(snapshot) != source.retrieved_sha256:
                 errors.append(f"source {source.source_id}: snapshot hash mismatch")
@@ -168,8 +253,15 @@ class HospitalCorpus:
                 errors.append(f"record {record.document_id}: source URL mismatch")
             if source.source_tier != record.source_tier:
                 errors.append(f"record {record.document_id}: source tier mismatch")
+            if source.category != record.category:
+                errors.append(f"record {record.document_id}: category mismatch")
             if source.review_status != ReviewStatus.VERIFIED_OFFICIAL:
                 errors.append(f"record {record.document_id}: source is not verified")
+            if source.source_tier == SourceTier.MAP_PROVIDER:
+                errors.append(f"record {record.document_id}: map source cannot authorize official facts")
+            expected_hash = hashlib.sha256(normalize_text(record.content).encode("utf-8")).hexdigest()
+            if record.content_hash != expected_hash:
+                errors.append(f"record {record.document_id}: content hash mismatch")
         duplicates = duplicate_groups(
             ((record.document_id, record.content) for record in self.records), threshold=0.95
         )

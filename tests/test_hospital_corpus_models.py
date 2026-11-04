@@ -146,6 +146,11 @@ def test_source_preserves_unknown_publication_date():
     assert source.published_at is None
 
 
+def test_source_rejects_non_portable_snapshot_path():
+    with pytest.raises(ValidationError, match="portable relative path"):
+        valid_source(snapshot_path=r"snapshots\js_taizhou_003\..\..\outside.html")
+
+
 def test_source_rejects_publication_after_collection():
     with pytest.raises(ValidationError, match="publication is later"):
         valid_source(published_at=date(2026, 11, 5))
