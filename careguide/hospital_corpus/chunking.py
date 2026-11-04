@@ -115,7 +115,7 @@ def chunk_sections(
     if overlap < 0 or overlap >= target_max:
         raise ValueError("Overlap must be smaller than target_max")
     sections = tuple(_coerce_section(raw) for raw in values)
-    scoped = {section.scope_id for section in sections if section.scope_id}
+    scoped = {section.scope_id for section in sections}
     if len(scoped) > 1:
         raise ValueError("Input batch contains mixed scopes")
     output: list[Chunk] = []

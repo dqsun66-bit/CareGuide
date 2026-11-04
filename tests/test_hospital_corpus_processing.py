@@ -58,6 +58,15 @@ def test_chunker_rejects_mixed_scope_batches_by_default():
         chunk_sections(sections, target_min=10, target_max=80, overlap=5)
 
 
+def test_chunker_rejects_mixed_scoped_and_unscoped_sections():
+    sections = [
+        ("旧式标题", "旧式无范围内容。"),
+        Section("hospital-a|campus-a|appointment", "预约", "正式范围内容。"),
+    ]
+    with pytest.raises(ValueError, match="mixed scopes"):
+        chunk_sections(sections, target_min=5, target_max=40, overlap=5)
+
+
 def test_chunker_rejects_mixed_scope_within_one_section():
     section = Section("hospital-a|campus-a|appointment", "预约", "预约规则。")
     object.__setattr__(section, "scope_id", "hospital-a|campus-b|appointment")
