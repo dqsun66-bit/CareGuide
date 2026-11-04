@@ -49,15 +49,13 @@ def test_chunker_keeps_numbered_appointment_steps_together():
     assert "3. 确认预约" in chunks[0].content
 
 
-def test_chunker_never_crosses_scope_or_section_boundaries():
+def test_chunker_rejects_mixed_scope_batches_by_default():
     sections = [
         Section("hospital-a|campus-a|appointment", "预约", "预约规则内容足够完整，可以单独形成知识片段。"),
         Section("hospital-b|campus-b|contact", "电话", "联系电话内容属于另一所医院，不能与前一条合并。"),
     ]
-    chunks = chunk_sections(sections, target_min=10, target_max=80, overlap=5)
-    assert [chunk.scope_id for chunk in chunks] == [
-        "hospital-a|campus-a|appointment", "hospital-b|campus-b|contact"
-    ]
+    with pytest.raises(ValueError, match="mixed scopes"):
+        chunk_sections(sections, target_min=10, target_max=80, overlap=5)
 
 
 def test_chunker_rejects_mixed_scope_within_one_section():
@@ -74,6 +72,25 @@ def test_long_paragraph_splits_at_sentence_boundaries_with_overlap():
     assert len(chunks) >= 2
     assert all(len(chunk.content) <= 35 for chunk in chunks)
     assert chunks[0].content[-8:] in chunks[1].content
+
+
+def test_oversized_numbered_list_splits_only_between_complete_items():
+    items = [
+        "1. 第一步需要完成实名注册并认真核对身份证件信息。",
+        "2. 第二步需要选择正确院区和对应的门诊科室。",
+        "3. 第三步需要确认预约时间并保存预约凭证。",
+    ]
+    chunks = chunk_sections([("预约流程", "\n".join(items))],
+                            target_min=10, target_max=48, overlap=5)
+    assert "\n".join(chunk.content for chunk in chunks).replace("\n", "") == "".join(items)
+    assert all(any(item in chunk.content for chunk in chunks) for item in items)
+    assert all(not chunk.content.endswith(("1.", "2.", "3.")) for chunk in chunks)
+
+
+def test_exact_window_boundary_does_not_emit_overlap_only_chunk():
+    chunks = chunk_sections([("长段落", "甲" * 75)], target_min=10, target_max=40, overlap=5)
+    assert [len(chunk.content) for chunk in chunks] == [40, 40]
+    assert chunks[0].content[-5:] == chunks[1].content[:5]
 
 
 def test_near_duplicate_group_ignores_navigation_and_update_stamp():

@@ -23,8 +23,13 @@ class Chunk:
     ordinal: int
 
 
+@dataclass(frozen=True)
+class _Block:
+    content: str
+    is_list: bool
+
+
 LIST_ITEM = re.compile(r"^(?:\d+[.、]|[一二三四五六七八九十]+[、.]|[-•])\s*")
-SENTENCE = re.compile(r"[^。！？；\n]+[。！？；]?|[^。！？；\n]+$")
 
 
 def _coerce_section(value: Section | tuple[str, str]) -> Section:
@@ -34,54 +39,65 @@ def _coerce_section(value: Section | tuple[str, str]) -> Section:
     return Section("", heading, content)
 
 
-def _semantic_blocks(content: str) -> list[str]:
+def _semantic_blocks(content: str) -> list[_Block]:
     lines = normalize_text(content).split("\n")
-    blocks: list[str] = []
+    blocks: list[_Block] = []
     list_buffer: list[str] = []
     for line in lines:
         if not line:
             if list_buffer:
-                blocks.append("\n".join(list_buffer))
+                blocks.append(_Block("\n".join(list_buffer), True))
                 list_buffer = []
             continue
         if LIST_ITEM.match(line):
             list_buffer.append(line)
             continue
         if list_buffer:
-            blocks.append("\n".join(list_buffer))
+            blocks.append(_Block("\n".join(list_buffer), True))
             list_buffer = []
-        blocks.append(line)
+        blocks.append(_Block(line, False))
     if list_buffer:
-        blocks.append("\n".join(list_buffer))
+        blocks.append(_Block("\n".join(list_buffer), True))
     return blocks
 
 
 def _split_long_block(block: str, target_max: int, overlap: int) -> list[str]:
     if len(block) <= target_max:
         return [block]
-    sentences = [item.strip() for item in SENTENCE.findall(block) if item.strip()]
-    if not sentences:
-        sentences = [block]
+    chunks: list[str] = []
+    start = 0
+    while start < len(block):
+        hard_end = min(start + target_max, len(block))
+        end = hard_end
+        if hard_end < len(block):
+            minimum_end = start + max(1, target_max // 2)
+            boundaries = [block.rfind(mark, minimum_end, hard_end) for mark in "。！？；\n"]
+            boundary = max(boundaries)
+            if boundary >= minimum_end:
+                end = boundary + 1
+        chunks.append(block[start:end])
+        if end == len(block):
+            break
+        next_start = end - overlap if overlap else end
+        start = max(start + 1, next_start)
+    return chunks
+
+
+def _split_list_block(block: str, target_max: int) -> list[str]:
+    """Split a list only between complete items; an oversized item stays intact."""
     chunks: list[str] = []
     current = ""
-    for sentence in sentences:
-        remaining = sentence
-        while remaining:
-            available = target_max - len(current)
-            if available <= 0:
-                chunks.append(current)
-                current = current[-overlap:] if overlap else ""
-                available = target_max - len(current)
-            take = remaining[:available]
-            current += take
-            remaining = remaining[len(take):]
-            if remaining:
-                chunks.append(current)
-                current = current[-overlap:] if overlap else ""
-        if len(current) >= target_max:
+    for item in block.split("\n"):
+        candidate = f"{current}\n{item}" if current else item
+        if current and len(candidate) > target_max:
             chunks.append(current)
-            current = current[-overlap:] if overlap else ""
-    if current and (not chunks or current != chunks[-1]):
+            current = item
+        else:
+            current = candidate
+        if len(current) > target_max:
+            chunks.append(current)
+            current = ""
+    if current:
         chunks.append(current)
     return chunks
 
@@ -98,9 +114,12 @@ def chunk_sections(
         raise ValueError("Invalid chunk size bounds")
     if overlap < 0 or overlap >= target_max:
         raise ValueError("Overlap must be smaller than target_max")
+    sections = tuple(_coerce_section(raw) for raw in values)
+    scoped = {section.scope_id for section in sections if section.scope_id}
+    if len(scoped) > 1:
+        raise ValueError("Input batch contains mixed scopes")
     output: list[Chunk] = []
-    for raw in values:
-        section = _coerce_section(raw)
+    for section in sections:
         if expected_scope is not None and section.scope_id != expected_scope:
             raise ValueError("Section scope does not match expected scope")
         heading = normalize_text(section.heading)
@@ -108,22 +127,26 @@ def chunk_sections(
         section_chunks: list[str] = []
         current = ""
         for block in blocks:
-            if len(block) > target_max:
+            if len(block.content) > target_max:
                 if current:
                     section_chunks.append(current)
                     current = ""
-                section_chunks.extend(_split_long_block(block, target_max, overlap))
+                if block.is_list:
+                    section_chunks.extend(_split_list_block(block.content, target_max))
+                else:
+                    section_chunks.extend(_split_long_block(block.content, target_max, overlap))
                 continue
             separator = "\n" if current else ""
-            if current and len(current) + len(separator) + len(block) > target_max:
+            if current and len(current) + len(separator) + len(block.content) > target_max:
                 section_chunks.append(current)
-                prefix = current[-overlap:] if overlap else ""
-                current = f"{prefix}\n{block}" if prefix else block
+                prefix = "" if block.is_list else (current[-overlap:] if overlap else "")
+                current = f"{prefix}\n{block.content}" if prefix else block.content
                 if len(current) > target_max:
-                    section_chunks.extend(_split_long_block(current, target_max, overlap)[:-1])
-                    current = _split_long_block(current, target_max, overlap)[-1]
+                    split = _split_long_block(current, target_max, overlap)
+                    section_chunks.extend(split[:-1])
+                    current = split[-1]
             else:
-                current = f"{current}{separator}{block}"
+                current = f"{current}{separator}{block.content}"
         if current:
             section_chunks.append(current)
         for content in section_chunks:
