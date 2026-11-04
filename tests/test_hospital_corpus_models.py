@@ -120,11 +120,24 @@ def test_hospital_rejects_ambiguous_identity(changes, message):
         "http://www.jyry.com/",
         "https://user:password@www.jyry.com/",
         "https://www.jyry.com:444/",
+        "https://localhost/",
+        "https://127.0.0.1/",
+        "https://[::1]/",
     ],
 )
 def test_source_requires_public_https_url(url):
     with pytest.raises(ValidationError, match="public HTTPS"):
         valid_source(url=url)
+
+
+@pytest.mark.parametrize(
+    "domain",
+    ["localhost", "127.0.0.1", "::1", "hospital.local", "bad..domain.cn",
+     "-hospital.cn", "hospital-.cn", " www.jyry.com", "www.jyry.com "],
+)
+def test_hospital_rejects_non_public_or_malformed_domains(domain):
+    with pytest.raises(ValidationError, match="public DNS hostname"):
+        valid_hospital(official_domains=(domain,))
 
 
 def test_source_preserves_unknown_publication_date():
@@ -192,6 +205,30 @@ def test_manifest_uses_fixed_stage_and_sha256_file_map():
     assert set(manifest.files) == {
         "hospitals.json", "sources.json", "records.json", "verification.json"
     }
+
+
+def test_manifest_file_hashes_are_deeply_immutable():
+    supplied = {
+        "hospitals.json": "a" * 64,
+        "sources.json": "b" * 64,
+        "records.json": "c" * 64,
+        "verification.json": "d" * 64,
+    }
+    manifest = CorpusManifest(
+        version="jiangsu-hospitals-v1",
+        stage="pilot_taizhou_3_of_15",
+        built_at=REVIEWED,
+        hospital_count=15,
+        source_count=6,
+        record_count=12,
+        verification_count=1,
+        files=supplied,
+    )
+    supplied["hospitals.json"] = "f" * 64
+    assert manifest.files["hospitals.json"] == "a" * 64
+    with pytest.raises(TypeError):
+        manifest.files["hospitals.json"] = "e" * 64
+    assert manifest.model_dump(mode="json")["files"]["records.json"] == "c" * 64
 
 
 def test_enums_keep_the_approved_public_values():

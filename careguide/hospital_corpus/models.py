@@ -3,11 +3,21 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from enum import Enum
+import ipaddress
 from pathlib import PurePosixPath
-from typing import Literal
+import re
+from types import MappingProxyType
+from typing import Literal, Mapping
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 
 class StrictModel(BaseModel):
@@ -54,6 +64,26 @@ def _require_aware(value: datetime | None, field_name: str) -> None:
         raise ValueError(f"{field_name} must be timezone-aware")
 
 
+def _validate_public_dns(host: str) -> str:
+    if host != host.strip() or host != host.casefold() or len(host) > 253:
+        raise ValueError("Official domain must be a public DNS hostname")
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        pass
+    else:
+        raise ValueError("Official domain must be a public DNS hostname")
+    if host == "localhost" or host.endswith(".localhost") or host.endswith(".local"):
+        raise ValueError("Official domain must be a public DNS hostname")
+    labels = host.split(".")
+    if len(labels) < 2 or any(
+        not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label)
+        for label in labels
+    ):
+        raise ValueError("Official domain must be a public DNS hostname")
+    return host
+
+
 def _validate_public_https(value: str) -> str:
     parsed = urlparse(value)
     try:
@@ -68,6 +98,10 @@ def _validate_public_https(value: str) -> str:
         or port not in (None, 443)
     ):
         raise ValueError("Source URL must be public HTTPS")
+    try:
+        _validate_public_dns(parsed.hostname)
+    except ValueError as exc:
+        raise ValueError("Source URL must be public HTTPS") from exc
     return value
 
 
@@ -93,8 +127,7 @@ class Hospital(StrictModel):
     @classmethod
     def validate_domains(cls, values: tuple[str, ...]) -> tuple[str, ...]:
         for value in values:
-            if value != value.casefold() or "://" in value or "/" in value or not value.strip():
-                raise ValueError("Official domains must be lowercase hostnames")
+            _validate_public_dns(value)
         if len(set(values)) != len(values):
             raise ValueError("Duplicate official domains")
         return values
@@ -215,7 +248,7 @@ class CorpusManifest(StrictModel):
     source_count: int = Field(ge=0)
     record_count: int = Field(ge=0)
     verification_count: int = Field(ge=0)
-    files: dict[str, str]
+    files: Mapping[str, str]
 
     @model_validator(mode="after")
     def validate_manifest(self):
@@ -226,4 +259,9 @@ class CorpusManifest(StrictModel):
         if any(len(value) != 64 or any(char not in "0123456789abcdef" for char in value)
                for value in self.files.values()):
             raise ValueError("Manifest file hashes must be lowercase SHA-256")
+        object.__setattr__(self, "files", MappingProxyType(dict(self.files)))
         return self
+
+    @field_serializer("files")
+    def serialize_files(self, value: Mapping[str, str]) -> dict[str, str]:
+        return dict(value)
