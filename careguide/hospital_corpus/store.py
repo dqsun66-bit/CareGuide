@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 import hashlib
 import json
+import os
 from pathlib import Path
 from pathlib import PurePosixPath
 import shutil
@@ -287,6 +288,33 @@ def _write_json(path: Path, value: Sequence | Mapping) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
 
 
+def _is_link_or_junction(path: Path) -> bool:
+    """Return whether *path* can redirect traversal outside its parent tree."""
+    is_junction = getattr(path, "is_junction", None)
+    return path.is_symlink() or bool(is_junction and is_junction())
+
+
+def _assert_snapshot_tree_safe(snapshot_root: Path) -> None:
+    """Reject linked or escaping snapshot entries before ``copytree`` dereferences them."""
+    if _is_link_or_junction(snapshot_root):
+        raise ValueError("snapshot source contains a symlink or junction")
+    root = snapshot_root.resolve(strict=True)
+    pending = [snapshot_root]
+    while pending:
+        directory = pending.pop()
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                child = Path(entry.path)
+                if entry.is_symlink() or _is_link_or_junction(child):
+                    raise ValueError("snapshot source contains a symlink or junction")
+                try:
+                    child.resolve(strict=True).relative_to(root)
+                except ValueError as exc:
+                    raise ValueError("snapshot source escapes its root") from exc
+                if entry.is_dir(follow_symlinks=False):
+                    pending.append(child)
+
+
 def write_corpus(
     target: Path | str,
     *,
@@ -306,6 +334,7 @@ def write_corpus(
     temporary = Path(tempfile.mkdtemp(prefix=f".{target.name}-", dir=parent))
     try:
         if snapshot_root and snapshot_root.exists():
+            _assert_snapshot_tree_safe(snapshot_root)
             shutil.copytree(snapshot_root, temporary / "snapshots")
         values = {
             "hospitals.json": [Hospital.model_validate(item) for item in hospitals],

@@ -237,6 +237,26 @@ def test_atomic_writer_refuses_invalid_assets_without_partial_target(tmp_path):
     assert not target.exists()
 
 
+def test_atomic_writer_rejects_snapshot_source_symlink(tmp_path):
+    hospitals, sources, records, verification = _payloads()
+    snapshot_root = tmp_path / "snapshot-source"
+    hospital_dir = snapshot_root / "js_taizhou_003"
+    hospital_dir.mkdir(parents=True)
+    (hospital_dir / "src_tz2_grade.html").write_bytes(GRADE_SNAPSHOT)
+    outside = tmp_path / "outside-contact.html"
+    outside.write_bytes(SNAPSHOT)
+    try:
+        (hospital_dir / "src_tz2_contact.html").symlink_to(outside)
+    except OSError as exc:
+        pytest.skip(f"Symlink creation is unavailable: {exc}")
+
+    target = tmp_path / "published"
+    with pytest.raises(ValueError, match="snapshot source contains a symlink"):
+        write_corpus(target, hospitals=hospitals, sources=sources, records=records,
+                     verification=verification, built_at=NOW, snapshot_root=snapshot_root)
+    assert not target.exists()
+
+
 def test_validation_cli_prints_metadata_without_record_bodies(tmp_path, capsys):
     from scripts.validate_jiangsu_hospital_corpus import main
 
