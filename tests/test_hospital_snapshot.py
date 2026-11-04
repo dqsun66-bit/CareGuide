@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timezone
+import os
+import subprocess
 
 import httpx
 import pytest
@@ -113,6 +115,46 @@ def test_transport_error_never_exposes_authorization_value():
         with pytest.raises(SnapshotFetchError) as caught:
             fetch_snapshot(URL, allowed_hosts=ALLOWED, client=client)
     assert secret not in str(caught.value)
+    assert caught.value.__cause__ is None
+
+
+def test_injected_client_auth_is_not_sent():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert "authorization" not in request.headers
+        return httpx.Response(200, headers={"content-type": "text/plain"}, content=b"official")
+
+    with httpx.Client(transport=httpx.MockTransport(handler), auth=("user", "secret")) as client:
+        fetch_snapshot(URL, allowed_hosts=ALLOWED, client=client)
+
+
+def test_rejects_encoded_response_instead_of_hashing_decoded_bytes():
+    compressed = b"not-safe-to-transparently-decode"
+    with _client(lambda request: httpx.Response(
+        200,
+        headers={"content-type": "text/html", "content-encoding": "gzip"},
+        stream=httpx.ByteStream(compressed),
+    )) as client:
+        with pytest.raises(SnapshotFetchError, match="content encoding"):
+            fetch_snapshot(URL, allowed_hosts=ALLOWED, client=client)
+
+
+def test_html_limit_is_enforced_even_when_url_ends_in_pdf():
+    body = b"x" * (2_000_000 + 1)
+    pdf_url = "https://www.jyry.com/misleading.pdf"
+    with _client(lambda request: httpx.Response(
+        200, headers={"content-type": "text/html"}, content=body
+    )) as client:
+        with pytest.raises(SnapshotFetchError, match="size limit"):
+            fetch_snapshot(pdf_url, allowed_hosts=ALLOWED, client=client, max_bytes=15_000_000)
+
+
+def test_pdf_limit_uses_response_type_when_url_has_no_suffix():
+    body = b"%PDF-" + b"x" * 2_100_000
+    with _client(lambda request: httpx.Response(
+        200, headers={"content-type": "application/pdf"}, content=body
+    )) as client:
+        result = fetch_snapshot(URL, allowed_hosts=ALLOWED, client=client, max_bytes=15_000_000)
+    assert result.body == body
 
 
 def _write_registry(path):
@@ -227,12 +269,12 @@ def test_snapshot_cli_removes_body_if_metadata_write_fails(tmp_path, monkeypatch
     real_write = command._atomic_write
     writes = 0
 
-    def fail_second_write(path, content):
+    def fail_second_write(path, content, **kwargs):
         nonlocal writes
         writes += 1
         if writes == 2:
             raise OSError("simulated metadata failure")
-        real_write(path, content)
+        real_write(path, content, **kwargs)
 
     monkeypatch.setattr(command, "_atomic_write", fail_second_write)
     output_dir = tmp_path / "snapshots"
@@ -247,3 +289,63 @@ def test_snapshot_cli_removes_body_if_metadata_write_fails(tmp_path, monkeypatch
     assert result == 1
     assert not target.exists()
     assert not target.with_suffix(".html.metadata.json.part").exists()
+
+
+def test_snapshot_cli_never_follows_predictable_part_symlink(tmp_path, monkeypatch, capsys):
+    from scripts import fetch_hospital_sources as command
+
+    registry = tmp_path / "sources.json"
+    _write_registry(registry)
+    output_dir = tmp_path / "snapshots"
+    target = output_dir / "js_taizhou_003" / "src_tz2_appointment.html"
+    target.parent.mkdir(parents=True)
+    outside = tmp_path / "outside.txt"
+    outside.write_bytes(b"keep me")
+    predictable = target.with_name(target.name + ".part")
+    try:
+        predictable.symlink_to(outside)
+    except OSError as exc:
+        pytest.skip(f"Symlink creation is unavailable: {exc}")
+    body = b"official snapshot bytes"
+    fake = SnapshotResult(
+        canonical_url=URL,
+        status_code=200,
+        content_type="text/html",
+        collected_at=datetime(2026, 11, 4, 7, 0, tzinfo=timezone.utc),
+        sha256=hashlib.sha256(body).hexdigest(),
+        body=body,
+    )
+    monkeypatch.setattr(command, "fetch_snapshot", lambda *args, **kwargs: fake)
+    result = command.main([
+        "--registry", str(registry), "--source-id", "src_tz2_appointment",
+        "--output-dir", str(output_dir), "--apply",
+    ])
+    capsys.readouterr()
+    assert result == 0
+    assert target.read_bytes() == body
+    assert outside.read_bytes() == b"keep me"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows junction behavior")
+def test_snapshot_cli_rejects_output_directory_junction_before_network(tmp_path, monkeypatch, capsys):
+    from scripts import fetch_hospital_sources as command
+
+    registry = tmp_path / "sources.json"
+    _write_registry(registry)
+    real_output = tmp_path / "real-output"
+    real_output.mkdir()
+    junction = tmp_path / "snapshot-output"
+    created = subprocess.run(
+        ["cmd.exe", "/d", "/c", "mklink", "/J", str(junction), str(real_output)],
+        capture_output=True, text=True, check=False,
+    )
+    if created.returncode != 0:
+        pytest.skip("Junction creation is unavailable")
+    monkeypatch.setattr(command, "fetch_snapshot", lambda *args, **kwargs: pytest.fail("network called"))
+    result = command.main([
+        "--registry", str(registry), "--source-id", "src_tz2_appointment",
+        "--output-dir", str(junction), "--apply",
+    ])
+    payload = json.loads(capsys.readouterr().out)
+    assert result == 1
+    assert payload["status"] == "error"

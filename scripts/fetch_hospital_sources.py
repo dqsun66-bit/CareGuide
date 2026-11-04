@@ -5,7 +5,9 @@ import argparse
 import json
 import os
 from pathlib import Path, PurePosixPath
+import stat
 import sys
+import tempfile
 from urllib.parse import urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -30,8 +32,8 @@ def _target_path(output_dir: Path, source: Source) -> Path:
     if not relative.parts or relative.parts[0] != "snapshots":
         raise ValueError("snapshot path must be rooted under snapshots")
     target = output_dir.joinpath(*relative.parts[1:])
-    root = output_dir.resolve()
-    target.parent.mkdir(parents=True, exist_ok=True)
+    _assert_safe_output_chain(output_dir, target.parent, create=True)
+    root = output_dir.resolve(strict=True)
     try:
         target.resolve().relative_to(root)
     except ValueError as exc:
@@ -39,10 +41,50 @@ def _target_path(output_dir: Path, source: Source) -> Path:
     return target
 
 
-def _atomic_write(path: Path, body: bytes) -> None:
-    temporary = path.with_name(path.name + ".part")
+def _is_reparse_point(path: Path) -> bool:
+    metadata = os.lstat(path)
+    attributes = getattr(metadata, "st_file_attributes", 0)
+    marker = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x0400)
+    return path.is_symlink() or bool(attributes & marker) or bool(getattr(metadata, "st_reparse_tag", 0))
+
+
+def _assert_safe_output_chain(output_dir: Path, parent: Path, *, create: bool) -> None:
+    if create:
+        output_dir.mkdir(parents=True, exist_ok=True)
+    if _is_reparse_point(output_dir):
+        raise ValueError("snapshot output directory cannot be a link or junction")
+    root = output_dir.resolve(strict=True)
     try:
-        temporary.write_bytes(body)
+        relative = parent.relative_to(output_dir)
+    except ValueError as exc:
+        raise ValueError("snapshot target escapes output directory") from exc
+    current = output_dir
+    for part in relative.parts:
+        current /= part
+        if create:
+            current.mkdir(exist_ok=True)
+        if _is_reparse_point(current):
+            raise ValueError("snapshot output path cannot contain a link or junction")
+        try:
+            current.resolve(strict=True).relative_to(root)
+        except ValueError as exc:
+            raise ValueError("snapshot target escapes output directory") from exc
+
+
+def _atomic_write(path: Path, body: bytes, *, output_root: Path | None = None) -> None:
+    if output_root is not None:
+        _assert_safe_output_chain(output_root, path.parent, create=False)
+    elif _is_reparse_point(path.parent):
+        raise ValueError("snapshot output parent cannot be a link or junction")
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".part", dir=path.parent
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(body)
+            stream.flush()
+            os.fsync(stream.fileno())
         os.replace(temporary, path)
     except Exception:
         temporary.unlink(missing_ok=True)
@@ -86,11 +128,12 @@ def main(argv=None) -> int:
         )
         body_written = False
         try:
-            _atomic_write(target, result.body)
+            _atomic_write(target, result.body, output_root=args.output_dir)
             body_written = True
             _atomic_write(
                 metadata_path,
                 (json.dumps(result.metadata(), ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8"),
+                output_root=args.output_dir,
             )
         except Exception:
             if body_written:

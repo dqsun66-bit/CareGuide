@@ -4,7 +4,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
-from pathlib import Path
 from urllib.parse import parse_qsl, urljoin, urlparse
 
 import httpx
@@ -82,8 +81,13 @@ def _read_bounded(response: httpx.Response, max_bytes: int) -> bytes:
                 raise SnapshotFetchError("snapshot exceeds size limit")
         except ValueError as exc:
             raise SnapshotFetchError("snapshot has an invalid content length") from exc
+    if response.is_stream_consumed:
+        body = response.content
+        if len(body) > max_bytes:
+            raise SnapshotFetchError("snapshot exceeds size limit")
+        return body
     body = bytearray()
-    for chunk in response.iter_bytes():
+    for chunk in response.iter_raw():
         body.extend(chunk)
         if len(body) > max_bytes:
             raise SnapshotFetchError("snapshot exceeds size limit")
@@ -101,6 +105,8 @@ def fetch_snapshot(
     """Fetch one public official document without credentials, cookies or proxy inheritance."""
     if max_bytes <= 0:
         raise ValueError("max_bytes must be positive")
+    if max_redirects < 0:
+        raise ValueError("max_redirects must not be negative")
     hosts = _normalized_hosts(allowed_hosts)
     current_url = _validate_request_url(url, hosts)
     owned_client = client is None
@@ -113,11 +119,15 @@ def fetch_snapshot(
     client.cookies.clear()
     try:
         for redirects in range(max_redirects + 1):
-            request = httpx.Request("GET", current_url, headers={"user-agent": USER_AGENT, "accept": "*/*"})
+            request = httpx.Request(
+                "GET",
+                current_url,
+                headers={"user-agent": USER_AGENT, "accept": "*/*", "accept-encoding": "identity"},
+            )
             try:
-                response = client.send(request, stream=True, follow_redirects=False)
-            except httpx.HTTPError as exc:
-                raise SnapshotFetchError("snapshot request failed") from exc
+                response = client.send(request, stream=True, follow_redirects=False, auth=None)
+            except httpx.HTTPError:
+                raise SnapshotFetchError("snapshot request failed") from None
             try:
                 if response.status_code in REDIRECT_STATUSES:
                     if redirects >= max_redirects:
@@ -136,7 +146,11 @@ def fetch_snapshot(
                 media_type = content_type.partition(";")[0].strip().casefold()
                 if media_type not in SUPPORTED_MEDIA_TYPES:
                     raise SnapshotFetchError("unsupported content type")
-                body = _read_bounded(response, max_bytes)
+                content_encoding = response.headers.get("content-encoding", "identity").strip().casefold()
+                if content_encoding not in {"", "identity"}:
+                    raise SnapshotFetchError("unsupported content encoding")
+                media_limit = 15_000_000 if media_type == "application/pdf" else 2_000_000
+                body = _read_bounded(response, min(max_bytes, media_limit))
                 if media_type == "application/json":
                     try:
                         body.decode("utf-8")
@@ -161,5 +175,5 @@ def fetch_snapshot(
 
 
 def default_snapshot_limit(url: str) -> int:
-    """Return the conservative default limit used by the CLI for a target path."""
-    return 15_000_000 if Path(urlparse(url).path).suffix.casefold() == ".pdf" else 2_000_000
+    """Allow the fetcher to select its stricter limit from the response media type."""
+    return 15_000_000
