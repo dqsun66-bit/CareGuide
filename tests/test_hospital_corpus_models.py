@@ -59,6 +59,7 @@ def valid_source(**changes):
         "source_tier": "hospital_official",
         "category": "contact",
         "published_at": None,
+        "valid_until": date(2027, 2, 2),
         "collected_at": COLLECTED,
         "reviewed_at": REVIEWED,
         "review_status": "verified_official",

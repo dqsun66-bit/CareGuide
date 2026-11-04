@@ -154,6 +154,7 @@ class Source(StrictModel):
     source_tier: SourceTier
     category: Category
     published_at: date | None
+    valid_until: date
     collected_at: datetime
     reviewed_at: datetime | None
     review_status: ReviewStatus
