@@ -1,0 +1,190 @@
+{
+  "case_count": 18,
+  "case_file_sha256": "7c9fe0c95f40c3afdc26b67ce3421a29ef7d6bcc84eab965dc2dbf47cdde7507",
+  "cases": [
+    {
+      "case_id": "tz1-exact-identity",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_taizhou_001_identity_0001"
+      ],
+      "retrieved_ids": [
+        "js_taizhou_001_identity_0001"
+      ]
+    },
+    {
+      "case_id": "tz1-campus-address",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_taizhou_001_campus_0002"
+      ],
+      "retrieved_ids": [
+        "js_taizhou_001_campus_0002"
+      ]
+    },
+    {
+      "case_id": "tz1-appointment-policy",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_taizhou_001_appointment_0003"
+      ],
+      "retrieved_ids": [
+        "js_taizhou_001_appointment_0003"
+      ]
+    },
+    {
+      "case_id": "tz1-alias-campus",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_taizhou_001_campus_0002"
+      ],
+      "retrieved_ids": [
+        "js_taizhou_001_campus_0002"
+      ]
+    },
+    {
+      "case_id": "tz1-live-parking-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "tz1-transport-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "tcm-exact-identity",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_taizhou_002_identity_0004"
+      ],
+      "retrieved_ids": [
+        "js_taizhou_002_identity_0004"
+      ]
+    },
+    {
+      "case_id": "tcm-campus-address",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_taizhou_002_campus_0005"
+      ],
+      "retrieved_ids": [
+        "js_taizhou_002_campus_0005"
+      ]
+    },
+    {
+      "case_id": "tcm-appointment-east",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_taizhou_002_appointment_0006"
+      ],
+      "retrieved_ids": [
+        "js_taizhou_002_appointment_0006"
+      ]
+    },
+    {
+      "case_id": "tcm-alias-appointment",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_taizhou_002_appointment_0006"
+      ],
+      "retrieved_ids": [
+        "js_taizhou_002_appointment_0006"
+      ]
+    },
+    {
+      "case_id": "tcm-doctor-schedule-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "tcm-transport-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "tz2-exact-identity",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_taizhou_003_identity_0007"
+      ],
+      "retrieved_ids": [
+        "js_taizhou_003_identity_0007"
+      ]
+    },
+    {
+      "case_id": "tz2-contact-address",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_taizhou_003_contact_0008"
+      ],
+      "retrieved_ids": [
+        "js_taizhou_003_contact_0008"
+      ]
+    },
+    {
+      "case_id": "tz2-appointment-methods",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_taizhou_003_appointment_0009"
+      ],
+      "retrieved_ids": [
+        "js_taizhou_003_appointment_0009"
+      ]
+    },
+    {
+      "case_id": "tz2-alias-appointment",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_taizhou_003_appointment_0009"
+      ],
+      "retrieved_ids": [
+        "js_taizhou_003_appointment_0009"
+      ]
+    },
+    {
+      "case_id": "tz2-diagnosis-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "tz2-transport-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    }
+  ],
+  "corpus_manifest_sha256": "d373bda7167be7c3354cc35ae7940dec5958a4392d3ce060e766bbedd44d1dc4",
+  "corpus_stage": "pilot_taizhou_3_of_15",
+  "corpus_version": "jiangsu-hospitals-v1",
+  "hard_negative_accuracy": 1.0,
+  "mrr": 1.0,
+  "recall_at_1": 1.0,
+  "recall_at_3": 1.0,
+  "recall_at_5": 1.0,
+  "scope_violations": 0,
+  "top_k": 5
+}
