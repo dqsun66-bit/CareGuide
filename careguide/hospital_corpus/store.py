@@ -31,6 +31,7 @@ from .normalize import normalize_text
 
 DATA_FILES = ("hospitals.json", "sources.json", "records.json", "verification.json")
 GOVERNMENT_SUFFIXES = (".gov.cn",)
+OFFICIAL_APPOINTMENT_HOSTS = {"js.guahaoe.com"}
 
 
 @dataclass(frozen=True)
@@ -76,8 +77,18 @@ def _unique_index(items: Iterable, identity: str, label: str) -> dict[str, objec
 
 def _source_host_allowed(source: Source, hospital: Hospital) -> bool:
     host = urlparse(source.url).hostname or ""
+    if (
+        source.source_tier == SourceTier.OFFICIAL_APPOINTMENT
+        and source.category != Category.APPOINTMENT
+    ):
+        return False
     if host in hospital.official_domains:
         return True
+    if (
+        source.source_tier == SourceTier.OFFICIAL_APPOINTMENT
+        and source.category == Category.APPOINTMENT
+    ):
+        return host in OFFICIAL_APPOINTMENT_HOSTS
     return any(host.endswith(suffix) and host != suffix.removeprefix(".") for suffix in GOVERNMENT_SUFFIXES)
 
 
@@ -216,7 +227,7 @@ class HospitalCorpus:
                         source=address_source,
                         hospital_id=hospital.hospital_id,
                         campus_id=campus.campus_id,
-                        categories={Category.CAMPUS, Category.CONTACT},
+                        categories={Category.IDENTITY, Category.CAMPUS, Category.CONTACT},
                     ))
         for source in self.sources:
             hospital = self._hospitals.get(source.hospital_id)
@@ -261,6 +272,14 @@ class HospitalCorpus:
                 errors.append(f"record {record.document_id}: source is not verified")
             if source.source_tier == SourceTier.MAP_PROVIDER:
                 errors.append(f"record {record.document_id}: map source cannot authorize official facts")
+            if (
+                source.source_tier == SourceTier.OFFICIAL_APPOINTMENT
+                and record.category != Category.APPOINTMENT
+            ):
+                errors.append(
+                    f"record {record.document_id}: appointment platform cannot authorize "
+                    "non-appointment facts"
+                )
             expected_hash = hashlib.sha256(normalize_text(record.content).encode("utf-8")).hexdigest()
             if record.content_hash != expected_hash:
                 errors.append(f"record {record.document_id}: content hash mismatch")

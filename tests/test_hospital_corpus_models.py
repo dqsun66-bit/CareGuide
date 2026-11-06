@@ -101,6 +101,11 @@ def test_hospital_requires_scoped_campus_and_grade_source():
     assert hospital.grade_source_id == "src_tz2_grade_2025"
 
 
+def test_hospital_allows_omitted_unverified_official_domain():
+    hospital = valid_hospital(official_domains=())
+    assert hospital.official_domains == ()
+
+
 @pytest.mark.parametrize(
     "changes, message",
     [
@@ -160,6 +165,16 @@ def test_source_rejects_publication_after_collection():
 def test_source_rejects_naive_datetimes(field):
     with pytest.raises(ValidationError, match="timezone-aware"):
         valid_source(**{field: datetime(2026, 11, 4, 9, 0)})
+
+
+def test_source_review_cannot_predate_collection():
+    with pytest.raises(ValidationError, match="cannot predate collection"):
+        valid_source(reviewed_at=COLLECTED - timedelta(seconds=1))
+
+
+def test_record_review_cannot_predate_collection():
+    with pytest.raises(ValidationError, match="cannot predate collection"):
+        valid_record(reviewed_at=COLLECTED - timedelta(seconds=1))
 
 
 def test_record_cannot_publish_unreviewed_source():

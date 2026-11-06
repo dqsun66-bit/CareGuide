@@ -1,0 +1,305 @@
+[
+  {
+    "hospital_id": "js_taizhou_001",
+    "official_name": "南京医科大学附属泰州人民医院",
+    "aliases": [],
+    "city": "泰州",
+    "hospital_type": "general",
+    "grade": "三级甲等",
+    "grade_source_id": "src_taizhou_001_identity",
+    "official_domains": [
+      "www.jstzhospital.com"
+    ],
+    "campuses": [
+      {
+        "campus_id": "js_taizhou_001_main",
+        "official_name": "总院区",
+        "address": "江苏省泰州市医药高新区太湖路366号",
+        "address_source_id": "src_taizhou_001_identity"
+      }
+    ]
+  },
+  {
+    "hospital_id": "js_taizhou_002",
+    "official_name": "泰州市中医院",
+    "aliases": [],
+    "city": "泰州",
+    "hospital_type": "tcm_general",
+    "grade": "三级甲等",
+    "grade_source_id": "src_taizhou_002_identity",
+    "official_domains": [
+      "www.tzszyy.com"
+    ],
+    "campuses": [
+      {
+        "campus_id": "js_taizhou_002_jichuan",
+        "official_name": "济川路院区",
+        "address": "江苏省泰州市海陵区济川东路86号",
+        "address_source_id": "src_taizhou_002_identity"
+      }
+    ]
+  },
+  {
+    "hospital_id": "js_taizhou_003",
+    "official_name": "泰州市第二人民医院",
+    "aliases": [
+      "泰州二院",
+      "姜堰市人民医院"
+    ],
+    "city": "泰州",
+    "hospital_type": "general",
+    "grade": "三级甲等",
+    "grade_source_id": "src_taizhou_003_identity",
+    "official_domains": [
+      "www.jyry.com"
+    ],
+    "campuses": [
+      {
+        "campus_id": "js_taizhou_003_main",
+        "official_name": "主院区",
+        "address": "江苏省泰州市姜堰区健康路27号",
+        "address_source_id": "src_taizhou_003_identity"
+      }
+    ]
+  },
+  {
+    "hospital_id": "js_nanjing_001",
+    "official_name": "江苏省人民医院",
+    "aliases": [
+      "南京医科大学第一附属医院"
+    ],
+    "city": "南京",
+    "hospital_type": "general",
+    "grade": "三级甲等",
+    "grade_source_id": "src_nanjing_001_grade",
+    "official_domains": [],
+    "campuses": [
+      {
+        "campus_id": "js_nanjing_001_main",
+        "official_name": "本部",
+        "address": "江苏省南京市广州路300号",
+        "address_source_id": "src_nanjing_001_identity"
+      }
+    ]
+  },
+  {
+    "hospital_id": "js_nanjing_002",
+    "official_name": "南京鼓楼医院",
+    "aliases": [],
+    "city": "南京",
+    "hospital_type": "general",
+    "grade": "三级甲等",
+    "grade_source_id": "src_nanjing_002_grade",
+    "official_domains": [
+      "www.njglyy.com"
+    ],
+    "campuses": [
+      {
+        "campus_id": "js_nanjing_002_main",
+        "official_name": "本部",
+        "address": "江苏省南京市中山路321号",
+        "address_source_id": "src_nanjing_002_identity"
+      }
+    ]
+  },
+  {
+    "hospital_id": "js_nanjing_003",
+    "official_name": "南京市儿童医院",
+    "aliases": [
+      "南京医科大学附属儿童医院"
+    ],
+    "city": "南京",
+    "hospital_type": "children",
+    "grade": "三级甲等",
+    "grade_source_id": "src_nanjing_003_identity",
+    "official_domains": [
+      "www.njch.com.cn"
+    ],
+    "campuses": [
+      {
+        "campus_id": "js_nanjing_003_guangzhou",
+        "official_name": "广州路院区",
+        "address": "江苏省南京市鼓楼区广州路72号",
+        "address_source_id": "src_nanjing_003_identity"
+      },
+      {
+        "campus_id": "js_nanjing_003_hexi",
+        "official_name": "河西院区",
+        "address": "江苏省南京市建邺区江东南路8号",
+        "address_source_id": "src_nanjing_003_identity"
+      }
+    ]
+  },
+  {
+    "hospital_id": "js_nanjing_004",
+    "official_name": "江苏省中医院",
+    "aliases": [
+      "南京中医药大学附属医院"
+    ],
+    "city": "南京",
+    "hospital_type": "tcm_general",
+    "grade": "三级甲等",
+    "grade_source_id": "src_nanjing_004_grade",
+    "official_domains": [],
+    "campuses": [
+      {
+        "campus_id": "js_nanjing_004_main",
+        "official_name": "总院区",
+        "address": "江苏省南京市汉中路155号",
+        "address_source_id": "src_nanjing_004_identity"
+      }
+    ]
+  },
+  {
+    "hospital_id": "js_suzhou_001",
+    "official_name": "苏州大学附属第一医院",
+    "aliases": [],
+    "city": "苏州",
+    "hospital_type": "general",
+    "grade": "三级甲等",
+    "grade_source_id": "src_suzhou_001_grade",
+    "official_domains": [],
+    "campuses": [
+      {
+        "campus_id": "js_suzhou_001_main",
+        "official_name": "总院",
+        "address": "江苏省苏州市平海路899号",
+        "address_source_id": "src_suzhou_001_identity"
+      }
+    ]
+  },
+  {
+    "hospital_id": "js_suzhou_002",
+    "official_name": "苏州大学附属第二医院",
+    "aliases": [],
+    "city": "苏州",
+    "hospital_type": "general",
+    "grade": "三级甲等",
+    "grade_source_id": "src_suzhou_002_grade",
+    "official_domains": [],
+    "campuses": [
+      {
+        "campus_id": "js_suzhou_002_main",
+        "official_name": "三香路院区",
+        "address": "江苏省苏州市三香路1055号",
+        "address_source_id": "src_suzhou_002_identity"
+      }
+    ]
+  },
+  {
+    "hospital_id": "js_suzhou_003",
+    "official_name": "苏州大学附属儿童医院",
+    "aliases": [],
+    "city": "苏州",
+    "hospital_type": "children",
+    "grade": "三级甲等",
+    "grade_source_id": "src_suzhou_003_identity",
+    "official_domains": [
+      "www.sdfey.cn"
+    ],
+    "campuses": [
+      {
+        "campus_id": "js_suzhou_003_main",
+        "official_name": "总院",
+        "address": "江苏省苏州工业园区钟南街92号",
+        "address_source_id": "src_suzhou_003_identity"
+      }
+    ]
+  },
+  {
+    "hospital_id": "js_wuxi_001",
+    "official_name": "无锡市人民医院",
+    "aliases": [],
+    "city": "无锡",
+    "hospital_type": "general",
+    "grade": "三级甲等",
+    "grade_source_id": "src_wuxi_001_identity",
+    "official_domains": [
+      "www.wuxiph.com"
+    ],
+    "campuses": [
+      {
+        "campus_id": "js_wuxi_001_main",
+        "official_name": "主院区",
+        "address": "江苏省无锡市清扬路299号",
+        "address_source_id": "src_wuxi_001_identity"
+      }
+    ]
+  },
+  {
+    "hospital_id": "js_wuxi_002",
+    "official_name": "无锡市中医医院",
+    "aliases": [],
+    "city": "无锡",
+    "hospital_type": "tcm_general",
+    "grade": "三级甲等",
+    "grade_source_id": "src_wuxi_002_identity",
+    "official_domains": [],
+    "campuses": [
+      {
+        "campus_id": "js_wuxi_002_main",
+        "official_name": "主院区",
+        "address": "江苏省无锡市中南西路8号",
+        "address_source_id": "src_wuxi_002_identity"
+      }
+    ]
+  },
+  {
+    "hospital_id": "js_changzhou_001",
+    "official_name": "常州市第一人民医院",
+    "aliases": [],
+    "city": "常州",
+    "hospital_type": "general",
+    "grade": "三级甲等",
+    "grade_source_id": "src_changzhou_001_grade",
+    "official_domains": [],
+    "campuses": [
+      {
+        "campus_id": "js_changzhou_001_main",
+        "official_name": "本部",
+        "address": "江苏省常州市局前街185号",
+        "address_source_id": "src_changzhou_001_identity"
+      }
+    ]
+  },
+  {
+    "hospital_id": "js_nantong_001",
+    "official_name": "南通大学附属医院",
+    "aliases": [],
+    "city": "南通",
+    "hospital_type": "general",
+    "grade": "三级甲等",
+    "grade_source_id": "src_nantong_001_grade",
+    "official_domains": [],
+    "campuses": [
+      {
+        "campus_id": "js_nantong_001_main",
+        "official_name": "西院区",
+        "address": "江苏省南通市西寺路20号",
+        "address_source_id": "src_nantong_001_identity"
+      }
+    ]
+  },
+  {
+    "hospital_id": "js_yangzhou_001",
+    "official_name": "江苏省苏北人民医院",
+    "aliases": [
+      "苏北人民医院"
+    ],
+    "city": "扬州",
+    "hospital_type": "general",
+    "grade": "三级甲等",
+    "grade_source_id": "src_yangzhou_001_grade",
+    "official_domains": [
+      "www.yzsbh.com"
+    ],
+    "campuses": [
+      {
+        "campus_id": "js_yangzhou_001_main",
+        "official_name": "主院区",
+        "address": "江苏省扬州市南通西路98号",
+        "address_source_id": "src_yangzhou_001_identity"
+      }
+    ]
+  }
+]

@@ -1,0 +1,421 @@
+[
+  {
+    "verification_id": "verify_src_taizhou_001_identity",
+    "subject_ids": [
+      "src_taizhou_001_identity"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_taizhou_001_appointment",
+    "subject_ids": [
+      "src_taizhou_001_appointment"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_taizhou_001_campus",
+    "subject_ids": [
+      "src_taizhou_001_campus"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_taizhou_002_identity",
+    "subject_ids": [
+      "src_taizhou_002_identity"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_taizhou_002_appointment",
+    "subject_ids": [
+      "src_taizhou_002_appointment"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_taizhou_002_campus",
+    "subject_ids": [
+      "src_taizhou_002_campus"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_taizhou_003_identity",
+    "subject_ids": [
+      "src_taizhou_003_identity"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_taizhou_003_appointment",
+    "subject_ids": [
+      "src_taizhou_003_appointment"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_taizhou_003_contact",
+    "subject_ids": [
+      "src_taizhou_003_contact"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_nanjing_001_identity",
+    "subject_ids": [
+      "src_nanjing_001_identity"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_nanjing_001_grade",
+    "subject_ids": [
+      "src_nanjing_001_grade"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_nanjing_002_identity",
+    "subject_ids": [
+      "src_nanjing_002_identity"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_nanjing_002_grade",
+    "subject_ids": [
+      "src_nanjing_002_grade"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_nanjing_003_identity",
+    "subject_ids": [
+      "src_nanjing_003_identity"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_nanjing_004_identity",
+    "subject_ids": [
+      "src_nanjing_004_identity"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_nanjing_004_grade",
+    "subject_ids": [
+      "src_nanjing_004_grade"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_suzhou_001_identity",
+    "subject_ids": [
+      "src_suzhou_001_identity"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_suzhou_001_grade",
+    "subject_ids": [
+      "src_suzhou_001_grade"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_suzhou_002_identity",
+    "subject_ids": [
+      "src_suzhou_002_identity"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_suzhou_002_grade",
+    "subject_ids": [
+      "src_suzhou_002_grade"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_suzhou_003_identity",
+    "subject_ids": [
+      "src_suzhou_003_identity"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_wuxi_001_identity",
+    "subject_ids": [
+      "src_wuxi_001_identity"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_wuxi_002_identity",
+    "subject_ids": [
+      "src_wuxi_002_identity"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_changzhou_001_identity",
+    "subject_ids": [
+      "src_changzhou_001_identity"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_changzhou_001_grade",
+    "subject_ids": [
+      "src_changzhou_001_grade"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_nantong_001_identity",
+    "subject_ids": [
+      "src_nantong_001_identity"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_nantong_001_grade",
+    "subject_ids": [
+      "src_nantong_001_grade"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_yangzhou_001_identity",
+    "subject_ids": [
+      "src_yangzhou_001_identity"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_yangzhou_001_grade",
+    "subject_ids": [
+      "src_yangzhou_001_grade"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已核对冻结快照及其绑定哈希。",
+    "decision": "发布主体、医院范围及对应字段已人工复核。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_js_taizhou_001_identity_0001",
+    "subject_ids": [
+      "js_taizhou_001_identity_0001",
+      "src_taizhou_001_identity"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已逐项核对发布正文与绑定快照证据词。",
+    "decision": "批准发布该知识记录。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_js_taizhou_001_campus_0002",
+    "subject_ids": [
+      "js_taizhou_001_campus_0002",
+      "src_taizhou_001_campus"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已逐项核对发布正文与绑定快照证据词。",
+    "decision": "批准发布该知识记录。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_js_taizhou_001_appointment_0003",
+    "subject_ids": [
+      "js_taizhou_001_appointment_0003",
+      "src_taizhou_001_appointment"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已逐项核对发布正文与绑定快照证据词。",
+    "decision": "批准发布该知识记录。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_js_taizhou_002_identity_0004",
+    "subject_ids": [
+      "js_taizhou_002_identity_0004",
+      "src_taizhou_002_identity"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已逐项核对发布正文与绑定快照证据词。",
+    "decision": "批准发布该知识记录。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_js_taizhou_002_campus_0005",
+    "subject_ids": [
+      "js_taizhou_002_campus_0005",
+      "src_taizhou_002_campus"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已逐项核对发布正文与绑定快照证据词。",
+    "decision": "批准发布该知识记录。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_js_taizhou_002_appointment_0006",
+    "subject_ids": [
+      "js_taizhou_002_appointment_0006",
+      "src_taizhou_002_appointment"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已逐项核对发布正文与绑定快照证据词。",
+    "decision": "批准发布该知识记录。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_js_taizhou_003_identity_0007",
+    "subject_ids": [
+      "js_taizhou_003_identity_0007",
+      "src_taizhou_003_identity"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已逐项核对发布正文与绑定快照证据词。",
+    "decision": "批准发布该知识记录。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_js_taizhou_003_contact_0008",
+    "subject_ids": [
+      "js_taizhou_003_contact_0008",
+      "src_taizhou_003_contact"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已逐项核对发布正文与绑定快照证据词。",
+    "decision": "批准发布该知识记录。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_js_taizhou_003_appointment_0009",
+    "subject_ids": [
+      "js_taizhou_003_appointment_0009",
+      "src_taizhou_003_appointment"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已逐项核对发布正文与绑定快照证据词。",
+    "decision": "批准发布该知识记录。",
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_js_taizhou_001_mobility_gap",
+    "subject_ids": [
+      "js_taizhou_001"
+    ],
+    "status": "needs_review",
+    "reason": "尚未冻结可核实的官方交通、停车或无障碍页面；本版不发布相关静态事实。",
+    "decision": null,
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_js_taizhou_002_mobility_gap",
+    "subject_ids": [
+      "js_taizhou_002"
+    ],
+    "status": "needs_review",
+    "reason": "尚未冻结可核实的官方交通、停车或无障碍页面；本版不发布相关静态事实。",
+    "decision": null,
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  },
+  {
+    "verification_id": "verify_js_taizhou_003_mobility_gap",
+    "subject_ids": [
+      "js_taizhou_003"
+    ],
+    "status": "needs_review",
+    "reason": "尚未冻结可核实的官方交通、停车或无障碍页面；本版不发布相关静态事实。",
+    "decision": null,
+    "reviewed_at": "2026-11-05T14:00:00+08:00"
+  }
+]

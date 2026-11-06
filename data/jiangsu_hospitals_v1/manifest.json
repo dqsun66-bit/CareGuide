@@ -1,0 +1,15 @@
+{
+  "version": "jiangsu-hospitals-v1",
+  "stage": "pilot_taizhou_3_of_15",
+  "built_at": "2026-11-06T15:44:02.062556+08:00",
+  "hospital_count": 15,
+  "source_count": 29,
+  "record_count": 9,
+  "verification_count": 41,
+  "files": {
+    "hospitals.json": "9e01caaca6187c2f6d0c1057c3be02a4c15ab2a32ca778d13e694984c8cebcea",
+    "sources.json": "a6081174827ad366bbc82499f62a4eaeff48d46351bd84c6166a8b85eb7c73a0",
+    "records.json": "d1540392ae7833db2b9c3ff2a73f35b876e30f5ddf116d444d9ff3ef94415ca1",
+    "verification.json": "54ff0487084ffabcb09e8cbd78d0a09e87fc9204be4273ac7604da56aa7d98e1"
+  }
+}

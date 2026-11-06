@@ -120,7 +120,7 @@ class Hospital(StrictModel):
     hospital_type: HospitalType
     grade: Literal["三级甲等"]
     grade_source_id: str = Field(min_length=1)
-    official_domains: tuple[str, ...] = Field(min_length=1)
+    official_domains: tuple[str, ...] = ()
     campuses: tuple[Campus, ...] = Field(min_length=1)
 
     @field_validator("official_domains")
@@ -188,6 +188,8 @@ class Source(StrictModel):
             raise ValueError("Campus does not belong to hospital")
         if self.review_status == ReviewStatus.VERIFIED_OFFICIAL and self.reviewed_at is None:
             raise ValueError("verified_official source requires reviewed_at")
+        if self.reviewed_at is not None and self.reviewed_at < self.collected_at:
+            raise ValueError("reviewed_at cannot predate collection")
         return self
 
 
@@ -224,6 +226,8 @@ class KnowledgeRecord(StrictModel):
             raise ValueError("Record publication is later than collection")
         if self.review_status != ReviewStatus.VERIFIED_OFFICIAL or self.reviewed_at is None:
             raise ValueError("Published records require verified_official review")
+        if self.reviewed_at < self.collected_at:
+            raise ValueError("reviewed_at cannot predate collection")
         return self
 
 

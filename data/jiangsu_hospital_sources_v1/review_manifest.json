@@ -1,0 +1,383 @@
+{
+  "version": "jiangsu-hospital-review-v1",
+  "source_reviews": [
+    {
+      "source_id": "src_taizhou_001_identity",
+      "retrieved_sha256": "0596bcd014199cd221a5feb5ec4c081fcd617a5aa0b32961e7c48d5ab906772d",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_taizhou_001_appointment",
+      "retrieved_sha256": "abfd917c52295530880889b7b473ae86097b572b4f48f82213af563d789df883",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_taizhou_001_campus",
+      "retrieved_sha256": "0596bcd014199cd221a5feb5ec4c081fcd617a5aa0b32961e7c48d5ab906772d",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_taizhou_002_identity",
+      "retrieved_sha256": "0596bcd014199cd221a5feb5ec4c081fcd617a5aa0b32961e7c48d5ab906772d",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_taizhou_002_appointment",
+      "retrieved_sha256": "07c4e9d12069ae75bc3336f6774a67298bd2d8b3a9e580f421632242ce985dc7",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_taizhou_002_campus",
+      "retrieved_sha256": "0596bcd014199cd221a5feb5ec4c081fcd617a5aa0b32961e7c48d5ab906772d",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_taizhou_003_identity",
+      "retrieved_sha256": "da3ee963beeb811ac01de242adf805185dd8f25622fe21b8613392a89cb24bdd",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_taizhou_003_appointment",
+      "retrieved_sha256": "97badf4c16dc90a045c325265fe476fe9c67734be2794bd8ad54765fbd4d3275",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_taizhou_003_contact",
+      "retrieved_sha256": "da3ee963beeb811ac01de242adf805185dd8f25622fe21b8613392a89cb24bdd",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_nanjing_001_identity",
+      "retrieved_sha256": "6aa95ccce187ccaa125ff50b66bb043ad0f216fa14004f178fcf32d9c3bc661d",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_nanjing_001_grade",
+      "retrieved_sha256": "3a2c6dd7eba2f7a039e84ed69969346641af507cd712666f8fea6f4127acc05d",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_nanjing_002_identity",
+      "retrieved_sha256": "3299b99e8b9a9c4814ec013f7bdf2765012a9013367ed5a86ab48fe49507e024",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_nanjing_002_grade",
+      "retrieved_sha256": "60e81f7854c9a152124b337b927a3d04113df97508c3eec141da30d6828f8daa",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_nanjing_003_identity",
+      "retrieved_sha256": "0bda142a8e00af31e6e97dc14eacd13fe2d78107a9a92705042e7083e082288a",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_nanjing_004_identity",
+      "retrieved_sha256": "6aa95ccce187ccaa125ff50b66bb043ad0f216fa14004f178fcf32d9c3bc661d",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_nanjing_004_grade",
+      "retrieved_sha256": "e5727480734548049868b84bd93fae737844b48c7466e70ba08e10ee3dbd332b",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_suzhou_001_identity",
+      "retrieved_sha256": "6aa95ccce187ccaa125ff50b66bb043ad0f216fa14004f178fcf32d9c3bc661d",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_suzhou_001_grade",
+      "retrieved_sha256": "401b6c57c92888f2096e0a658260fc71dd690e1077c433315d93dcfc78b507d8",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_suzhou_002_identity",
+      "retrieved_sha256": "640a97b54e6570e673ec41cbe8106cd2e6683fbe245cd321eee4b08b0de965c3",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_suzhou_002_grade",
+      "retrieved_sha256": "60e81f7854c9a152124b337b927a3d04113df97508c3eec141da30d6828f8daa",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_suzhou_003_identity",
+      "retrieved_sha256": "935cc7d5a407c9f08c22ca0b3f659d3d04b9ea7c5d0421bf4e3266323da1da7f",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_wuxi_001_identity",
+      "retrieved_sha256": "2733bcf4d225d16da5d968fd76dee426bf637ebdda3ee239778586f2900b20fc",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_wuxi_002_identity",
+      "retrieved_sha256": "2733bcf4d225d16da5d968fd76dee426bf637ebdda3ee239778586f2900b20fc",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_changzhou_001_identity",
+      "retrieved_sha256": "b180460dca5bacb6c8c95a2abba75b4b4b09d24dc2206af5bfb55bac7efd2686",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_changzhou_001_grade",
+      "retrieved_sha256": "401b6c57c92888f2096e0a658260fc71dd690e1077c433315d93dcfc78b507d8",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_nantong_001_identity",
+      "retrieved_sha256": "6aa95ccce187ccaa125ff50b66bb043ad0f216fa14004f178fcf32d9c3bc661d",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_nantong_001_grade",
+      "retrieved_sha256": "401b6c57c92888f2096e0a658260fc71dd690e1077c433315d93dcfc78b507d8",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_yangzhou_001_identity",
+      "retrieved_sha256": "cb37e381353377910099ad7795994f0c712a4353c8c381a16ef2e6ee8f564896",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    },
+    {
+      "source_id": "src_yangzhou_001_grade",
+      "retrieved_sha256": "401b6c57c92888f2096e0a658260fc71dd690e1077c433315d93dcfc78b507d8",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "note": "发布主体、医院范围及对应字段已人工复核。"
+    }
+  ],
+  "record_reviews": [
+    {
+      "document_id": "js_taizhou_001_identity_0001",
+      "source_id": "src_taizhou_001_identity",
+      "content_hash": "a76eda9f63dbd9f68d2d58bbe99cce27a335fb77cda80f25b73b33189e8c042f",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "required_terms": [
+        "南京医科大学附属泰州人民医院",
+        "三级甲等",
+        "太湖路366号"
+      ]
+    },
+    {
+      "document_id": "js_taizhou_001_campus_0002",
+      "source_id": "src_taizhou_001_campus",
+      "content_hash": "a03809d7654d694dbce6193042ddca6e06b32e7264cad4859f4a28573ea8f6eb",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "required_terms": [
+        "南京医科大学附属泰州人民医院",
+        "太湖路366号"
+      ]
+    },
+    {
+      "document_id": "js_taizhou_001_appointment_0003",
+      "source_id": "src_taizhou_001_appointment",
+      "content_hash": "5d9fd06992806a7e9270606c5deba6d00114f34af98fb50a4f62b4477ce5fafe",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "required_terms": [
+        "一号管三天",
+        "二三级公立医院"
+      ]
+    },
+    {
+      "document_id": "js_taizhou_002_identity_0004",
+      "source_id": "src_taizhou_002_identity",
+      "content_hash": "14d0095e39bbfecc24d457bb54e7498e69436b66b1b1949119b6ad77866b1d3b",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "required_terms": [
+        "泰州市中医院",
+        "三级甲等",
+        "济川东路86号"
+      ]
+    },
+    {
+      "document_id": "js_taizhou_002_campus_0005",
+      "source_id": "src_taizhou_002_campus",
+      "content_hash": "3c8e5e615b40fec5019b7a196be34533b73478deee6b437606286e8ea6eea681",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "required_terms": [
+        "泰州市中医院",
+        "济川东路86号"
+      ]
+    },
+    {
+      "document_id": "js_taizhou_002_appointment_0006",
+      "source_id": "src_taizhou_002_appointment",
+      "content_hash": "def22b0437eb49baf384eef14ad89d4fb045f9a8b93a97058cbeec19a5c683f0",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "required_terms": [
+        "泰州市中医院",
+        "东院",
+        "预约"
+      ]
+    },
+    {
+      "document_id": "js_taizhou_003_identity_0007",
+      "source_id": "src_taizhou_003_identity",
+      "content_hash": "0f6ca0dfa1088f726d862d20cacfa61dbde70108240888707a62c152b18e176c",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "required_terms": [
+        "泰州市第二人民医院",
+        "姜堰市人民医院",
+        "三级甲等",
+        "综合",
+        "健康路27号"
+      ]
+    },
+    {
+      "document_id": "js_taizhou_003_contact_0008",
+      "source_id": "src_taizhou_003_contact",
+      "content_hash": "83ba30c669fae744ad9c1b51defa7c0bc78c02dffda1cd8055dbbfb2c3eb67e1",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "required_terms": [
+        "泰州市第二人民医院",
+        "健康路27号",
+        "急救",
+        "预约咨询"
+      ]
+    },
+    {
+      "document_id": "js_taizhou_003_appointment_0009",
+      "source_id": "src_taizhou_003_appointment",
+      "content_hash": "69459fac5710e588b3826302ce686e9b9b3fca53195fa869c02547ea0e88c8ce",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "approved",
+      "required_terms": [
+        "泰州市第二人民医院",
+        "网上预约",
+        "电话预约",
+        "现场预约",
+        "诊间预约",
+        "出院预约",
+        "自助预约"
+      ]
+    }
+  ],
+  "gap_reviews": [
+    {
+      "hospital_id": "js_taizhou_001",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "needs_review",
+      "reason": "尚未冻结可核实的官方交通、停车或无障碍页面；本版不发布相关静态事实。"
+    },
+    {
+      "hospital_id": "js_taizhou_002",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "needs_review",
+      "reason": "尚未冻结可核实的官方交通、停车或无障碍页面；本版不发布相关静态事实。"
+    },
+    {
+      "hospital_id": "js_taizhou_003",
+      "reviewer": "CareGuide 项目资料复核组",
+      "reviewed_at": "2026-11-05T14:00:00+08:00",
+      "decision": "needs_review",
+      "reason": "尚未冻结可核实的官方交通、停车或无障碍页面；本版不发布相关静态事实。"
+    }
+  ]
+}

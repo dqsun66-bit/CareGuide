@@ -102,6 +102,14 @@ def _payloads():
     return hospitals, sources, records, []
 
 
+def _write_snapshot_source(root: Path) -> Path:
+    hospital_dir = root / "js_taizhou_003"
+    hospital_dir.mkdir(parents=True)
+    (hospital_dir / "src_tz2_grade.html").write_bytes(GRADE_SNAPSHOT)
+    (hospital_dir / "src_tz2_contact.html").write_bytes(SNAPSHOT)
+    return root
+
+
 def _write_fixture(root: Path, mutate=None, *, corrupt_manifest=False) -> Path:
     root.mkdir()
     snapshot = root / "snapshots/js_taizhou_003/src_tz2_contact.html"
@@ -238,6 +246,75 @@ def test_atomic_writer_refuses_invalid_assets_without_partial_target(tmp_path):
         write_corpus(target, hospitals=hospitals, sources=sources, records=records,
                      verification=verification, built_at=NOW)
     assert not target.exists()
+
+
+def test_official_appointment_platform_cannot_authorize_identity_evidence(tmp_path):
+    hospitals, sources, records, verification = _payloads()
+    sources[0]["url"] = "https://js.guahaoe.com/hospital/desc/example"
+    sources[0]["source_tier"] = "official_appointment"
+    target = tmp_path / "published"
+    with pytest.raises(ValueError, match="not authoritative"):
+        write_corpus(
+            target,
+            hospitals=hospitals,
+            sources=sources,
+            records=records,
+            verification=verification,
+            built_at=NOW,
+            snapshot_root=_write_snapshot_source(tmp_path / "snapshot-source"),
+        )
+    assert not target.exists()
+
+
+def test_unapproved_appointment_platform_is_rejected(tmp_path):
+    hospitals, sources, records, verification = _payloads()
+    sources[0]["url"] = "https://appointments.example.com/hospital/example"
+    sources[0]["source_tier"] = "official_appointment"
+    target = tmp_path / "published"
+    with pytest.raises(ValueError, match="unapproved source host"):
+        write_corpus(
+            target,
+            hospitals=hospitals,
+            sources=sources,
+            records=records,
+            verification=verification,
+            built_at=NOW,
+            snapshot_root=_write_snapshot_source(tmp_path / "snapshot-source"),
+        )
+    assert not target.exists()
+
+
+def test_official_appointment_tier_cannot_authorize_contact_on_hospital_domain(tmp_path):
+    hospitals, sources, records, verification = _payloads()
+    sources[1]["source_tier"] = "official_appointment"
+    target = tmp_path / "published"
+    with pytest.raises(ValueError, match="unapproved source host|appointment platform"):
+        write_corpus(
+            target,
+            hospitals=hospitals,
+            sources=sources,
+            records=records,
+            verification=verification,
+            built_at=NOW,
+            snapshot_root=_write_snapshot_source(tmp_path / "snapshot-source"),
+        )
+    assert not target.exists()
+
+
+def test_identity_overview_can_evidence_its_hospital_campus_address(tmp_path):
+    hospitals, sources, records, verification = _payloads()
+    hospitals[0]["campuses"][0]["address_source_id"] = "src_tz2_grade"
+    target = tmp_path / "published"
+    corpus = write_corpus(
+        target,
+        hospitals=hospitals,
+        sources=sources,
+        records=records,
+        verification=verification,
+        built_at=NOW,
+        snapshot_root=_write_snapshot_source(tmp_path / "snapshot-source"),
+    )
+    assert corpus.validate(today=NOW.date()).errors == ()
 
 
 def test_atomic_writer_rejects_snapshot_source_symlink(tmp_path):

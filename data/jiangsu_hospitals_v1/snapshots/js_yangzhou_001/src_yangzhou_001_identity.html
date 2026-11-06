@@ -1,0 +1,1911 @@
+<!DOCTYPE html>
+<html>
+<head><script src="/formvalidator/config.js"></script>
+ <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+ <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+     <meta property="og:image" content="https://www.yzsbh.com/Content/Areas/Common/images/logo/wxShare.jpg" />
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+<meta name="applicable-device" content="pc,mobile" />
+<title>
+联系我们-江苏省苏北人民医院
+</title><script src="/formvalidator/shadowlib.js"></script>
+<meta name="keywords" content="江苏省苏北人民医院主站,江苏省苏北人民医院,苏北人民医院,江苏人民医院,扬州大学医学院附属医院" />
+<meta name="description" />
+ <link href="/Content/Areas/Common/css/common.css" rel="stylesheet" type="text/css" />
+ <link href="/Content/Areas/Common/css/message.css" rel="stylesheet" type="text/css" />
+ <link href="/Content/Areas/Common/css/article.css" rel="stylesheet" type="text/css" />
+
+ 
+<style type="text/css">
+ table{ float:left;padding:0px; border-bottom:solid 1px #d9d9d9; border-left:solid 1px #d9d9d9; line-height:30px; margin:0 2px;}
+ table td{ padding:0 2px; }
+ .phonemessge{ line-height:25px; margin:0 0 20px 0px;}
+ .phonemessge h2{ height:30px; line-height:30px; font-size:14px;}
+
+@media only screen and (max-width:425px){
+  table{ width: 100% !important; }
+}
+</style>
+
+
+ <script src="/Scripts/jquery.min.js" type="text/javascript"></script>
+ <script src="/Scripts/Common/control.js" type="text/javascript"></script>
+ <script src="/Content/Areas/Common/scripts/change_fontsize.js" type="text/javascript"></script>
+ <script src="/Content/Areas/Common/scripts/common.js" type="text/javascript"></script>
+ 
+ 
+ <link href="/Content/Awesome/jquery-ui.css" rel="stylesheet" type="text/css" />
+ <link href="/Content/Awesome/Awesome.css" rel="stylesheet" type="text/css" />
+ 
+ <script src="/Scripts/Awesome/jquery-ui.min.js" type="text/javascript"></script>
+ <script src="/Scripts/Awesome/jquery.form.js" type="text/javascript"></script>
+ <script src="/Scripts/Awesome/Awesome.js" type="text/javascript"></script>
+ <script src="/Scripts/Common/control.js" type="text/javascript"></script>
+ <script src="/Scripts/jquery.unobtrusive-ajax.js" type="text/javascript"></script>
+ 
+ 
+
+ 
+ <script src="/Content/Areas/Common/scripts/change_fontsize.js" type="text/javascript"></script>
+ <script type="text/javascript">
+  $(document).ready(function(){
+								
+	  $("table tr:odd td").css("background-color","#ecf6f1");							
+								
+	});
+ 
+ 
+ 
+ </script>
+
+
+</head>
+<body> 
+    <img src="https://www.yzsbh.com/Content/Areas/Common/images/logo/wxShare.jpg" width="0" height="0" style="display: none" />
+        <script type="text/javascript">
+            var urlStr = window.location.href;
+            $(document).ready(function () {
+                var ua = window.navigator.userAgent.toLowerCase();
+                if (ua.match(/MicroMessenger/i) == 'micromessenger') {
+                    $.ajax({
+                        url: "/Mobile/Common/WxShare",
+                        type: "POST",
+                        datatype: "JSON",
+                        data: { url: encodeURIComponent(urlStr) },
+                        success: function (data) {
+                            if (data.status == 1) {
+                                $.getScript("https://res.wx.qq.com/open/js/jweixin-1.6.0.js", function () {
+                                    var appId = data.appId;
+                                    var timestamp = data.timestamp;
+                                    var nonceStr = data.noncestr;
+                                    var signature = data.signature;
+                                    var title = '联系我们'; // 分享标题
+                                    var desc = ''; // 分享描述
+                                    var link = urlStr; // 分享链接，该链接域名或路径必须与当前页面对应的公众号JS安全域名一致
+                                    var imgUrl = 'https://www.yzsbh.com/Content/Areas/Common/images/logo/wxShare.jpg'; // 分享图标
+                                    wx.config({
+                                        debug: false,
+                                        appId: appId,
+                                        timestamp: timestamp,
+                                        nonceStr: nonceStr,
+                                        signature: signature,
+                                        jsApiList: [
+                                            'checkJsApi',
+                                            'onMenuShareTimeline',
+                                            'onMenuShareAppMessage',
+                                            'onMenuShareQQ',
+                                            'onMenuShareWeibo',
+                                            'hideMenuItems',
+                                            'showMenuItems',
+                                            'hideAllNonBaseMenuItem',
+                                            'showAllNonBaseMenuItem',
+                                            'translateVoice',
+                                            'startRecord',
+                                            'stopRecord',
+                                            'onRecordEnd',
+                                            'playVoice',
+                                            'pauseVoice',
+                                            'stopVoice',
+                                            'uploadVoice',
+                                            'downloadVoice',
+                                            'chooseImage',
+                                            'previewImage',
+                                            'uploadImage',
+                                            'downloadImage',
+                                            'getNetworkType',
+                                            'openLocation',
+                                            'getLocation',
+                                            'hideOptionMenu',
+                                            'showOptionMenu',
+                                            'closeWindow',
+                                            'scanQRCode',
+                                            'chooseWXPay',
+                                            'openProductSpecificView',
+                                            'addCard',
+                                            'chooseCard',
+                                            'openCard',
+                                            'updateAppMessageShareData',
+                                            'updateTimelineShareData'
+                                        ]
+                                    });
+                                    wx.ready(function () {
+                                        //自定义“分享给朋友”及“分享到QQ”按钮的分享内容
+                                        wx.updateAppMessageShareData({
+                                            title: title, // 分享标题
+                                            desc: desc, // 分享描述
+                                            link: link, // 分享链接，该链接域名或路径必须与当前页面对应的公众号JS安全域名一致
+                                            imgUrl:imgUrl, // 分享图标
+                                            success: function () {
+                                            // 设置成功
+                                            }
+                                        });
+                                         //自定义“分享到朋友圈”及“分享到QQ空间”按钮的分享内容
+                                        wx.updateTimelineShareData({
+                                            title: title, // 分享标题
+                                            desc: desc, // 分享描述
+                                            link: link, // 分享链接，该链接域名或路径必须与当前页面对应的公众号JS安全域名一致
+                                            imgUrl:imgUrl, // 分享图标
+                                            success: function () {
+                                            // 设置成功
+                                            }
+                                        });
+                                    });
+                                });
+                            }
+                        },
+                        error: function () {
+                        }
+                    });
+                }
+            });
+
+        </script>
+        <!-- 54Doctor -->
+        <script type="text/javascript">
+        var _paq = _paq || [];
+        _paq.push(["setCookieDomain", "*.yzsbh.com"]);
+        _paq.push(["setDomains", ["*.yzsbh.com"]]);
+        _paq.push(['trackPageView']);
+        _paq.push(['enableLinkTracking']);
+        (function () {
+            var u = "https://tongji.54doctor.net/";
+            _paq.push(['setTrackerUrl', u + '54doctor.php']);
+            _paq.push(['setSiteId', 42]);
+            var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
+            g.type = 'text/javascript'; g.async = true; g.defer = true; g.src = u + '54doctor.js'; s.parentNode.insertBefore(g, s);
+        })();
+        </script>
+        <noscript><p><img src="https://tongji.54doctor.net/54doctor.php?idsite=42" style="border:0;" alt="" /></p></noscript>
+        <!-- End 54Doctor Code -->
+
+
+
+<div class="bg0">
+  <!-- 弹窗、飘窗、浮窗等 -->
+ <div class="wrap">
+   
+<link href="/Content/Areas/Common/css/nav.css" rel="stylesheet" type="text/css" />
+<script src="/Content/Areas/Common/scripts/MobileMenu.js" type="text/javascript"></script>
+
+<div class="MobileNav">
+ <span class="menu-icon"></span>
+ <h1>苏北人民医院</h1>
+ </div>
+<div class="MobileMenu" style="display:none">
+ <div class="Mobile_login" style="display:none">
+
+<span id="ajax_div__LoggingStatus_805_0_0_2395">
+    <script type="text/javascript">
+        GetAjaxContentByUrl('ajax_div__LoggingStatus_805_0_0_2395', '/PartialView/_Plugin/_LoggingStatus?siteId=805');
+    </script>
+</span></div>
+
+
+ 			<ul class="phone1_ul">
+ <li class="phone1_li">
+ <a id="2" class="phone1_tit " href="/Html/Hospitals/Main/Description.html" target="_self"><span class="navspan">医院概况</span></a> 
+
+ 			<ul class="phone2_ul">
+ <li class="phone2_li">
+ <a id="93" class="phone2_tit " href="/Html/Hospitals/Main/Description.html" target="_self"><span class="navspan">医院简介</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="94" class="phone2_tit " href="/Html/News/Columns/1/Index.html" target="_self"><span class="navspan">领导寄语</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="95" class="phone2_tit " href="/Html/News/Columns/11/Index.html" target="_self"><span class="navspan">领导班子</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="96" class="phone2_tit " href="/Html/News/Columns/62/Index.html" target="_self"><span class="navspan">组织架构</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="97" class="phone2_tit " href="/Html/News/Columns/63/Index.html" target="_self"><span class="navspan">所获荣誉</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="286" class="phone2_tit " href="/Html/News/Columns/870/Index.html" target="_self"><span class="navspan">院景欣赏</span></a> 
+
+ 
+ </li>
+ </ul>
+
+ </li>
+ <li class="phone1_li">
+ <a id="11" class="phone1_tit " href="/Html/News/Main/116.html" target="_self"><span class="navspan">就诊指南</span></a> 
+
+ 			<ul class="phone2_ul">
+ <li class="phone2_li">
+ <a id="56" class="phone2_tit " href="/Html/News/Main/128.html" target="_self"><span class="navspan">就诊导航</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="80" class="phone2_tit " href="/Html/Hospitals/Schedulings/OPIndex0_0.html" target="_self"><span class="navspan">门诊信息</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="57" class="phone2_tit " href="/Html/News/Main/129.html" target="_self"><span class="navspan">健康管理中心</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="69" class="phone2_tit " href="/Html/News/Articles/128.html" target="_self"><span class="navspan">预约挂号</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="275" class="phone2_tit " href="/Html/News/Main/1169.html" target="_self"><span class="navspan">智能导诊</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="66" class="phone2_tit " href="/Interactions/HisLisQuery" target="_self"><span class="navspan">检验/检查报告查询</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="59" class="phone2_tit " href="/Html/News/Columns/140/Index.html" target="_self"><span class="navspan">先进设备</span></a> 
+
+ 
+ </li>
+ </ul>
+
+ </li>
+ <li class="phone1_li">
+ <a id="10" class="phone1_tit " href="/Html/News/Columns/65/Index.html" target="_self"><span class="navspan">医院新闻</span></a> 
+
+ 			<ul class="phone2_ul">
+ <li class="phone2_li">
+ <a id="221" class="phone2_tit " href="/Html/News/Columns/778/Index.html" target="_self"><span class="navspan">媒体报道</span></a> 
+
+ 
+ </li>
+ </ul>
+
+ </li>
+ <li class="phone1_li">
+ <a id="215" class="phone1_tit " href="/Html/News/Main/1100.html" target="_self"><span class="navspan">医疗集团</span></a> 
+
+ 			<ul class="phone2_ul">
+ <li class="phone2_li">
+ <a id="216" class="phone2_tit " href="/Html/News/Columns/773/Index.html" target="_self"><span class="navspan">集团简介</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="217" class="phone2_tit " href="/Html/News/Columns/774/Index.html" target="_self"><span class="navspan">组织架构</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="218" class="phone2_tit " href="/Html/News/Columns/775/Index.html" target="_self"><span class="navspan">集团新闻</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="277" class="phone2_tit " href="/Html/News/Columns/856/Index.html" target="_self"><span class="navspan">动态参考</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="219" class="phone2_tit " href="/Html/News/Columns/776/Index.html" target="_self"><span class="navspan">成员单位动态</span></a> 
+
+ 
+ </li>
+ </ul>
+
+ </li>
+ <li class="phone1_li">
+ <a id="5" class="phone1_tit " href="/Html/News/Main/118.html" target="_self"><span class="navspan">公示•公告</span></a> 
+
+ 			<ul class="phone2_ul">
+ <li class="phone2_li">
+ <a id="51" class="phone2_tit " href="/Html/News/Columns/7/Index.html" target="_self"><span class="navspan">最新公告</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="52" class="phone2_tit " href="/Html/News/Columns/13/Index.html" target="_self"><span class="navspan">办事公开</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="282" class="phone2_tit " href="/Html/News/Columns/861/Index.html" target="_self"><span class="navspan">财务公开</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="53" class="phone2_tit " href="/Html/News/Columns/12/Index.html" target="_self"><span class="navspan">许可证</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="225" class="phone2_tit " href="/Html/News/Columns/782/Index.html" target="_self"><span class="navspan">医院等级</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="54" class="phone2_tit " href="http://zgcx.nhc.gov.cn:9090/doctor" target="_blank"><span class="navspan">医生执业资格公示</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="55" class="phone2_tit " href="http://zgcx.nhc.gov.cn:9090/nurse " target="_blank"><span class="navspan">护士执业资格公示</span></a> 
+
+ 
+ </li>
+ </ul>
+
+ </li>
+ <li class="phone1_li">
+ <a id="16" class="phone1_tit " href="/Html/News/Columns/156/Index.html" target="_self"><span class="navspan">医院文化</span></a> 
+
+ 			<ul class="phone2_ul">
+ <li class="phone2_li">
+ <a id="280" class="phone2_tit " href="/Html/News/Columns/859/Index.html" target="_self"><span class="navspan">苏北名医</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="281" class="phone2_tit " href="/Html/News/Columns/860/Index.html" target="_self"><span class="navspan">凡人微光</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="222" class="phone2_tit " href="/Html/News/Columns/779/Index.html" target="_self"><span class="navspan">智汇·力量</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="121" class="phone2_tit " href="/Html/News/Columns/862/Index.html" target="_self"><span class="navspan">人文苏北</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="122" class="phone2_tit " href="/Html/News/VideoColumns/5/Index.html" target="_self"><span class="navspan">活动</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="123" class="phone2_tit " href="/Html/News/VideoColumns/6/Index.html" target="_self"><span class="navspan">微电影</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="124" class="phone2_tit " href="/Html/News/VideoColumns/7/Index.html" target="_self"><span class="navspan">其它</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="15" class="phone2_tit " href="/Hospitals/Journals/Overview" target="_self"><span class="navspan">电子院报</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="129" class="phone2_tit " href="/Html/News/VideoColumns/3/Index.html" target="0"><span class="navspan">视频点播</span></a> 
+
+ 
+ </li>
+ </ul>
+
+ </li>
+ <li class="phone1_li">
+ <a id="4" class="phone1_tit " href="/Html/News/Main/122.html" target="_self"><span class="navspan">人力资源</span></a> 
+
+ 			<ul class="phone2_ul">
+ <li class="phone2_li">
+ <a id="17" class="phone2_tit " href="/Html/News/Main/124.html" target="_self"><span class="navspan">人员招聘</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="24" class="phone2_tit " href="/Html/News/Main/126.html" target="_self"><span class="navspan">博士后工作站</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="29" class="phone2_tit " href="/Html/News/Articles/17.html" target="_self"><span class="navspan">联系方式</span></a> 
+
+ 
+ </li>
+ </ul>
+
+ </li>
+ <li class="phone1_li">
+ <a id="9" class="phone1_tit " href="/Html/News/Main/1194.html" target="_self"><span class="navspan">医学教育</span></a> 
+
+ 			<ul class="phone2_ul">
+ <li class="phone2_li">
+ <a id="238" class="phone2_tit " href="/Html/News/Main/1194.html" target="_self"><span class="navspan">教育处首页</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="247" class="phone2_tit " href="/Html/News/Columns/815/Index.html" target="_self"><span class="navspan">本科生教育</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="252" class="phone2_tit " href="/Html/News/Columns/816/Index.html" target="_self"><span class="navspan">研究生教育</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="253" class="phone2_tit " href="/Html/News/Columns/817/Index.html" target="_self"><span class="navspan">住院医师规范化培训</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="254" class="phone2_tit " href="/Html/News/Columns/829/Index.html" target="_self"><span class="navspan">进修教育</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="255" class="phone2_tit " href="/Html/News/Columns/713/Index.html" target="_self"><span class="navspan">继续医学教育</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="256" class="phone2_tit " href="/Html/News/Columns/835/Index.html" target="_self"><span class="navspan">远程教育</span></a> 
+
+ 
+ </li>
+ </ul>
+
+ </li>
+ <li class="phone1_li">
+ <a id="154" class="phone1_tit " href="/Html/News/Columns/34/Index.html" target="_self"><span class="navspan">科学研究</span></a> 
+
+ 			<ul class="phone2_ul">
+ <li class="phone2_li">
+ <a id="40" class="phone2_tit " href="/Html/News/Columns/34/Index.html" target="_self"><span class="navspan">科研动态</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="283" class="phone2_tit " href="/Html/News/Columns/869/Index.html" target="_self"><span class="navspan">成果转化公示</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="156" class="phone2_tit " href="https://yzsbhll.wetrial.com/" target="_blank"><span class="navspan">伦理委员会</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="228" class="phone2_tit " href="http://keyan.yzsbh.com:9090/system/user/login" target="_blank"><span class="navspan">科研管理系统</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="236" class="phone2_tit " href="/Html/News/Columns/36/Index.html" target="_self"><span class="navspan">办事指南</span></a> 
+
+ 
+ </li>
+ </ul>
+
+ </li>
+ <li class="phone1_li">
+ <a id="7" class="phone1_tit " href="/Html/Hospitals/Departments/Overview0.html" target="_self"><span class="navspan">学科介绍</span></a> 
+
+ 			<ul class="phone2_ul">
+ <li class="phone2_li">
+ <a id="284" class="phone2_tit " href="/Html/Hospitals/Departments/Overview0_274.html" target="_self"><span class="navspan">国家临床重点专科建设单位</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="285" class="phone2_tit " href="/Html/Hospitals/Departments/Overview0_275.html" target="_self"><span class="navspan">省级区域医疗中心建设单位</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="106" class="phone2_tit " href="/Hospitals/Departments/Overview?rootDepartmentId=7" target="_self"><span class="navspan">省级临床重点专科</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="107" class="phone2_tit " href="/Hospitals/Departments/Overview?rootDepartmentId=22" target="_self"><span class="navspan">市级临床重点专科</span></a> 
+
+ 
+ </li>
+ <li class="phone2_li">
+ <a id="108" class="phone2_tit " href="/Hospitals/Departments/Overview?rootDepartmentId=38" target="_self"><span class="navspan">专病中心</span></a> 
+
+ 
+ </li>
+ </ul>
+
+ </li>
+ <li class="phone1_li">
+ <a id="6" class="phone1_tit " href="/Html/Hospitals/Doctors/Overview0.html" target="_self"><span class="navspan">专家介绍</span></a> 
+
+ 			<ul class="phone2_ul">
+ <li class="phone2_li">
+ <a id="223" class="phone2_tit " href="/Html/News/Columns/780/Index.html" target="_self"><span class="navspan">专家风采</span></a> 
+
+ 
+ </li>
+ </ul>
+
+ </li>
+ <li class="phone1_li last">
+ <a id="8" class="phone1_tit " href="/Html/News/Main/127.html" target="_self"><span class="navspan">健康百科</span></a> 
+
+ 			<ul class="phone2_ul">
+ <li class="phone2_li last">
+ <a id="44" class="phone2_tit " href="/Html/News/Main/127.html" target="_self"><span class="navspan">科普宣传</span></a> 
+
+ 
+ </li>
+ </ul>
+
+ </li>
+ </ul>
+
+	<div class="clearit"></div>
+</div>
+ 
+ <!--header  start-->
+ <div class="header">
+ 
+<link href="/Content/Areas/Common/css/header.css" rel="stylesheet" type="text/css" />
+
+
+
+<script type="text/javascript">
+ $(document).ready(function () {
+ updateSearchStyle(window.location.pathname, window.location.search);
+ $(".searchTxt").focus(function () {
+ $(this).addClass("focus");
+ if ($(this).val() == "请输入关键字…") {
+ $(this).val("").css("color", "#333");
+ }
+ }).blur(function () {
+ if ($(this).val() == "") {
+ $(this).val("请输入关键字…").css("color", "#aaa");
+ }
+ $(this).removeClass("focus");
+ });
+ //当关键字为 “请输入关键字” 时。赋空；
+ $(".buttonSubmit").click(function () {
+ if ($(".searchTxt").val() == "请输入关键字…") {
+ $(".searchTxt").val("");
+ }
+ });
+
+
+
+
+ });
+
+
+ function updateSearchStyle(currUrl, param) {
+ var doctorUrl = "/Html/Hospitals/Doctors/Overview130.html";
+ var questionUrl = "/Interactions/Questions";
+ var articleUrl = "/Html/News/Main/117.html";
+ var videoArticleUrl = "/Html/News/VideoColumns/3/Index.html";
+ $("#doctor_li").attr("href", doctorUrl);
+ $("#question_li").attr("href", questionUrl);
+ if (currUrl.indexOf("/News") == 0) {
+ $("#article_li").attr("href", articleUrl);
+ $("#video_li").attr("href", videoArticleUrl);
+ } else {
+ $("#article_li").attr("href", articleUrl);
+ $("#video_li").attr("href", videoArticleUrl);
+ }
+
+ if (currUrl.indexOf("/Hospitals/Doctors") == 0 || currUrl.indexOf("/Doctors") == 0 || currUrl.indexOf("/Html/Doctors") == 0) {
+ //医生页
+ $("#all_li").removeClass("seach_on");
+ $("#doctor_li").addClass("seach_on");
+ $("#question_li").removeClass("seach_on");
+ $("#article_li").removeClass("seach_on");
+ $("#video_li").removeClass("seach_on");
+ } else if (currUrl.indexOf("/Interactions/Questions") == 0) {
+ //咨询
+ $("#all_li").removeClass("seach_on");
+ $("#doctor_li").removeClass("seach_on");
+ $("#question_li").addClass("seach_on");
+ $("#article_li").removeClass("seach_on");
+ $("#video_li").removeClass("seach_on");
+ } else if (currUrl.indexOf("/Html/News/Main") == 0) {
+ if (currUrl.indexOf("/Html/News/Main/120") == 0) {
+ //视频
+ $("#all_li").removeClass("seach_on");
+ $("#doctor_li").removeClass("seach_on");
+ $("#question_li").removeClass("seach_on");
+ $("#article_li").removeClass("seach_on");
+ $("#video_li").addClass("seach_on");
+ } else {
+ //文章
+ $("#all_li").removeClass("seach_on");
+ $("#doctor_li").removeClass("seach_on");
+ $("#question_li").removeClass("seach_on");
+ $("#article_li").addClass("seach_on");
+ $("#video_li").removeClass("seach_on");
+ }
+ }
+ else if (currUrl.indexOf("/News/Main") == 0) {
+ if (param.indexOf("?siteId=120") == 0) {
+ //视频
+ $("#all_li").removeClass("seach_on");
+ $("#doctor_li").removeClass("seach_on");
+ $("#question_li").removeClass("seach_on");
+ $("#article_li").removeClass("seach_on");
+ $("#video_li").addClass("seach_on");
+ } else {
+ //文章
+ $("#all_li").removeClass("seach_on");
+ $("#doctor_li").removeClass("seach_on");
+ $("#question_li").removeClass("seach_on");
+ $("#article_li").addClass("seach_on");
+ $("#video_li").removeClass("seach_on");
+ }
+ } else if (currUrl.indexOf("/News/Articles") == 0 || currUrl.indexOf("/News/Columns") == 0) {
+ //文章
+ $("#all_li").removeClass("seach_on");
+ $("#doctor_li").removeClass("seach_on");
+ $("#question_li").removeClass("seach_on");
+ $("#article_li").addClass("seach_on");
+ $("#video_li").removeClass("seach_on");
+ } else if (currUrl.indexOf("/News/VideoArticles") == 0 || currUrl.indexOf("/News/VideoColumns") == 0) {
+ //视频
+ $("#all_li").removeClass("seach_on");
+ $("#doctor_li").removeClass("seach_on");
+ $("#question_li").removeClass("seach_on");
+ $("#article_li").removeClass("seach_on");
+ $("#video_li").addClass("seach_on");
+ }
+ }
+</script>  
+
+
+
+<div class="headerTop_out" id="headertop">
+  <div class="headerTop">
+   <div class="topLeft">
+    <ul>
+ <li class="home_Li"><a href="/">医院官网</a></li>
+ <li><a href="http://www.chkd.cnki.net/" target="_blank">院内频道</a></li>
+ <li><a href="/Html/News/Main/105.html" target="_blank">移动应用下载</a></li>
+ <li><a href="/Html/News/Articles/537.html" target="_blank">ENGLISH</a></li>
+    </ul>
+   </div>
+   <div class="topRight">
+	<div class="loginBox">
+		
+
+<span id="ajax_div__LoggingStatus_130_0_0_9142">
+    <script type="text/javascript">
+        GetAjaxContentByUrl('ajax_div__LoggingStatus_130_0_0_9142', '/PartialView/_Plugin/_LoggingStatus?siteId=130');
+    </script>
+</span>
+	</div>
+   </div>
+  </div>
+  </div>
+   <div class="clearit"></div>
+
+  <div class="headerMain">
+    <h1 class="logo">
+  <a href="/"><img class="" alt="苏北人民医院" src="/Sites/Uploaded/UserUpLoad/20260203/20260203101318.jpg"></a>
+    </h1>
+    <div class="logo_r">
+ <div class="logo_r_top">
+   <ul class="all">
+			<li><a id="all_li" class="seach_on" searchtypeid="1">全部</a><span>|</span></li>
+			<li><a id="doctor_li" searchtypeid="2">医生</a><span>|</span></li>
+			<li><a id="question_li" searchtypeid="6">咨询</a><span>|</span></li>
+			<li><a id="article_li" searchtypeid="3">文章</a><span>|</span></li>
+			<li><a id="video_li" searchtypeid="5">视频</a></li>
+			<div class="clearit"></div>   	 
+		</ul>
+ </div>
+ 
+ <div class="logo_r_bottom">
+<form action="/Hospitals/Search" method="post"> <input id="searchTypeId" type="hidden" value="" name="searchTypeId" />		
+<input class="searchTxt" id="search" name="search" type="text" value="" />				<input type="submit" value="搜索" class="searchBtn" />
+				<div class="clearit"></div>
+</form>  
+  </div>
+   <script type="text/javascript">
+  $(document).ready(function () {    
+ var num=$(".all a.seach_on").attr("searchtypeid");
+ $("#searchTypeId").attr("value",num);
+  })
+  </script>
+    </div>
+  </div>
+   <div class="clearit"></div>  </div>
+ <div class="clearit"></div>
+  <!--header  end-->
+   <!--nav start-->
+ <div class="nav">
+ 
+<link href="/Content/Areas/Common/css/nav.css" rel="stylesheet" type="text/css" />
+<script src="/Content/Areas/Common/scripts/common_nav.js" type="text/javascript"></script>
+
+
+<div class="sy_nav">
+
+
+    			<ul class="sy1_ul">
+			<div class="sy1_box">
+                    <li class="sy1_li " style="background:none">
+                        <a href="/" class="sy1_tit">首 页</a>
+                    </li>
+                                    <li class="sy1_li">   
+                        <a id="2" class="sy1_tit " href="/Html/Hospitals/Main/Description.html" target="_self"><span class="navspan">医院概况</span></a>    
+
+                        			<ul class="sy2_ul">
+			<div class="sy2_box">
+                                    <li class="sy2_li">   
+                        <a id="93" class="sy2_tit " href="/Html/Hospitals/Main/Description.html" target="_self"><span class="navspan">医院简介</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="94" class="sy2_tit " href="/Html/News/Columns/1/Index.html" target="_self"><span class="navspan">领导寄语</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="95" class="sy2_tit " href="/Html/News/Columns/11/Index.html" target="_self"><span class="navspan">领导班子</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="96" class="sy2_tit " href="/Html/News/Columns/62/Index.html" target="_self"><span class="navspan">组织架构</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="97" class="sy2_tit " href="/Html/News/Columns/63/Index.html" target="_self"><span class="navspan">所获荣誉</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="286" class="sy2_tit " href="/Html/News/Columns/870/Index.html" target="_self"><span class="navspan">院景欣赏</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy1_li">   
+                        <a id="11" class="sy1_tit " href="/Html/News/Main/116.html" target="_self"><span class="navspan">就诊指南</span></a>    
+
+                        			<ul class="sy2_ul">
+			<div class="sy2_box">
+                                    <li class="sy2_li">   
+                        <a id="56" class="sy2_tit " href="/Html/News/Main/128.html" target="_self"><span class="navspan">就诊导航</span></a>    
+
+                        			<ul class="sy3_ul">
+			<div class="sy3_box">
+                                    <li class="sy3_li">   
+                        <a id="84" class="sy3_tit " href="/Html/News/Articles/69.html" target="_self"><span class="navspan">门诊就诊须知</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="85" class="sy3_tit " href="/Html/News/Articles/70.html" target="_self"><span class="navspan">住院就诊须知</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="86" class="sy3_tit " href="/Html/News/Columns/58/Index.html" target="_self"><span class="navspan">医保须知</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="87" class="sy3_tit " href="/Html/News/Articles/1487.html" target="_self"><span class="navspan">门诊就诊流程</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="140" class="sy3_tit " href="/Html/News/Columns/691/Index.html" target="_self"><span class="navspan">患者分时段预约检查流程</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="88" class="sy3_tit " href="/Html/News/Articles/73.html" target="_self"><span class="navspan">急诊就诊流程</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="89" class="sy3_tit " href="/Html/News/Articles/82.html" target="_self"><span class="navspan">住院病人就诊流程</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="90" class="sy3_tit " href="/Users/BackOffice_Patient/PatientCostInfo_ZY" target="_self"><span class="navspan">住院费用查询</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="134" class="sy3_tit " href="/Users/BackOffice_Patient/PatientCostInfo_MZ" target="_self"><span class="navspan">门诊费用查询</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="58" class="sy3_tit " href="/Hospitals/Main/PositionGuide" target="_self"><span class="navspan">关注我们</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="137" class="sy3_tit " href="/Html/News/Columns/678/Index.html" target="_self"><span class="navspan">医疗事务办理流程</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="80" class="sy2_tit " href="/Html/Hospitals/Schedulings/OPIndex0_0.html" target="_self"><span class="navspan">门诊信息</span></a>    
+
+                        			<ul class="sy3_ul">
+			<div class="sy3_box">
+                                    <li class="sy3_li">   
+                        <a id="81" class="sy3_tit " href="/Html/Hospitals/Schedulings/OPIndex0_0.html" target="_self"><span class="navspan">门诊排班</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="82" class="sy3_tit " href="/Hospitals/Schedulings/ClinicStop" target="_self"><span class="navspan">停换诊信息</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="83" class="sy3_tit " href="/Html/News/Columns/55/Index.html" target="_self"><span class="navspan">门诊动态</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="278" class="sy3_tit " href="/Html/News/Columns/857/Index.html" target="_self"><span class="navspan">	多学科联合门诊</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="57" class="sy2_tit " href="/Html/News/Main/129.html" target="_self"><span class="navspan">健康管理中心</span></a>    
+
+                        			<ul class="sy3_ul">
+			<div class="sy3_box">
+                                    <li class="sy3_li">   
+                        <a id="73" class="sy3_tit " href="/Html/News/Articles/3348.html" target="_self"><span class="navspan">体检科</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="74" class="sy3_tit " href="/Html/News/Columns/49/Index.html" target="_self"><span class="navspan">服务项目</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="75" class="sy3_tit " href="/Html/News/Articles/3349.html" target="_self"><span class="navspan">体检须知</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="76" class="sy3_tit " href="/Html/News/Columns/51/Index.html" target="_self"><span class="navspan">体检套餐</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="79" class="sy3_tit " href="/Html/News/Articles/3389.html" target="_self"><span class="navspan">体检联系电话</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="69" class="sy2_tit " href="/Html/News/Articles/128.html" target="_self"><span class="navspan">预约挂号</span></a>    
+
+                        			<ul class="sy3_ul">
+			<div class="sy3_box">
+                                    <li class="sy3_li">   
+                        <a id="70" class="sy3_tit " href="/Html/News/Articles/128.html" target="_self"><span class="navspan">预约须知</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="72" class="sy3_tit " href="/Users/BackOffice_Patient/SchedulingAppointment" target="_self"><span class="navspan">已预约信息</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="275" class="sy2_tit " href="/Html/News/Main/1169.html" target="_self"><span class="navspan">智能导诊</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="66" class="sy2_tit " href="/Interactions/HisLisQuery" target="_self"><span class="navspan">检验/检查报告查询</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="59" class="sy2_tit " href="/Html/News/Columns/140/Index.html" target="_self"><span class="navspan">先进设备</span></a>    
+
+                        			<ul class="sy3_ul">
+			<div class="sy3_box">
+                                    <li class="sy3_li">   
+                        <a id="109" class="sy3_tit " href="/Html/News/Columns/140/Index.html" target="_self"><span class="navspan">医学影像中心设备</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="110" class="sy3_tit " href="/Html/News/Columns/141/Index.html" target="_self"><span class="navspan">心血管诊疗设备</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="111" class="sy3_tit " href="/Html/News/Columns/142/Index.html" target="_self"><span class="navspan">眼科设备</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="112" class="sy3_tit " href="/Html/News/Columns/143/Index.html" target="_self"><span class="navspan">泌尿类诊疗设备</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="113" class="sy3_tit " href="/Html/News/Columns/144/Index.html" target="_self"><span class="navspan">肿瘤治疗设备</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="114" class="sy3_tit " href="/Html/News/Columns/145/Index.html" target="_self"><span class="navspan">临床检验设备</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="115" class="sy3_tit " href="/Html/News/Columns/146/Index.html" target="_self"><span class="navspan">内镜设备</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="116" class="sy3_tit " href="/Html/News/Columns/147/Index.html" target="_self"><span class="navspan">手术室及其装备</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="118" class="sy3_tit " href="#" target="_self"><span class="navspan">医用高压氧舱</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="119" class="sy3_tit " href="/Html/News/Columns/150/Index.html" target="_self"><span class="navspan">血液净化中心</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="117" class="sy3_tit " href="/Html/News/Columns/148/Index.html" target="_self"><span class="navspan">其他</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy1_li">   
+                        <a id="10" class="sy1_tit " href="/Html/News/Columns/65/Index.html" target="_self"><span class="navspan">医院新闻</span></a>    
+
+                        			<ul class="sy2_ul">
+			<div class="sy2_box">
+                                    <li class="sy2_li">   
+                        <a id="221" class="sy2_tit " href="/Html/News/Columns/778/Index.html" target="_self"><span class="navspan">媒体报道</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy1_li">   
+                        <a id="215" class="sy1_tit " href="/Html/News/Main/1100.html" target="_self"><span class="navspan">医疗集团</span></a>    
+
+                        			<ul class="sy2_ul">
+			<div class="sy2_box">
+                                    <li class="sy2_li">   
+                        <a id="216" class="sy2_tit " href="/Html/News/Columns/773/Index.html" target="_self"><span class="navspan">集团简介</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="217" class="sy2_tit " href="/Html/News/Columns/774/Index.html" target="_self"><span class="navspan">组织架构</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="218" class="sy2_tit " href="/Html/News/Columns/775/Index.html" target="_self"><span class="navspan">集团新闻</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="277" class="sy2_tit " href="/Html/News/Columns/856/Index.html" target="_self"><span class="navspan">动态参考</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="219" class="sy2_tit " href="/Html/News/Columns/776/Index.html" target="_self"><span class="navspan">成员单位动态</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy1_li">   
+                        <a id="5" class="sy1_tit " href="/Html/News/Main/118.html" target="_self"><span class="navspan">公示•公告</span></a>    
+
+                        			<ul class="sy2_ul">
+			<div class="sy2_box">
+                                    <li class="sy2_li">   
+                        <a id="51" class="sy2_tit " href="/Html/News/Columns/7/Index.html" target="_self"><span class="navspan">最新公告</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="52" class="sy2_tit " href="/Html/News/Columns/13/Index.html" target="_self"><span class="navspan">办事公开</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="282" class="sy2_tit " href="/Html/News/Columns/861/Index.html" target="_self"><span class="navspan">财务公开</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="53" class="sy2_tit " href="/Html/News/Columns/12/Index.html" target="_self"><span class="navspan">许可证</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="225" class="sy2_tit " href="/Html/News/Columns/782/Index.html" target="_self"><span class="navspan">医院等级</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="54" class="sy2_tit " href="http://zgcx.nhc.gov.cn:9090/doctor" target="_blank"><span class="navspan">医生执业资格公示</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="55" class="sy2_tit " href="http://zgcx.nhc.gov.cn:9090/nurse " target="_blank"><span class="navspan">护士执业资格公示</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy1_li">   
+                        <a id="16" class="sy1_tit " href="/Html/News/Columns/156/Index.html" target="_self"><span class="navspan">医院文化</span></a>    
+
+                        			<ul class="sy2_ul">
+			<div class="sy2_box">
+                                    <li class="sy2_li">   
+                        <a id="280" class="sy2_tit " href="/Html/News/Columns/859/Index.html" target="_self"><span class="navspan">苏北名医</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="281" class="sy2_tit " href="/Html/News/Columns/860/Index.html" target="_self"><span class="navspan">凡人微光</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="222" class="sy2_tit " href="/Html/News/Columns/779/Index.html" target="_self"><span class="navspan">智汇·力量</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="121" class="sy2_tit " href="/Html/News/Columns/862/Index.html" target="_self"><span class="navspan">人文苏北</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="122" class="sy2_tit " href="/Html/News/VideoColumns/5/Index.html" target="_self"><span class="navspan">活动</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="123" class="sy2_tit " href="/Html/News/VideoColumns/6/Index.html" target="_self"><span class="navspan">微电影</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="124" class="sy2_tit " href="/Html/News/VideoColumns/7/Index.html" target="_self"><span class="navspan">其它</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="15" class="sy2_tit " href="/Hospitals/Journals/Overview" target="_self"><span class="navspan">电子院报</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="129" class="sy2_tit " href="/Html/News/VideoColumns/3/Index.html" target="0"><span class="navspan">视频点播</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy1_li">   
+                        <a id="4" class="sy1_tit " href="/Html/News/Main/122.html" target="_self"><span class="navspan">人力资源</span></a>    
+
+                        			<ul class="sy2_ul">
+			<div class="sy2_box">
+                                    <li class="sy2_li">   
+                        <a id="17" class="sy2_tit " href="/Html/News/Main/124.html" target="_self"><span class="navspan">人员招聘</span></a>    
+
+                        			<ul class="sy3_ul">
+			<div class="sy3_box">
+                                    <li class="sy3_li">   
+                        <a id="18" class="sy3_tit " href="/Html/News/Columns/16/Index.html" target="_self"><span class="navspan">招聘计划与动态</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="19" class="sy3_tit " href="/Html/News/Columns/17/Index.html" target="_self"><span class="navspan">招聘政策与流程</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="20" class="sy3_tit " href="/Html/News/Articles/1967.html" target="_self"><span class="navspan">招聘咨询</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="21" class="sy3_tit " href="/Hospitals/Jobs/List" target="_self"><span class="navspan">我来应聘</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="22" class="sy3_tit " href="/Html/News/Columns/19/Index.html" target="_self"><span class="navspan">应聘表格下载</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="24" class="sy2_tit " href="/Html/News/Main/126.html" target="_self"><span class="navspan">博士后工作站</span></a>    
+
+                        			<ul class="sy3_ul">
+			<div class="sy3_box">
+                                    <li class="sy3_li">   
+                        <a id="25" class="sy3_tit " href="/Html/News/Columns/20/Index.html" target="_self"><span class="navspan">工作站简介</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="26" class="sy3_tit " href="/Html/News/Columns/21/Index.html" target="_self"><span class="navspan">博士后招聘与动态</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="27" class="sy3_tit " href="/Html/News/Columns/22/Index.html" target="_self"><span class="navspan">管理办法与流程</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="28" class="sy3_tit " href="/Html/News/Columns/23/Index.html" target="_self"><span class="navspan">相关资料下载</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="29" class="sy2_tit " href="/Html/News/Articles/17.html" target="_self"><span class="navspan">联系方式</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy1_li">   
+                        <a id="9" class="sy1_tit " href="/Html/News/Main/1194.html" target="_self"><span class="navspan">医学教育</span></a>    
+
+                        			<ul class="sy2_ul">
+			<div class="sy2_box">
+                                    <li class="sy2_li">   
+                        <a id="238" class="sy2_tit " href="/Html/News/Main/1194.html" target="_self"><span class="navspan">教育处首页</span></a>    
+
+                        			<ul class="sy3_ul">
+			<div class="sy3_box">
+                                    <li class="sy3_li">   
+                        <a id="239" class="sy3_tit " href="/Html/News/Columns/808/Index.html" target="_self"><span class="navspan">新闻动态</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="240" class="sy3_tit " href="/Html/News/Columns/809/Index.html" target="_self"><span class="navspan">机构介绍</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="241" class="sy3_tit " href="/Html/News/Columns/810/Index.html" target="_self"><span class="navspan">机构设置</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="242" class="sy3_tit " href="/Html/News/Columns/37/Index.html" target="_self"><span class="navspan">下载专区</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="243" class="sy3_tit " href="/Html/News/Columns/811/Index.html" target="_self"><span class="navspan">联系我们</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="244" class="sy3_tit " href="/Html/News/Columns/812/Index.html" target="_self"><span class="navspan">报名招录</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="245" class="sy3_tit " href="/Html/News/Columns/813/Index.html" target="_self"><span class="navspan">友情链接</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="246" class="sy3_tit " href="/Html/News/Columns/814/Index.html" target="_self"><span class="navspan">在线学习</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="247" class="sy2_tit " href="/Html/News/Columns/815/Index.html" target="_self"><span class="navspan">本科生教育</span></a>    
+
+                        			<ul class="sy3_ul">
+			<div class="sy3_box">
+                                    <li class="sy3_li">   
+                        <a id="248" class="sy3_tit " href="/Html/News/Columns/818/Index.html" target="_self"><span class="navspan">规章制度</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="249" class="sy3_tit " href="/Html/News/Columns/819/Index.html" target="_self"><span class="navspan">教务考务</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="250" class="sy3_tit " href="/Html/News/Columns/820/Index.html" target="_self"><span class="navspan">学生工作</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="251" class="sy3_tit " href="/Html/News/Columns/821/Index.html" target="_self"><span class="navspan">相关链接</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="252" class="sy2_tit " href="/Html/News/Columns/816/Index.html" target="_self"><span class="navspan">研究生教育</span></a>    
+
+                        			<ul class="sy3_ul">
+			<div class="sy3_box">
+                                    <li class="sy3_li">   
+                        <a id="258" class="sy3_tit " href="/Html/News/Columns/823/Index.html" target="_self"><span class="navspan">规章制度</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="260" class="sy3_tit " href="/Html/News/Columns/692/Index.html" target="_self"><span class="navspan">导师招生</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="253" class="sy2_tit " href="/Html/News/Columns/817/Index.html" target="_self"><span class="navspan">住院医师规范化培训</span></a>    
+
+                        			<ul class="sy3_ul">
+			<div class="sy3_box">
+                                    <li class="sy3_li">   
+                        <a id="261" class="sy3_tit " href="/Html/News/Columns/825/Index.html" target="_self"><span class="navspan">基地简介</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="262" class="sy3_tit " href="/Html/News/Columns/826/Index.html" target="_self"><span class="navspan">新闻公告</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="263" class="sy3_tit " href="/Html/News/Columns/31/Index.html" target="_self"><span class="navspan">规章制度</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="264" class="sy3_tit " href="/Html/News/Columns/827/Index.html" target="_self"><span class="navspan">报名招录</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="265" class="sy3_tit " href="/Html/News/Columns/828/Index.html" target="_self"><span class="navspan">相关链接</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="254" class="sy2_tit " href="/Html/News/Columns/829/Index.html" target="_self"><span class="navspan">进修教育</span></a>    
+
+                        			<ul class="sy3_ul">
+			<div class="sy3_box">
+                                    <li class="sy3_li">   
+                        <a id="266" class="sy3_tit " href="/Html/News/Columns/830/Index.html" target="_self"><span class="navspan">新闻公告</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="267" class="sy3_tit " href="/Html/News/Columns/35/Index.html" target="_self"><span class="navspan">规章制度</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="268" class="sy3_tit " href="/Html/News/Columns/831/Index.html" target="_self"><span class="navspan">报名招录</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="269" class="sy3_tit " href="/Html/News/Columns/832/Index.html" target="_self"><span class="navspan">相关链接</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="255" class="sy2_tit " href="/Html/News/Columns/713/Index.html" target="_self"><span class="navspan">继续医学教育</span></a>    
+
+                        			<ul class="sy3_ul">
+			<div class="sy3_box">
+                                    <li class="sy3_li">   
+                        <a id="270" class="sy3_tit " href="/Html/News/Columns/29/Index.html" target="_self"><span class="navspan">新闻公告</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="271" class="sy3_tit " href="/Html/News/Columns/30/Index.html" target="_self"><span class="navspan">规章制度</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="272" class="sy3_tit " href="/Html/News/Columns/833/Index.html" target="_self"><span class="navspan">办事指南</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li">   
+                        <a id="273" class="sy3_tit " href="/Html/News/Columns/834/Index.html" target="_self"><span class="navspan">学术会议</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="256" class="sy2_tit " href="/Html/News/Columns/835/Index.html" target="_self"><span class="navspan">远程教育</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy1_li">   
+                        <a id="154" class="sy1_tit " href="/Html/News/Columns/34/Index.html" target="_self"><span class="navspan">科学研究</span></a>    
+
+                        			<ul class="sy2_ul">
+			<div class="sy2_box">
+                                    <li class="sy2_li">   
+                        <a id="40" class="sy2_tit " href="/Html/News/Columns/34/Index.html" target="_self"><span class="navspan">科研动态</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="283" class="sy2_tit " href="/Html/News/Columns/869/Index.html" target="_self"><span class="navspan">成果转化公示</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="156" class="sy2_tit " href="https://yzsbhll.wetrial.com/" target="_blank"><span class="navspan">伦理委员会</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="228" class="sy2_tit " href="http://keyan.yzsbh.com:9090/system/user/login" target="_blank"><span class="navspan">科研管理系统</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="236" class="sy2_tit " href="/Html/News/Columns/36/Index.html" target="_self"><span class="navspan">办事指南</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy1_li">   
+                        <a id="7" class="sy1_tit " href="/Html/Hospitals/Departments/Overview0.html" target="_self"><span class="navspan">学科介绍</span></a>    
+
+                        			<ul class="sy2_ul">
+			<div class="sy2_box">
+                                    <li class="sy2_li">   
+                        <a id="284" class="sy2_tit " href="/Html/Hospitals/Departments/Overview0_274.html" target="_self"><span class="navspan">国家临床重点专科建设单位</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="285" class="sy2_tit " href="/Html/Hospitals/Departments/Overview0_275.html" target="_self"><span class="navspan">省级区域医疗中心建设单位</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="106" class="sy2_tit " href="/Hospitals/Departments/Overview?rootDepartmentId=7" target="_self"><span class="navspan">省级临床重点专科</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="107" class="sy2_tit " href="/Hospitals/Departments/Overview?rootDepartmentId=22" target="_self"><span class="navspan">市级临床重点专科</span></a>    
+
+                           
+                    </li>
+                    <li class="sy2_li">   
+                        <a id="108" class="sy2_tit " href="/Hospitals/Departments/Overview?rootDepartmentId=38" target="_self"><span class="navspan">专病中心</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy1_li">   
+                        <a id="6" class="sy1_tit " href="/Html/Hospitals/Doctors/Overview0.html" target="_self"><span class="navspan">专家介绍</span></a>    
+
+                        			<ul class="sy2_ul">
+			<div class="sy2_box">
+                                    <li class="sy2_li">   
+                        <a id="223" class="sy2_tit " href="/Html/News/Columns/780/Index.html" target="_self"><span class="navspan">专家风采</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+                    <li class="sy1_li last">   
+                        <a id="8" class="sy1_tit " href="/Html/News/Main/127.html" target="_self"><span class="navspan">健康百科</span></a>    
+
+                        			<ul class="sy2_ul">
+			<div class="sy2_box">
+                                    <li class="sy2_li last">   
+                        <a id="44" class="sy2_tit " href="/Html/News/Main/127.html" target="_self"><span class="navspan">科普宣传</span></a>    
+
+                        			<ul class="sy3_ul">
+			<div class="sy3_box">
+                                    <li class="sy3_li last">   
+                        <a id="45" class="sy3_tit " href="/Html/News/Columns/38/Index.html" target="_self"><span class="navspan">疾病预防</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li last">   
+                        <a id="46" class="sy3_tit " href="/Html/News/Columns/39/Index.html" target="_self"><span class="navspan">科学护理</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li last">   
+                        <a id="47" class="sy3_tit " href="/Html/News/Columns/40/Index.html" target="_self"><span class="navspan">健康营养</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li last">   
+                        <a id="48" class="sy3_tit " href="/Html/News/Columns/41/Index.html" target="_self"><span class="navspan">合理用药</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li last">   
+                        <a id="49" class="sy3_tit " href="/Html/News/Columns/42/Index.html" target="_self"><span class="navspan">阳光心态</span></a>    
+
+                           
+                    </li>
+                    <li class="sy3_li last">   
+                        <a id="274" class="sy3_tit " href="/Html/News/Main/1213.html" target="_self"><span class="navspan">医学知识</span></a>    
+
+                           
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+				</div>							
+            </ul>
+   
+                    </li>
+				</div>							
+            </ul>
+
+	 <script type="text/javascript">
+		jQuery(function(){
+			jQuery('ul.sy1_ul').superfish();
+		});
+
+	</script>
+	<div class="clearit"></div>
+</div>
+
+ </div>
+ <div class="clearit"></div>
+ <!--nav  end-->
+ <link href="/Content/Areas/Common/css/linkMap.css" rel="stylesheet" type="text/css" />
+
+<div class="linkmap">
+	您所在的位置：
+    <span><a href="/">首页</a>
+            &gt;&gt;<a id="11" class="go " href="/Html/News/Main/116.html" target="_self"><span class="navspan">就诊指南</span></a>            &gt;&gt;<a id="56" class="go " href="/Html/News/Main/128.html" target="_self"><span class="navspan">就诊导航</span></a>            &gt;&gt;<a id="58" class="go " href="/Hospitals/Main/PositionGuide" target="_self"><span class="navspan">关注我们</span></a>            &gt;&gt;<a id="64" class="go " href="/Html/Hospitals/Main/ContactUs.html" target="_self"><span class="navspan">联系电话</span></a>        
+    </span>
+</div>
+
+ <!---------------------content--------------------------------->
+ <div class="main">
+ 
+
+
+
+<div id="column_sidebar" class="article_left">
+	<div class="side_menu">
+		<script src="/Content/Areas/Common/scripts/side_menu.js" type="text/javascript"></script>
+
+    <script type="text/javascript">
+        jQuery(function () {
+                
+                if ($('#left_1')) {
+                    $("#left_p_1").addClass("current");
+                    if($("#left_ul_1").length>0)
+					{
+						$("#left_p_1").addClass("show");
+						$("#left_ul_1").show();
+					}
+                }
+                
+                
+                if ($('#left_11')) {
+                    $("#left_p_11").addClass("current");
+                    if($("#left_ul_11").length>0)
+					{
+						$("#left_p_11").addClass("show");
+						$("#left_ul_11").show();
+					}
+                }
+                
+                
+                if ($('#left_56')) {
+                    $("#left_p_56").addClass("current");
+                    if($("#left_ul_56").length>0)
+					{
+						$("#left_p_56").addClass("show");
+						$("#left_ul_56").show();
+					}
+                }
+                
+                
+                if ($('#left_58')) {
+                    $("#left_p_58").addClass("current");
+                    if($("#left_ul_58").length>0)
+					{
+						$("#left_p_58").addClass("show");
+						$("#left_ul_58").show();
+					}
+                }
+                
+                
+                if ($('#left_64')) {
+                    $("#left_p_64").addClass("current");
+                    if($("#left_ul_64").length>0)
+					{
+						$("#left_p_64").addClass("show");
+						$("#left_ul_64").show();
+					}
+                }
+                
+        });
+     </script>
+
+<h1 class="leftNavTitle" title="关注我们">关注我们</h1>
+<div id="leftNav" class="side_menu_inside">
+        <ul id="left_ul_58" class="lv1_ul">
+            <li class="lv1_li">
+                <p id="left_p_60" class="lv1_p">
+                    <a id="60" class="lv1_tit " href="/Html/Hospitals/Main/PositionGuide.html" target="_self"><span class="navspan">医院布局</span></a>
+                </p>
+
+                
+            </li>
+            <li class="lv1_li">
+                <p id="left_p_120" class="lv1_p">
+                    <a id="120" class="lv1_tit " href="/Html/News/Articles/615.html" target="_self"><span class="navspan">医院地理位置</span></a>
+                </p>
+
+                
+            </li>
+            <li class="lv1_li">
+                <p id="left_p_61" class="lv1_p">
+                    <a id="61" class="lv1_tit " href="/Hospitals/Main/Location" target="_self"><span class="navspan">乘车路线</span></a>
+                </p>
+
+                
+            </li>
+            <li class="lv1_li">
+                <p id="left_p_62" class="lv1_p">
+                    <a id="62" class="lv1_tit " href="/Interactions/HospitalMails" target="_self"><span class="navspan">医院信箱</span></a>
+                </p>
+
+                
+            </li>
+            <li class="lv1_li">
+                <p id="left_p_63" class="lv1_p">
+                    <a id="63" class="lv1_tit " href="/Html/Hospitals/Votes/List/1.html" target="_self"><span class="navspan">患者满意度调查</span></a>
+                </p>
+
+                
+            </li>
+            <li class="lv1_li">
+                <p id="left_p_230" class="lv1_p">
+                    <a id="230" class="lv1_tit " href="/Hospitals/Main/Access" target="_self"><span class="navspan">投诉</span></a>
+                </p>
+
+                
+            </li>
+            <li class="lv1_li">
+                <p id="left_p_64" class="lv1_p">
+                    <a id="64" class="lv1_tit " href="/Html/Hospitals/Main/ContactUs.html" target="_self"><span class="navspan">联系电话</span></a>
+                </p>
+
+                
+            </li>
+            <li class="lv1_li">
+                <p id="left_p_65" class="lv1_p">
+                    <a id="65" class="lv1_tit " href="/Html/News/Main/105.html" target="_self"><span class="navspan">移动应用</span></a>
+                </p>
+
+                
+            </li>
+    </ul>
+
+    <div class="clearit">
+    </div>
+</div>
+
+	</div>
+</div>
+<div class="article_right">
+	<h3  class="title_head">江苏省苏北人民医院</h3> 
+	<div class="article_cont" id="zoom">
+		<p>江苏省苏北人民医院&nbsp; 扬州大学临床医学院</p><p>地址：扬州市南通西路98号</p><p>网址：<a href="http://www.yzsbh.com" _src="http://www.yzsbh.com">www.yzsbh.com</a></p><p>就诊、预约挂号、健康咨询电话：87373114</p><p><img src="/Sites/Uploaded/Image/2020/10/266373931744876477246740651.jpg" title="QQ图片20201026135311.jpg" alt="QQ图片20201026135311.jpg"/></p>
+	</div>
+    
+
+</div>  
+ </div>
+  <div class="clearit">
+ </div>
+ <!---------------------content--end------------------------------->
+    
+  <!--foot  start-->
+  <div class="footer">
+ <link href="/Content/Areas/Common/css/footer.css" rel="stylesheet" type="text/css" />
+  
+<div class="footer_bottom">
+  <a href="/">网站首页</a>|
+  <a href="/Html/Hospitals/Main/PositionGuide.html">关于我们</a>|
+  <a href="/Hospitals/Main/Location">乘车路线</a>|
+  <a href="javascript:void(0)">医院微博</a>|<a href="/Hospitals/Main/WebMap">网站地图</a>|
+  <a href="/Interactions/HospitalMails">院内信箱</a>|
+
+  <a href="/Html/News/Columns/43/Index.html">在线查询</a>|<a href="/Hospitals/FriendlyLinks">友情链接</a>|
+  <a href="/Html/News/Articles/67.html" target="_blank">法律声明</a>|
+  <a href="/Html/Hospitals/Main/ContactUs.html">联系方式</a>|
+  <a href="/Html/News/Articles/66.html" target="_blank">隐私声明</a>|<a href="/Html/News/Articles/65.html" target="_blank">帮助信息</a>|
+  <a href="/Html/News/Articles/61.html" target="_blank">版权申明</a>
+</div>
+<p>版权所有：江苏省苏北人民医院(本网站所有内容未经许可，不得以任何形式进行转载)　地址：江苏省扬州市南通西路98号 邮编：225001 </p>
+<p>咨询预约电话：87373114 　工作联系电话：87373012</p>
+<p class="phone_show" style="display:none">版权所有：江苏省苏北人民医院(本网站所有内容未经许可，不得以任何形式进行转载) 地址：江苏省扬州市南通西路98号 邮编：225001 联系电话：87373012 </p>
+<p class="suport1"> 
+ 
+
+<span id="ajax_div__VisitCount_1_0_0_4572">
+    <script type="text/javascript">
+        GetAjaxContentByUrl('ajax_div__VisitCount_1_0_0_4572', '/PartialView/_Plugin/_VisitCount?siteId=1');
+    </script>
+</span>
+ <span style="display:none;">
+ 
+
+<span id="ajax_div__VisitCount_130_0_0_5188">
+    <script type="text/javascript">
+        GetAjaxContentByUrl('ajax_div__VisitCount_130_0_0_5188', '/PartialView/_Plugin/_VisitCount?siteId=130');
+    </script>
+</span>
+ </span>
+ <a href="https://beian.miit.gov.cn"  target="_blank" class="phone_hid"> 苏ICP备13058351号-1 </a>&nbsp;&nbsp;&nbsp;<a href="https://www.beian.gov.cn/portal/registerSystemInfo?recordcode=32100202010036"  target="_blank"  class="phone_hid"><img src="/Sites/Uploaded/UserUpLoad/20220719/20220719114938.png" style="vertical-align: middle;" class=""> 苏公网安备 32100202010036号</a>&nbsp;&nbsp;&nbsp; 技术支持：<a href="http://www.54doctor.net" target="_blank"><img style="vertical-align:middle" src="/Content/Areas/Common/images/54doctor.jpg" alt="54doctor我是医生网" title="54doctor我是医生网"/></a><span style="padding-left:15px"  class="phone_hid">
+<a href="http://tongji.baidu.com/hm-web/welcome/ico?s=37fe44c79bdf6277728506266a972540" target="_blank"><img border="0" src="https://eiv.baidu.com/hmt/icon/21.gif" width="20" height="20" class=""></a>
+</span>
+
+</p>
+<p class="gongxing">工信部链接：<a href="https://beian.miit.gov.cn" target="_bank">https://beian.miit.gov.cn</a></p>
+<p class="copyright1">Copyright@2020　Subei People's Hospital of Jiangsu province.</p>
+<span></span>
+<span id="_ideConac"><a href="http://bszs.conac.cn/sitename?method=show&id=0AED27414AD17B4AE053022819AC9AEE" target="_blank"><img id="imgConac" vspace="0" hspace="0" border="0" src="/Sites/Uploaded/UserUpLoad/20170707/20170707153559.png" data-bd-imgshare-binded="1"></a></span>
+
+
+ <script type="text/javascript">
+$(function(){
+ var Top=0; 
+ var ToHeight=0;
+ var IsUp=0; 
+ 
+ //版面数
+ var NowScreenIndex=0;
+ //获得当前屏幕的高度
+ var ScreenHeight=$(window).height();
+ //获取当前屏幕的宽度
+ var ScreenWidth=$(window).width();
+ if($(document).scrollTop() == 0){
+ $(".upbtn").hide();
+ }
+ $(window).bind("scroll",function(){
+ Top=$(document).scrollTop();
+ });
+
+ //点击向下按钮
+ $("#Next").click(function(){
+   
+ IsUp=1;
+ ToHeight=Top+ScreenHeight;
+ if(ToHeight>(window.document.body.clientHeight-560))
+ {
+ ToHeight=window.document.body.clientHeight-560;
+ }
+ clearInterval(timer);
+ UpAndDown();  
+ 
+ 
+ if( Top > 0)
+ {
+   $(".upbtn").show();   
+ }
+ else
+ {
+    $(".upbtn").hide();
+ }
+ });
+
+ //滚动条上下移动函数
+ function UpAndDown()
+ {
+    GoTop();
+ } 
+ //缓慢移动滚动条函数
+ var currentPosition,timer;  
+ function GoTop(){ 
+  
+ timer=setInterval(runToTop,1);  
+ }  
+ function runToTop(){   
+    
+ 
+  currentPosition=document.documentElement.scrollTop || document.body.scrollTop;   
+  currentPosition+=40;  
+  if(currentPosition<=$(document).height()-$(window).height())  
+  {  
+ window.scrollTo(0,currentPosition);
+ if(currentPosition==ToHeight)
+ {
+ clearInterval(timer);
+ }  
+  }  
+  else  
+  {   
+ window.scrollTo(0,ToHeight);  
+ clearInterval(timer);  
+  } 
+ 
+ }  
+
+})
+$(function(){
+ $('.fix_close').click(function(){
+ $('.footer_fix').hide();
+ })
+})
+ </script>
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "https://hm.baidu.com/hm.js?37fe44c79bdf6277728506266a972540";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+
+
+
+ 
+ </div>  
+ <!--foot  end-->
+ </div>
+</div>
+</body>
+</html> 
