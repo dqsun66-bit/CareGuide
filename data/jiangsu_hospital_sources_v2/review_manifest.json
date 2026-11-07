@@ -1,0 +1,177 @@
+{
+  "version": "jiangsu-hospital-review-v1",
+  "source_reviews": [
+    {
+      "source_id": "src_nanjing_001_service",
+      "retrieved_sha256": "b840c790ad57d503708b0eb81b2389e43c6d972222761b3d0f8afecee80f868b",
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "approved",
+      "note": "政府官方页面与冻结快照哈希一致。"
+    },
+    {
+      "source_id": "src_nanjing_002_service",
+      "retrieved_sha256": "3299b99e8b9a9c4814ec013f7bdf2765012a9013367ed5a86ab48fe49507e024",
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "approved",
+      "note": "医院官网与冻结快照哈希一致。"
+    },
+    {
+      "source_id": "src_nanjing_003_service",
+      "retrieved_sha256": "c7b79394c27e97c45eccdae12a78792e42fc71143e8a82b46eb5d6cf9d520707",
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "approved",
+      "note": "医院官网就医指南与冻结快照哈希一致。"
+    },
+    {
+      "source_id": "src_nanjing_004_service",
+      "retrieved_sha256": "b840c790ad57d503708b0eb81b2389e43c6d972222761b3d0f8afecee80f868b",
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "approved",
+      "note": "政府官方页面与冻结快照哈希一致。"
+    }
+  ],
+  "record_reviews": [
+    {
+      "document_id": "js_nanjing_001_identity_v2",
+      "source_ids": ["src_nanjing_001_identity", "src_nanjing_001_grade"],
+      "content_hash": "59acab91a6c75ae785a4c86cdcda7d968bf7dcb17aead3d230cd402cb1c007ff",
+      "required_terms": ["江苏省人民医院", "三级甲等"],
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_nanjing_001_campus_v2",
+      "source_ids": ["src_nanjing_001_identity"],
+      "content_hash": "820530c93881f077ff9ee532987b3323e1f123c61dc0e147ae4029f80753b6e8",
+      "required_terms": ["江苏省人民医院", "广州路300号"],
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_nanjing_001_service_v2",
+      "source_ids": ["src_nanjing_001_service"],
+      "content_hash": "860addb1cb03dfad9245d90e95a8ca626524b128d6e98dd2e030beb3cc6e2bf2",
+      "required_terms": ["省人民医院", "96100", "24小时电话挂号", "老人门诊挂号救助台"],
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_nanjing_002_identity_v2",
+      "source_ids": ["src_nanjing_002_identity", "src_nanjing_002_grade"],
+      "content_hash": "0dd7c0267ad6a2a99cb0eab95f44252a19663b5c808efbc4f24b2a1927663c44",
+      "required_terms": ["南京鼓楼医院", "三级甲等"],
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_nanjing_002_campus_v2",
+      "source_ids": ["src_nanjing_002_identity"],
+      "content_hash": "1007ba98414fb88cfe52ecccba4186f3b2f5001dc2329761421320eda28549f0",
+      "required_terms": ["南京鼓楼医院", "中山路321号"],
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_nanjing_002_service_v2",
+      "source_ids": ["src_nanjing_002_service"],
+      "content_hash": "d902ed1df61292561136b76a180ae393eba53d04f7c96b2daccdbb97806205f3",
+      "required_terms": ["南京鼓楼医院", "预约挂号", "025-83106666"],
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_nanjing_003_identity_v2",
+      "source_ids": ["src_nanjing_003_identity"],
+      "content_hash": "2655bc9817d461f349469e685410cf8c47ca56f80beba61b87761a3001fde4b8",
+      "required_terms": ["南京市儿童医院", "三级甲等"],
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_nanjing_003_campus_v2",
+      "source_ids": ["src_nanjing_003_identity"],
+      "content_hash": "a499a30ffc3652e024ff6485bf70e9f1668b6b5c5f7044a19844c465b5cc7136",
+      "required_terms": ["广州路72号"],
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_nanjing_003_service_v2",
+      "source_ids": ["src_nanjing_003_service"],
+      "content_hash": "1223a069458161a0a540337e05ccfb2212161743c2a84c93ee072ec2ab6cf02c",
+      "required_terms": ["预约挂号采用实名制", "025-12320", "自助机预约挂号"],
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_nanjing_004_identity_v2",
+      "source_ids": ["src_nanjing_004_identity", "src_nanjing_004_grade"],
+      "content_hash": "a8183c2a4c0b1e91a788adf339bea9cf8abb4a463b1d9474fd13fc5c843290b6",
+      "required_terms": ["江苏省中医院", "三甲"],
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_nanjing_004_campus_v2",
+      "source_ids": ["src_nanjing_004_identity"],
+      "content_hash": "6a345e784b936538b4e99fe0ad3294a1f24bccb1d09d247bd248d84a73e53fbd",
+      "required_terms": ["江苏省中医院", "汉中路155号"],
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_nanjing_004_service_v2",
+      "source_ids": ["src_nanjing_004_service"],
+      "content_hash": "9e996d004f6f48dc74aa2ab3a5c094826c38f2764b923e0a53a83fecb4406a8e",
+      "required_terms": ["省中医院", "025-86610513", "诊间预约", "挂号窗口预约"],
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "approved"
+    }
+  ],
+  "gap_reviews": [
+    {
+      "hospital_id": "js_nanjing_001",
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "needs_review",
+      "reason": "已核验老年患者电话挂号服务；尚缺停车、公共交通和无障碍设施的最新官方冻结证据。"
+    },
+    {
+      "hospital_id": "js_nanjing_002",
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "needs_review",
+      "reason": "已核验医院总机及预约入口；尚缺详细预约规则、停车、公共交通和无障碍设施的最新官方冻结证据。"
+    },
+    {
+      "hospital_id": "js_nanjing_003",
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "needs_review",
+      "reason": "已核验实名预约方式；尚缺停车、公共交通和无障碍设施的最新官方冻结证据。"
+    },
+    {
+      "hospital_id": "js_nanjing_004",
+      "reviewer": "CareGuide 南京批次独立复核组",
+      "reviewed_at": "2026-11-07T17:00:00+08:00",
+      "decision": "needs_review",
+      "reason": "已核验多种预约方式；尚缺停车、公共交通和无障碍设施的最新官方冻结证据。"
+    }
+  ]
+}

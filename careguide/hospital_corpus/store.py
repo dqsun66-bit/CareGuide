@@ -98,6 +98,10 @@ AUTHORITATIVE_TIERS = {
     SourceTier.GOVERNMENT,
 }
 
+RECORD_EVIDENCE_CATEGORIES = {
+    Category.CAMPUS: {Category.IDENTITY, Category.CAMPUS, Category.CONTACT},
+}
+
 
 def _evidence_errors(
     *,
@@ -266,7 +270,10 @@ class HospitalCorpus:
                 errors.append(f"record {record.document_id}: source URL mismatch")
             if source.source_tier != record.source_tier:
                 errors.append(f"record {record.document_id}: source tier mismatch")
-            if source.category != record.category:
+            allowed_record_categories = RECORD_EVIDENCE_CATEGORIES.get(
+                record.category, {record.category}
+            )
+            if source.category not in allowed_record_categories:
                 errors.append(f"record {record.document_id}: category mismatch")
             if source.review_status != ReviewStatus.VERIFIED_OFFICIAL:
                 errors.append(f"record {record.document_id}: source is not verified")

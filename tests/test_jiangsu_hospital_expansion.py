@@ -20,6 +20,7 @@ CN_TZ = timezone(timedelta(hours=8))
 NOW = datetime(2026, 11, 7, 12, 0, tzinfo=CN_TZ)
 ROOT = Path(__file__).resolve().parents[1]
 V1 = ROOT / "data/jiangsu_hospitals_v1"
+V2_SOURCES = ROOT / "data/jiangsu_hospital_sources_v2"
 
 
 def _dump(path: Path, value) -> None:
@@ -270,3 +271,51 @@ def test_integrity_mismatch_stops_before_output(tmp_path, expansion_inputs):
     with pytest.raises(ValueError, match="v1 integrity mismatch"):
         command.main(_arguments(expansion_inputs, output, apply=True))
     assert not output.exists()
+
+
+def test_nanjing_batch_has_three_reviewable_candidates_per_hospital():
+    sources = json.loads((V2_SOURCES / "sources.json").read_text(encoding="utf-8"))
+    records = json.loads(
+        (V2_SOURCES / "record_candidates.json").read_text(encoding="utf-8")
+    )
+    manifest = json.loads(
+        (V2_SOURCES / "review_manifest.json").read_text(encoding="utf-8")
+    )
+    sources_by_id = {source["source_id"]: source for source in sources}
+    reviews_by_id = {
+        review["document_id"]: review for review in manifest["record_reviews"]
+    }
+    for hospital_id in (
+        "js_nanjing_001",
+        "js_nanjing_002",
+        "js_nanjing_003",
+        "js_nanjing_004",
+    ):
+        hospital_records = [
+            record for record in records if record["hospital_id"] == hospital_id
+        ]
+        assert {record["document_id"] for record in hospital_records} == {
+            f"{hospital_id}_identity_v2",
+            f"{hospital_id}_campus_v2",
+            f"{hospital_id}_service_v2",
+        }
+        assert hospital_records[0]["category"] == "identity"
+        assert hospital_records[1]["category"] == "campus"
+        assert hospital_records[2]["category"] in {
+            "appointment", "contact", "visit_preparation"
+        }
+        for record in hospital_records:
+            bound_ids = [record["source_id"], *record.get("supporting_source_ids", [])]
+            assert all(source_id in sources_by_id or source_id.startswith("src_nanjing_")
+                       for source_id in bound_ids)
+            review = reviews_by_id[record["document_id"]]
+            assert set(review["source_ids"]) == set(bound_ids)
+            evidence = " ".join(
+                (
+                    V2_SOURCES / sources_by_id[source_id]["snapshot_path"]
+                ).read_bytes().decode("utf-8", errors="ignore")
+                for source_id in bound_ids
+                if source_id in sources_by_id
+            )
+            if record["document_id"].endswith("_service_v2"):
+                assert all(term in evidence for term in review["required_terms"])

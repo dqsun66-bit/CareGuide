@@ -204,3 +204,42 @@ def test_record_review_can_bind_preapproved_frozen_source(review_bundle, tmp_pat
 
     assert len(result.sources) == 1
     assert result.records[0]["supporting_source_ids"] == ["supporting"]
+
+
+def test_utf8_snapshot_with_isolated_invalid_bytes_keeps_chinese_evidence(review_bundle):
+    source = review_bundle.sources[0]
+    source["content_type"] = "text/html; Charset=UTF-8"
+    snapshot = review_bundle.root / source["snapshot_path"]
+    raw = snapshot.read_bytes() + b"\x81\x40"
+    snapshot.write_bytes(raw)
+    digest = hashlib.sha256(raw).hexdigest()
+    source["retrieved_sha256"] = digest
+    review_bundle.manifest["source_reviews"][0]["retrieved_sha256"] = digest
+    review_bundle.save()
+
+    result = apply_review_manifest(
+        review_bundle.root,
+        review_bundle.sources,
+        review_bundle.records,
+    )
+
+    assert result.records[0]["review_status"] == "verified_official"
+
+
+def test_html_metadata_attributes_are_reviewable_evidence(review_bundle):
+    source = review_bundle.sources[1]
+    snapshot = review_bundle.root / source["snapshot_path"]
+    raw = '<meta name="description" content="主管部门确认医院为三级甲等。">'.encode()
+    snapshot.write_bytes(raw)
+    digest = hashlib.sha256(raw).hexdigest()
+    source["retrieved_sha256"] = digest
+    review_bundle.manifest["source_reviews"][1]["retrieved_sha256"] = digest
+    review_bundle.save()
+
+    result = apply_review_manifest(
+        review_bundle.root,
+        review_bundle.sources,
+        review_bundle.records,
+    )
+
+    assert result.records[0]["review_status"] == "verified_official"

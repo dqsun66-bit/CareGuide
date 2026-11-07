@@ -422,6 +422,22 @@ def test_identity_overview_can_evidence_its_hospital_campus_address(tmp_path):
     assert corpus.validate(today=NOW.date()).errors == ()
 
 
+def test_verified_contact_source_can_publish_a_campus_record(tmp_path):
+    hospitals, sources, records, verification = _payloads()
+    records[0]["category"] = "campus"
+    target = tmp_path / "published"
+    corpus = write_corpus(
+        target,
+        hospitals=hospitals,
+        sources=sources,
+        records=records,
+        verification=verification,
+        built_at=NOW,
+        snapshot_root=_write_snapshot_source(tmp_path / "snapshot-source"),
+    )
+    assert corpus.validate(today=NOW.date()).errors == ()
+
+
 def test_atomic_writer_rejects_snapshot_source_symlink(tmp_path):
     hospitals, sources, records, verification = _payloads()
     snapshot_root = tmp_path / "snapshot-source"

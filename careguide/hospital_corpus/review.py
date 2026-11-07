@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import hashlib
 import html
+from html.parser import HTMLParser
 import json
 from pathlib import Path
 import re
@@ -16,6 +17,28 @@ class ReviewedBundle:
     sources: tuple[dict, ...]
     records: tuple[dict, ...]
     verification: tuple[dict, ...]
+
+
+class _EvidenceTextParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+        self._ignored_depth = 0
+
+    def handle_starttag(self, tag: str, attrs) -> None:
+        if tag in {"script", "style"}:
+            self._ignored_depth += 1
+        for name, value in attrs:
+            if name in {"content", "title", "alt", "aria-label"} and value:
+                self.parts.append(value)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"script", "style"} and self._ignored_depth:
+            self._ignored_depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if not self._ignored_depth:
+            self.parts.append(data)
 
 
 def _unique_by(items: Sequence[Mapping], key: str, label: str) -> dict[str, Mapping]:
@@ -61,16 +84,31 @@ def _snapshot_bytes(source_dir: Path, source: Mapping) -> bytes:
 
 def _snapshot_text(source_dir: Path, source: Mapping) -> str:
     raw = _snapshot_bytes(source_dir, source)
-    for encoding in ("utf-8", "gb18030"):
-        try:
-            decoded = raw.decode(encoding)
-            break
-        except UnicodeDecodeError:
-            continue
+    content_type = source.get("content_type")
+    charset = None
+    if isinstance(content_type, str):
+        match = re.search(r"charset\s*=\s*['\"]?([\w-]+)", content_type, re.I)
+        if match:
+            charset = match.group(1).lower().replace("_", "-")
+    if charset in {"utf-8", "utf8"}:
+        decoded = raw.decode("utf-8", errors="replace")
+    elif charset in {"gb18030", "gbk", "gb2312"}:
+        decoded = raw.decode("gb18030", errors="replace")
     else:
-        raise ValueError(f"source {source.get('source_id')}: unsupported snapshot encoding")
-    without_markup = re.sub(r"<[^>]+>", " ", decoded)
-    return re.sub(r"\s+", " ", html.unescape(without_markup)).strip()
+        decoded = None
+        for encoding in ("utf-8", "gb18030"):
+            try:
+                decoded = raw.decode(encoding)
+                break
+            except UnicodeDecodeError:
+                continue
+        if decoded is None:
+            raise ValueError(
+                f"source {source.get('source_id')}: unsupported snapshot encoding"
+            )
+    parser = _EvidenceTextParser()
+    parser.feed(decoded)
+    return re.sub(r"\s+", " ", html.unescape(" ".join(parser.parts))).strip()
 
 
 def apply_review_manifest(
