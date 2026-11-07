@@ -332,7 +332,10 @@ class HospitalCorpus:
 
 def _json_value(value) -> object:
     if hasattr(value, "model_dump"):
-        return value.model_dump(mode="json")
+        payload = value.model_dump(mode="json")
+        if isinstance(value, KnowledgeRecord) and not value.supporting_source_ids:
+            payload.pop("supporting_source_ids", None)
+        return payload
     return value
 
 

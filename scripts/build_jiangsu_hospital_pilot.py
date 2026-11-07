@@ -4,15 +4,14 @@ from __future__ import annotations
 import argparse
 from datetime import date, datetime, timedelta, timezone
 import hashlib
-import html
 import json
 from pathlib import Path
-import re
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from careguide.hospital_corpus.normalize import normalize_text
+from careguide.hospital_corpus.review import apply_review_manifest
 from careguide.hospital_corpus.store import write_corpus
 
 
@@ -219,123 +218,6 @@ def _load_frozen_sources(source_dir: Path, source_defs) -> list[dict]:
     return sources
 
 
-def _snapshot_text(source_dir: Path, source: dict) -> str:
-    raw = source_dir.joinpath(*Path(source["snapshot_path"]).parts).read_bytes()
-    for encoding in ("utf-8", "gb18030"):
-        try:
-            decoded = raw.decode(encoding)
-            break
-        except UnicodeDecodeError:
-            continue
-    else:
-        decoded = raw.decode("utf-8", errors="ignore")
-    return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", decoded)))
-
-
-def _apply_review_manifest(
-    source_dir: Path,
-    sources: list[dict],
-    records: list[dict],
-) -> tuple[list[dict], list[dict], list[dict]]:
-    """Apply a separately signed-off review manifest bound to exact source/record hashes."""
-    manifest = json.loads((source_dir / "review_manifest.json").read_text(encoding="utf-8"))
-    if manifest.get("version") != "jiangsu-hospital-review-v1":
-        raise ValueError("Unsupported hospital review manifest version")
-    source_reviews = manifest.get("source_reviews")
-    record_reviews = manifest.get("record_reviews")
-    gap_reviews = manifest.get("gap_reviews")
-    if not all(isinstance(value, list) for value in (source_reviews, record_reviews, gap_reviews)):
-        raise ValueError("Review manifest sections must be lists")
-
-    sources_by_id = {source["source_id"]: source for source in sources}
-    approvals = {review.get("source_id"): review for review in source_reviews}
-    if None in approvals or len(approvals) != len(source_reviews) or set(approvals) != set(sources_by_id):
-        raise ValueError("Source review approvals do not match the frozen source set")
-    reviewed_sources: list[dict] = []
-    verification: list[dict] = []
-    for source_id, source in sources_by_id.items():
-        approval = approvals[source_id]
-        reviewed_at = datetime.fromisoformat(approval["reviewed_at"])
-        if (
-            approval.get("retrieved_sha256") != source["retrieved_sha256"]
-            or approval.get("decision") != "approved"
-            or not approval.get("reviewer")
-            or reviewed_at.tzinfo is None
-            or reviewed_at < datetime.fromisoformat(source["collected_at"])
-        ):
-            raise ValueError(f"Invalid or stale review approval for {source_id}")
-        reviewed = dict(source)
-        reviewed["reviewed_at"] = approval["reviewed_at"]
-        reviewed["review_status"] = "verified_official"
-        reviewed_sources.append(reviewed)
-        verification.append({
-            "verification_id": f"verify_{source_id}",
-            "subject_ids": [source_id],
-            "status": "verified_official",
-            "reason": f"{approval['reviewer']}已核对冻结快照及其绑定哈希。",
-            "decision": approval.get("note") or "纳入江苏医院官方知识库试点。",
-            "reviewed_at": reviewed_at,
-        })
-
-    records_by_id = {record["document_id"]: record for record in records}
-    record_approvals = {review.get("document_id"): review for review in record_reviews}
-    if (
-        None in record_approvals
-        or len(record_approvals) != len(record_reviews)
-        or set(record_approvals) != set(records_by_id)
-    ):
-        raise ValueError("Record review approvals do not match the candidate record set")
-    for document_id, record in records_by_id.items():
-        approval = record_approvals[document_id]
-        source = sources_by_id[record["source_id"]]
-        required_terms = approval.get("required_terms")
-        reviewed_at = datetime.fromisoformat(approval["reviewed_at"])
-        if (
-            approval.get("source_id") != record["source_id"]
-            or approval.get("content_hash") != record["content_hash"]
-            or approval.get("decision") != "approved"
-            or not approval.get("reviewer")
-            or reviewed_at.tzinfo is None
-            or reviewed_at < datetime.fromisoformat(source["collected_at"])
-            or not isinstance(required_terms, list)
-            or not required_terms
-            or any(not isinstance(term, str) or not term for term in required_terms)
-        ):
-            raise ValueError(f"Invalid or stale record review for {document_id}")
-        evidence = _snapshot_text(source_dir, source)
-        missing = [term for term in required_terms if term not in evidence]
-        if missing:
-            raise ValueError(f"Record {document_id} lacks reviewed evidence terms: {missing}")
-        record["reviewed_at"] = approval["reviewed_at"]
-        record["review_status"] = "verified_official"
-        verification.append({
-            "verification_id": f"verify_{document_id}",
-            "subject_ids": [document_id, record["source_id"]],
-            "status": "verified_official",
-            "reason": f"{approval['reviewer']}已逐项核对发布正文与绑定快照证据词。",
-            "decision": "批准发布该知识记录。",
-            "reviewed_at": reviewed_at,
-        })
-
-    expected_gaps = {"js_taizhou_001", "js_taizhou_002", "js_taizhou_003"}
-    gaps = {review.get("hospital_id"): review for review in gap_reviews}
-    if None in gaps or len(gaps) != len(gap_reviews) or set(gaps) != expected_gaps:
-        raise ValueError("Mobility gap reviews do not match the Taizhou pilot")
-    for hospital_id, review in gaps.items():
-        reviewed_at = datetime.fromisoformat(review["reviewed_at"])
-        if review.get("decision") != "needs_review" or not review.get("reviewer"):
-            raise ValueError(f"Invalid mobility gap review for {hospital_id}")
-        verification.append({
-            "verification_id": f"verify_{hospital_id}_mobility_gap",
-            "subject_ids": [hospital_id],
-            "status": "needs_review",
-            "reason": review["reason"],
-            "decision": None,
-            "reviewed_at": reviewed_at,
-        })
-    return reviewed_sources, list(records_by_id.values()), verification
-
-
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, default=Path("data/jiangsu_hospitals_v1"))
@@ -355,14 +237,14 @@ def main(argv=None) -> int:
         raise FileExistsError(f"Refusing to overwrite {args.output_dir}")
     sources = _load_frozen_sources(args.source_dir, source_defs)
     records = _records(sources)
-    sources, records, verification = _apply_review_manifest(args.source_dir, sources, records)
+    reviewed = apply_review_manifest(args.source_dir, sources, records)
     built_at = max(datetime.now(CN_TZ), REVIEWED_AT)
     corpus = write_corpus(
         args.output_dir,
         hospitals=hospitals,
-        sources=sources,
-        records=records,
-        verification=verification,
+        sources=reviewed.sources,
+        records=reviewed.records,
+        verification=reviewed.verification,
         built_at=built_at,
         snapshot_root=args.source_dir / "snapshots",
     )

@@ -237,7 +237,7 @@
   "record_reviews": [
     {
       "document_id": "js_taizhou_001_identity_0001",
-      "source_id": "src_taizhou_001_identity",
+      "source_ids": ["src_taizhou_001_identity"],
       "content_hash": "a76eda9f63dbd9f68d2d58bbe99cce27a335fb77cda80f25b73b33189e8c042f",
       "reviewer": "CareGuide 项目资料复核组",
       "reviewed_at": "2026-11-05T14:00:00+08:00",
@@ -250,7 +250,7 @@
     },
     {
       "document_id": "js_taizhou_001_campus_0002",
-      "source_id": "src_taizhou_001_campus",
+      "source_ids": ["src_taizhou_001_campus"],
       "content_hash": "a03809d7654d694dbce6193042ddca6e06b32e7264cad4859f4a28573ea8f6eb",
       "reviewer": "CareGuide 项目资料复核组",
       "reviewed_at": "2026-11-05T14:00:00+08:00",
@@ -262,7 +262,7 @@
     },
     {
       "document_id": "js_taizhou_001_appointment_0003",
-      "source_id": "src_taizhou_001_appointment",
+      "source_ids": ["src_taizhou_001_appointment"],
       "content_hash": "5d9fd06992806a7e9270606c5deba6d00114f34af98fb50a4f62b4477ce5fafe",
       "reviewer": "CareGuide 项目资料复核组",
       "reviewed_at": "2026-11-05T14:00:00+08:00",
@@ -274,7 +274,7 @@
     },
     {
       "document_id": "js_taizhou_002_identity_0004",
-      "source_id": "src_taizhou_002_identity",
+      "source_ids": ["src_taizhou_002_identity"],
       "content_hash": "14d0095e39bbfecc24d457bb54e7498e69436b66b1b1949119b6ad77866b1d3b",
       "reviewer": "CareGuide 项目资料复核组",
       "reviewed_at": "2026-11-05T14:00:00+08:00",
@@ -287,7 +287,7 @@
     },
     {
       "document_id": "js_taizhou_002_campus_0005",
-      "source_id": "src_taizhou_002_campus",
+      "source_ids": ["src_taizhou_002_campus"],
       "content_hash": "3c8e5e615b40fec5019b7a196be34533b73478deee6b437606286e8ea6eea681",
       "reviewer": "CareGuide 项目资料复核组",
       "reviewed_at": "2026-11-05T14:00:00+08:00",
@@ -299,7 +299,7 @@
     },
     {
       "document_id": "js_taizhou_002_appointment_0006",
-      "source_id": "src_taizhou_002_appointment",
+      "source_ids": ["src_taizhou_002_appointment"],
       "content_hash": "def22b0437eb49baf384eef14ad89d4fb045f9a8b93a97058cbeec19a5c683f0",
       "reviewer": "CareGuide 项目资料复核组",
       "reviewed_at": "2026-11-05T14:00:00+08:00",
@@ -312,7 +312,7 @@
     },
     {
       "document_id": "js_taizhou_003_identity_0007",
-      "source_id": "src_taizhou_003_identity",
+      "source_ids": ["src_taizhou_003_identity"],
       "content_hash": "0f6ca0dfa1088f726d862d20cacfa61dbde70108240888707a62c152b18e176c",
       "reviewer": "CareGuide 项目资料复核组",
       "reviewed_at": "2026-11-05T14:00:00+08:00",
@@ -327,7 +327,7 @@
     },
     {
       "document_id": "js_taizhou_003_contact_0008",
-      "source_id": "src_taizhou_003_contact",
+      "source_ids": ["src_taizhou_003_contact"],
       "content_hash": "83ba30c669fae744ad9c1b51defa7c0bc78c02dffda1cd8055dbbfb2c3eb67e1",
       "reviewer": "CareGuide 项目资料复核组",
       "reviewed_at": "2026-11-05T14:00:00+08:00",
@@ -341,7 +341,7 @@
     },
     {
       "document_id": "js_taizhou_003_appointment_0009",
-      "source_id": "src_taizhou_003_appointment",
+      "source_ids": ["src_taizhou_003_appointment"],
       "content_hash": "69459fac5710e588b3826302ce686e9b9b3fca53195fa869c02547ea0e88c8ce",
       "reviewer": "CareGuide 项目资料复核组",
       "reviewed_at": "2026-11-05T14:00:00+08:00",

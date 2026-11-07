@@ -172,7 +172,10 @@ def test_review_manifest_binds_every_source_and_record_hash():
         assert source_reviews[source.source_id]["retrieved_sha256"] == source.retrieved_sha256
     for record in corpus.records:
         review = record_reviews[record.document_id]
-        assert review["source_id"] == record.source_id
+        assert set(review["source_ids"]) == {
+            record.source_id,
+            *record.supporting_source_ids,
+        }
         assert review["content_hash"] == record.content_hash
         assert review["required_terms"]
 
@@ -197,7 +200,7 @@ def test_builder_rejects_invalid_record_approval(field, value, tmp_path):
         encoding="utf-8",
     )
     output = tmp_path / "corpus"
-    with pytest.raises(ValueError, match="Invalid or stale record review"):
+    with pytest.raises(ValueError, match="invalid or stale record review"):
         build_jiangsu_hospital_pilot.main([
             "--apply",
             "--source-dir", str(frozen),

@@ -266,6 +266,22 @@ def test_atomic_writer_publishes_explicit_v2_manifest(tmp_path):
     assert corpus.manifest.stage == "expanded_core_15_of_15"
 
 
+def test_v1_writer_omits_empty_v2_supporting_source_field(tmp_path):
+    hospitals, sources, records, verification = _payloads()
+    target = tmp_path / "published"
+    write_corpus(
+        target,
+        hospitals=hospitals,
+        sources=sources,
+        records=records,
+        verification=verification,
+        built_at=NOW,
+        snapshot_root=_write_snapshot_source(tmp_path / "snapshot-source"),
+    )
+    serialized = json.loads((target / "records.json").read_text(encoding="utf-8"))
+    assert "supporting_source_ids" not in serialized[0]
+
+
 def test_atomic_writer_merges_multiple_snapshot_roots(tmp_path):
     hospitals, sources, records, verification = _payloads()
     first = tmp_path / "first"
