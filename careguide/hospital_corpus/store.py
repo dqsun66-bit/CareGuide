@@ -371,6 +371,36 @@ def _assert_snapshot_tree_safe(snapshot_root: Path) -> None:
                     pending.append(child)
 
 
+def _merge_snapshot_roots(
+    temporary: Path,
+    snapshot_roots: Sequence[Path],
+) -> None:
+    copied_snapshots = temporary / "snapshots"
+    copied_snapshots.mkdir()
+    for index, snapshot_root in enumerate(snapshot_roots):
+        snapshot_root = Path(snapshot_root)
+        _assert_snapshot_tree_safe(snapshot_root)
+        staged = temporary / f".snapshot-input-{index}"
+        shutil.copytree(snapshot_root, staged, symlinks=True)
+        _assert_snapshot_tree_safe(staged)
+        for source in sorted(staged.rglob("*")):
+            relative = source.relative_to(staged)
+            destination = copied_snapshots / relative
+            if source.is_dir():
+                destination.mkdir(parents=True, exist_ok=True)
+                continue
+            if not source.is_file():
+                raise ValueError("snapshot source contains a non-file entry")
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            if destination.exists():
+                if _hash_file(destination) != _hash_file(source):
+                    raise ValueError(f"snapshot collision: {relative.as_posix()}")
+                continue
+            shutil.copy2(source, destination)
+        shutil.rmtree(staged)
+    _assert_snapshot_tree_safe(copied_snapshots)
+
+
 def write_corpus(
     target: Path | str,
     *,
@@ -380,8 +410,13 @@ def write_corpus(
     verification: Sequence[VerificationEntry | Mapping],
     built_at: datetime,
     snapshot_root: Path | None = None,
+    snapshot_roots: Sequence[Path] = (),
+    version: str = "jiangsu-hospitals-v1",
+    stage: str = "pilot_taizhou_3_of_15",
 ) -> HospitalCorpus:
     """Publish only a fully valid corpus; never leave a partial target."""
+    if snapshot_root is not None and snapshot_roots:
+        raise ValueError("snapshot_root and snapshot_roots cannot be used together")
     target = Path(target)
     if target.exists():
         raise FileExistsError(f"Refusing to overwrite corpus: {target}")
@@ -389,11 +424,9 @@ def write_corpus(
     parent.mkdir(parents=True, exist_ok=True)
     temporary = Path(tempfile.mkdtemp(prefix=f".{target.name}-", dir=parent))
     try:
-        if snapshot_root and snapshot_root.exists():
-            _assert_snapshot_tree_safe(snapshot_root)
-            copied_snapshots = temporary / "snapshots"
-            shutil.copytree(snapshot_root, copied_snapshots, symlinks=True)
-            _assert_snapshot_tree_safe(copied_snapshots)
+        roots = (Path(snapshot_root),) if snapshot_root is not None else tuple(snapshot_roots)
+        if roots:
+            _merge_snapshot_roots(temporary, roots)
         values = {
             "hospitals.json": [Hospital.model_validate(item) for item in hospitals],
             "sources.json": [Source.model_validate(item) for item in sources],
@@ -404,8 +437,8 @@ def write_corpus(
             _write_json(temporary / filename, items)
         files = {filename: _hash_file(temporary / filename) for filename in DATA_FILES}
         manifest = CorpusManifest(
-            version="jiangsu-hospitals-v1",
-            stage="pilot_taizhou_3_of_15",
+            version=version,
+            stage=stage,
             built_at=built_at,
             hospital_count=len(values["hospitals.json"]),
             source_count=len(values["sources.json"]),

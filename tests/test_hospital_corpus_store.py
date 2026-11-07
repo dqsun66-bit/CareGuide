@@ -248,6 +248,95 @@ def test_atomic_writer_refuses_invalid_assets_without_partial_target(tmp_path):
     assert not target.exists()
 
 
+def test_atomic_writer_publishes_explicit_v2_manifest(tmp_path):
+    hospitals, sources, records, verification = _payloads()
+    target = tmp_path / "published"
+    corpus = write_corpus(
+        target,
+        hospitals=hospitals,
+        sources=sources,
+        records=records,
+        verification=verification,
+        built_at=NOW,
+        snapshot_root=_write_snapshot_source(tmp_path / "snapshot-source"),
+        version="jiangsu-hospitals-v2",
+        stage="expanded_core_15_of_15",
+    )
+    assert corpus.manifest.version == "jiangsu-hospitals-v2"
+    assert corpus.manifest.stage == "expanded_core_15_of_15"
+
+
+def test_atomic_writer_merges_multiple_snapshot_roots(tmp_path):
+    hospitals, sources, records, verification = _payloads()
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    (first / "js_taizhou_003").mkdir(parents=True)
+    (second / "js_taizhou_003").mkdir(parents=True)
+    (first / "js_taizhou_003/src_tz2_grade.html").write_bytes(GRADE_SNAPSHOT)
+    (second / "js_taizhou_003/src_tz2_contact.html").write_bytes(SNAPSHOT)
+
+    target = tmp_path / "published"
+    corpus = write_corpus(
+        target,
+        hospitals=hospitals,
+        sources=sources,
+        records=records,
+        verification=verification,
+        built_at=NOW,
+        snapshot_roots=(first, second),
+    )
+
+    assert corpus.validate(today=NOW.date()).errors == ()
+    assert (target / "snapshots/js_taizhou_003/src_tz2_grade.html").read_bytes() == GRADE_SNAPSHOT
+    assert (target / "snapshots/js_taizhou_003/src_tz2_contact.html").read_bytes() == SNAPSHOT
+
+
+def test_atomic_writer_rejects_snapshot_collision_without_partial_target(tmp_path):
+    hospitals, sources, records, verification = _payloads()
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    relative = Path("js_taizhou_003/src_tz2_contact.html")
+    (first / relative).parent.mkdir(parents=True)
+    (second / relative).parent.mkdir(parents=True)
+    (first / relative).write_bytes(SNAPSHOT)
+    (second / relative).write_bytes(b"different bytes")
+    target = tmp_path / "published"
+
+    with pytest.raises(ValueError, match="snapshot collision"):
+        write_corpus(
+            target,
+            hospitals=hospitals,
+            sources=sources,
+            records=records,
+            verification=verification,
+            built_at=NOW,
+            snapshot_roots=(first, second),
+        )
+
+    assert not target.exists()
+
+
+def test_atomic_writer_rejects_ambiguous_snapshot_root_arguments(tmp_path):
+    hospitals, sources, records, verification = _payloads()
+    first = _write_snapshot_source(tmp_path / "first")
+    second = _write_snapshot_source(tmp_path / "second")
+    target = tmp_path / "published"
+
+    with pytest.raises(ValueError, match="snapshot_root and snapshot_roots"):
+        write_corpus(
+            target,
+            hospitals=hospitals,
+            sources=sources,
+            records=records,
+            verification=verification,
+            built_at=NOW,
+            snapshot_root=first,
+            snapshot_roots=(second,),
+        )
+
+    assert not target.exists()
+
+
 def test_official_appointment_platform_cannot_authorize_identity_evidence(tmp_path):
     hospitals, sources, records, verification = _payloads()
     sources[0]["url"] = "https://js.guahaoe.com/hospital/desc/example"
