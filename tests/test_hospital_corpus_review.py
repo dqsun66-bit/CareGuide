@@ -178,3 +178,29 @@ def test_record_review_must_bind_all_record_sources(review_bundle):
             review_bundle.sources,
             review_bundle.records,
         )
+
+
+def test_record_review_can_bind_preapproved_frozen_source(review_bundle, tmp_path):
+    trusted_root = tmp_path / "trusted"
+    trusted_source = deepcopy(review_bundle.sources[1])
+    trusted_source["reviewed_at"] = REVIEWED.isoformat()
+    trusted_source["review_status"] = "verified_official"
+    trusted_snapshot = trusted_root / trusted_source["snapshot_path"]
+    trusted_snapshot.parent.mkdir(parents=True)
+    original_snapshot = review_bundle.root / trusted_source["snapshot_path"]
+    trusted_snapshot.write_bytes(original_snapshot.read_bytes())
+    original_snapshot.unlink()
+    review_bundle.sources = [review_bundle.sources[0]]
+    review_bundle.manifest["source_reviews"] = [review_bundle.manifest["source_reviews"][0]]
+    review_bundle.save()
+
+    result = apply_review_manifest(
+        review_bundle.root,
+        review_bundle.sources,
+        review_bundle.records,
+        trusted_sources=[trusted_source],
+        trusted_source_dir=trusted_root,
+    )
+
+    assert len(result.sources) == 1
+    assert result.records[0]["supporting_source_ids"] == ["supporting"]

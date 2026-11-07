@@ -79,6 +79,8 @@ def apply_review_manifest(
     records: Sequence[Mapping],
     *,
     manifest_name: str = "review_manifest.json",
+    trusted_sources: Sequence[Mapping] = (),
+    trusted_source_dir: Path | None = None,
 ) -> ReviewedBundle:
     source_dir = Path(source_dir)
     manifest = json.loads((source_dir / manifest_name).read_text(encoding="utf-8"))
@@ -93,6 +95,12 @@ def apply_review_manifest(
         raise ValueError("review manifest sections must be lists")
 
     sources_by_id = _unique_by(sources, "source_id", "source")
+    trusted_by_id = _unique_by(trusted_sources, "source_id", "trusted source")
+    if set(sources_by_id) & set(trusted_by_id):
+        raise ValueError("new and trusted source identities overlap")
+    if trusted_by_id and trusted_source_dir is None:
+        raise ValueError("trusted_source_dir is required for trusted sources")
+    all_sources = {**trusted_by_id, **sources_by_id}
     source_approvals = _unique_by(source_reviews, "source_id", "source review")
     if set(source_approvals) != set(sources_by_id):
         raise ValueError("source review approvals do not match the frozen source set")
@@ -100,6 +108,12 @@ def apply_review_manifest(
     reviewed_sources: list[dict] = []
     verification: list[dict] = []
     evidence_by_source: dict[str, str] = {}
+    if trusted_source_dir is not None:
+        for source_id, source in trusted_by_id.items():
+            if source.get("review_status") != "verified_official":
+                raise ValueError(f"trusted source {source_id} is not verified")
+            _parse_aware(source.get("reviewed_at"), f"trusted source {source_id} reviewed_at")
+            evidence_by_source[source_id] = _snapshot_text(Path(trusted_source_dir), source)
     for source_id, source in sources_by_id.items():
         approval = source_approvals[source_id]
         reviewed_at = _parse_aware(
@@ -151,7 +165,7 @@ def apply_review_manifest(
             or set(approved_source_ids) != set(bound_source_ids)
         ):
             raise ValueError(f"record review source set mismatch for {document_id}")
-        if any(source_id not in sources_by_id for source_id in bound_source_ids):
+        if any(source_id not in all_sources for source_id in bound_source_ids):
             raise ValueError(f"record {document_id} references an unapproved source")
 
         required_terms = approval.get("required_terms")
@@ -161,7 +175,7 @@ def apply_review_manifest(
         )
         collected_times = [
             _parse_aware(
-                sources_by_id[source_id].get("collected_at"),
+                all_sources[source_id].get("collected_at"),
                 f"source {source_id} collected_at",
             )
             for source_id in bound_source_ids
