@@ -202,6 +202,7 @@ class KnowledgeRecord(StrictModel):
     title: str = Field(min_length=2)
     content: str = Field(min_length=50, max_length=1000)
     source_id: str = Field(min_length=1)
+    supporting_source_ids: tuple[str, ...] = ()
     source_url: str
     source_tier: SourceTier
     published_at: date | None
@@ -228,6 +229,10 @@ class KnowledgeRecord(StrictModel):
             raise ValueError("Published records require verified_official review")
         if self.reviewed_at < self.collected_at:
             raise ValueError("reviewed_at cannot predate collection")
+        if self.source_id in self.supporting_source_ids:
+            raise ValueError("primary source cannot be repeated as a supporting source")
+        if len(set(self.supporting_source_ids)) != len(self.supporting_source_ids):
+            raise ValueError("duplicate supporting source")
         return self
 
 
@@ -248,8 +253,8 @@ class VerificationEntry(StrictModel):
 
 
 class CorpusManifest(StrictModel):
-    version: Literal["jiangsu-hospitals-v1"]
-    stage: Literal["pilot_taizhou_3_of_15"]
+    version: Literal["jiangsu-hospitals-v1", "jiangsu-hospitals-v2"]
+    stage: Literal["pilot_taizhou_3_of_15", "expanded_core_15_of_15"]
     built_at: datetime
     hospital_count: int = Field(ge=0)
     source_count: int = Field(ge=0)

@@ -280,6 +280,39 @@ class HospitalCorpus:
                     f"record {record.document_id}: appointment platform cannot authorize "
                     "non-appointment facts"
                 )
+            for supporting_id in record.supporting_source_ids:
+                supporting = self._sources.get(supporting_id)
+                if supporting is None:
+                    errors.append(
+                        f"record {record.document_id}: unknown supporting source {supporting_id}"
+                    )
+                    continue
+                if supporting.hospital_id != record.hospital_id:
+                    errors.append(
+                        f"record {record.document_id}: supporting source hospital mismatch"
+                    )
+                if supporting.campus_id not in {None, record.campus_id}:
+                    errors.append(
+                        f"record {record.document_id}: supporting source campus mismatch"
+                    )
+                if supporting.review_status != ReviewStatus.VERIFIED_OFFICIAL:
+                    errors.append(
+                        f"record {record.document_id}: supporting source is not verified"
+                    )
+                if supporting.source_tier == SourceTier.MAP_PROVIDER:
+                    errors.append(
+                        f"record {record.document_id}: map source cannot support official facts"
+                    )
+                elif supporting.source_tier == SourceTier.OFFICIAL_APPOINTMENT:
+                    if record.category != Category.APPOINTMENT:
+                        errors.append(
+                            f"record {record.document_id}: appointment platform cannot authorize "
+                            "non-appointment facts"
+                        )
+                elif supporting.source_tier not in AUTHORITATIVE_TIERS:
+                    errors.append(
+                        f"record {record.document_id}: supporting source tier is not authoritative"
+                    )
             expected_hash = hashlib.sha256(normalize_text(record.content).encode("utf-8")).hexdigest()
             if record.content_hash != expected_hash:
                 errors.append(f"record {record.document_id}: content hash mismatch")
