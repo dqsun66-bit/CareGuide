@@ -243,3 +243,41 @@ def test_html_metadata_attributes_are_reviewable_evidence(review_bundle):
     )
 
     assert result.records[0]["review_status"] == "verified_official"
+
+
+def test_cdata_payload_is_reviewable_evidence(review_bundle):
+    source = review_bundle.sources[1]
+    snapshot = review_bundle.root / source["snapshot_path"]
+    raw = "<![CDATA[主管部门确认医院为三级甲等。]]>".encode()
+    snapshot.write_bytes(raw)
+    digest = hashlib.sha256(raw).hexdigest()
+    source["retrieved_sha256"] = digest
+    review_bundle.manifest["source_reviews"][1]["retrieved_sha256"] = digest
+    review_bundle.save()
+
+    result = apply_review_manifest(
+        review_bundle.root,
+        review_bundle.sources,
+        review_bundle.records,
+    )
+
+    assert result.records[0]["review_status"] == "verified_official"
+
+
+def test_unclosed_cdata_payload_is_reviewable_evidence(review_bundle):
+    source = review_bundle.sources[1]
+    snapshot = review_bundle.root / source["snapshot_path"]
+    raw = "<![CDATA[主管部门确认医院为三级甲等。".encode()
+    snapshot.write_bytes(raw)
+    digest = hashlib.sha256(raw).hexdigest()
+    source["retrieved_sha256"] = digest
+    review_bundle.manifest["source_reviews"][1]["retrieved_sha256"] = digest
+    review_bundle.save()
+
+    result = apply_review_manifest(
+        review_bundle.root,
+        review_bundle.sources,
+        review_bundle.records,
+    )
+
+    assert result.records[0]["review_status"] == "verified_official"

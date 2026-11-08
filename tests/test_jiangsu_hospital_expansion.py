@@ -273,7 +273,7 @@ def test_integrity_mismatch_stops_before_output(tmp_path, expansion_inputs):
     assert not output.exists()
 
 
-def test_nanjing_batch_has_three_reviewable_candidates_per_hospital():
+def _assert_city_batch(hospital_ids):
     sources = json.loads((V2_SOURCES / "sources.json").read_text(encoding="utf-8"))
     records = json.loads(
         (V2_SOURCES / "record_candidates.json").read_text(encoding="utf-8")
@@ -282,15 +282,13 @@ def test_nanjing_batch_has_three_reviewable_candidates_per_hospital():
         (V2_SOURCES / "review_manifest.json").read_text(encoding="utf-8")
     )
     sources_by_id = {source["source_id"]: source for source in sources}
+    trusted_source_ids = {
+        source.source_id for source in HospitalCorpus.load(V1).sources
+    }
     reviews_by_id = {
         review["document_id"]: review for review in manifest["record_reviews"]
     }
-    for hospital_id in (
-        "js_nanjing_001",
-        "js_nanjing_002",
-        "js_nanjing_003",
-        "js_nanjing_004",
-    ):
+    for hospital_id in hospital_ids:
         hospital_records = [
             record for record in records if record["hospital_id"] == hospital_id
         ]
@@ -299,14 +297,18 @@ def test_nanjing_batch_has_three_reviewable_candidates_per_hospital():
             f"{hospital_id}_campus_v2",
             f"{hospital_id}_service_v2",
         }
-        assert hospital_records[0]["category"] == "identity"
-        assert hospital_records[1]["category"] == "campus"
-        assert hospital_records[2]["category"] in {
+        records_by_suffix = {
+            record["document_id"].removeprefix(f"{hospital_id}_"): record
+            for record in hospital_records
+        }
+        assert records_by_suffix["identity_v2"]["category"] == "identity"
+        assert records_by_suffix["campus_v2"]["category"] == "campus"
+        assert records_by_suffix["service_v2"]["category"] in {
             "appointment", "contact", "visit_preparation"
         }
         for record in hospital_records:
             bound_ids = [record["source_id"], *record.get("supporting_source_ids", [])]
-            assert all(source_id in sources_by_id or source_id.startswith("src_nanjing_")
+            assert all(source_id in sources_by_id or source_id in trusted_source_ids
                        for source_id in bound_ids)
             review = reviews_by_id[record["document_id"]]
             assert set(review["source_ids"]) == set(bound_ids)
@@ -319,3 +321,20 @@ def test_nanjing_batch_has_three_reviewable_candidates_per_hospital():
             )
             if record["document_id"].endswith("_service_v2"):
                 assert all(term in evidence for term in review["required_terms"])
+
+
+def test_nanjing_batch_has_three_reviewable_candidates_per_hospital():
+    _assert_city_batch((
+        "js_nanjing_001",
+        "js_nanjing_002",
+        "js_nanjing_003",
+        "js_nanjing_004",
+    ))
+
+
+def test_suzhou_batch_has_three_reviewable_candidates_per_hospital():
+    _assert_city_batch((
+        "js_suzhou_001",
+        "js_suzhou_002",
+        "js_suzhou_003",
+    ))

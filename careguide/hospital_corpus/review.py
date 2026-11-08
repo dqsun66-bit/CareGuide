@@ -23,22 +23,17 @@ class _EvidenceTextParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.parts: list[str] = []
-        self._ignored_depth = 0
 
     def handle_starttag(self, tag: str, attrs) -> None:
-        if tag in {"script", "style"}:
-            self._ignored_depth += 1
         for name, value in attrs:
             if name in {"content", "title", "alt", "aria-label"} and value:
                 self.parts.append(value)
 
-    def handle_endtag(self, tag: str) -> None:
-        if tag in {"script", "style"} and self._ignored_depth:
-            self._ignored_depth -= 1
-
     def handle_data(self, data: str) -> None:
-        if not self._ignored_depth:
-            self.parts.append(data)
+        self.parts.append(data)
+
+    def unknown_decl(self, data: str) -> None:
+        self.parts.append(data)
 
 
 def _unique_by(items: Sequence[Mapping], key: str, label: str) -> dict[str, Mapping]:
@@ -107,6 +102,9 @@ def _snapshot_text(source_dir: Path, source: Mapping) -> str:
                 f"source {source.get('source_id')}: unsupported snapshot encoding"
             )
     parser = _EvidenceTextParser()
+    parser.parts.extend(
+        re.findall(r"<!\[CDATA\[(.*?)(?:\]\]>|$)", decoded, re.S)
+    )
     parser.feed(decoded)
     return re.sub(r"\s+", " ", html.unescape(" ".join(parser.parts))).strip()
 
