@@ -75,6 +75,16 @@ def _frozen_evidence_term(source) -> str:
     return match.group(0)
 
 
+def _decode_snapshot(path: Path) -> str:
+    raw = path.read_bytes()
+    for encoding in ("utf-8", "gb18030"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    raise AssertionError(f"test fixture cannot decode {path}")
+
+
 @pytest.fixture
 def expansion_inputs(tmp_path):
     v1 = HospitalCorpus.load(V1)
@@ -282,9 +292,10 @@ def _assert_city_batch(hospital_ids):
         (V2_SOURCES / "review_manifest.json").read_text(encoding="utf-8")
     )
     sources_by_id = {source["source_id"]: source for source in sources}
-    trusted_source_ids = {
-        source.source_id for source in HospitalCorpus.load(V1).sources
+    trusted_sources_by_id = {
+        source.source_id: source for source in HospitalCorpus.load(V1).sources
     }
+    trusted_source_ids = set(trusted_sources_by_id)
     reviews_by_id = {
         review["document_id"]: review for review in manifest["record_reviews"]
     }
@@ -313,11 +324,10 @@ def _assert_city_batch(hospital_ids):
             review = reviews_by_id[record["document_id"]]
             assert set(review["source_ids"]) == set(bound_ids)
             evidence = " ".join(
-                (
-                    V2_SOURCES / sources_by_id[source_id]["snapshot_path"]
-                ).read_bytes().decode("utf-8", errors="ignore")
+                _decode_snapshot(V2_SOURCES / sources_by_id[source_id]["snapshot_path"])
+                if source_id in sources_by_id else
+                _decode_snapshot(V1 / trusted_sources_by_id[source_id].snapshot_path)
                 for source_id in bound_ids
-                if source_id in sources_by_id
             )
             if record["document_id"].endswith("_service_v2"):
                 assert all(term in evidence for term in review["required_terms"])
@@ -342,3 +352,11 @@ def test_suzhou_batch_has_three_reviewable_candidates_per_hospital():
 
 def test_wuxi_batch_has_three_reviewable_candidates_per_hospital():
     _assert_city_batch(("js_wuxi_001", "js_wuxi_002"))
+
+
+def test_remaining_city_batch_has_three_reviewable_candidates_per_hospital():
+    _assert_city_batch((
+        "js_changzhou_001",
+        "js_nantong_001",
+        "js_yangzhou_001",
+    ))

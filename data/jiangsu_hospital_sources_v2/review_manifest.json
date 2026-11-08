@@ -72,6 +72,22 @@
       "reviewed_at": "2026-11-08T17:00:00+08:00",
       "decision": "approved",
       "note": "无锡市官方整改报告与冻结快照哈希一致。"
+    },
+    {
+      "source_id": "src_changzhou_001_service",
+      "retrieved_sha256": "946d731209e72c6272c29858838f3a14c68ccab9fe4e410cd42291f4b0e064ca",
+      "reviewer": "CareGuide 苏中批次独立复核组",
+      "reviewed_at": "2026-11-08T17:30:00+08:00",
+      "decision": "approved",
+      "note": "常州市政协转载的卫健委公开答复与冻结快照哈希一致。"
+    },
+    {
+      "source_id": "src_nantong_001_service",
+      "retrieved_sha256": "3468fb4803b5b20db7c6d2a1b3b0e3b50e78d35bd08fffb670fa42b1027c7f5c",
+      "reviewer": "CareGuide 苏中批次独立复核组",
+      "reviewed_at": "2026-11-08T17:30:00+08:00",
+      "decision": "approved",
+      "note": "南通大学附属医院预约指南与冻结快照哈希一致。"
     }
   ],
   "record_reviews": [
@@ -317,6 +333,87 @@
       "reviewer": "CareGuide 无锡批次独立复核组",
       "reviewed_at": "2026-11-08T17:00:00+08:00",
       "decision": "approved"
+    },
+    {
+      "document_id": "js_changzhou_001_identity_v2",
+      "source_ids": ["src_changzhou_001_identity", "src_changzhou_001_grade"],
+      "content_hash": "7a8244912f5b783e866788004dbd4c7f48aca14463aed393a912f4a3e6ba513c",
+      "required_terms": ["常州市第一人民医院", "三级甲等"],
+      "reviewer": "CareGuide 苏中批次独立复核组",
+      "reviewed_at": "2026-11-08T17:30:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_changzhou_001_campus_v2",
+      "source_ids": ["src_changzhou_001_identity"],
+      "content_hash": "944a3f2525c7d598363cd73202899c1aea4e8eb3e9121601426e5dceccac3918",
+      "required_terms": ["常州市第一人民医院", "局前街185号"],
+      "reviewer": "CareGuide 苏中批次独立复核组",
+      "reviewed_at": "2026-11-08T17:30:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_changzhou_001_service_v2",
+      "source_ids": ["src_changzhou_001_service"],
+      "content_hash": "83676bc5725065ef1aab2f979cda86016b05cac4ecc6630f69eb6c25bcff75b5",
+      "required_terms": ["市一院", "预约挂号服务", "天宁区"],
+      "reviewer": "CareGuide 苏中批次独立复核组",
+      "reviewed_at": "2026-11-08T17:30:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_nantong_001_identity_v2",
+      "source_ids": ["src_nantong_001_identity", "src_nantong_001_grade"],
+      "content_hash": "eb448242d36f6e88b2dbe6a0b45df7819f12dac3de858951ed13100022930b14",
+      "required_terms": ["南通大学附属医院", "三级甲等"],
+      "reviewer": "CareGuide 苏中批次独立复核组",
+      "reviewed_at": "2026-11-08T17:30:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_nantong_001_campus_v2",
+      "source_ids": ["src_nantong_001_identity"],
+      "content_hash": "6bc289601ade3f23d5d09196ee44bce3233f25d2c92074c7653075bc4e2b590d",
+      "required_terms": ["南通大学附属医院", "西寺路20号"],
+      "reviewer": "CareGuide 苏中批次独立复核组",
+      "reviewed_at": "2026-11-08T17:30:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_nantong_001_service_v2",
+      "source_ids": ["src_nantong_001_service"],
+      "content_hash": "406a04df9a3fac1cc5df967735a729b887dc37ecff31198115e0cee7607555cc",
+      "required_terms": ["电话预约", "12320", "微信预约", "诊间预约", "实名制预约"],
+      "reviewer": "CareGuide 苏中批次独立复核组",
+      "reviewed_at": "2026-11-08T17:30:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_yangzhou_001_identity_v2",
+      "source_ids": ["src_yangzhou_001_identity", "src_yangzhou_001_grade"],
+      "content_hash": "aa478918afae12dfa9197eb6265c1d42d43c551127308611e19ba577d6677ea7",
+      "required_terms": ["江苏省苏北人民医院", "三级甲等"],
+      "reviewer": "CareGuide 苏中批次独立复核组",
+      "reviewed_at": "2026-11-08T17:30:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_yangzhou_001_campus_v2",
+      "source_ids": ["src_yangzhou_001_identity"],
+      "content_hash": "8ff55985dd64287698bf724f9f84ae70bd3111b70b13493a25273a4386182bec",
+      "required_terms": ["江苏省苏北人民医院", "南通西路98号"],
+      "reviewer": "CareGuide 苏中批次独立复核组",
+      "reviewed_at": "2026-11-08T17:30:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_yangzhou_001_service_v2",
+      "source_ids": ["src_yangzhou_001_identity"],
+      "content_hash": "819511789fc84fcf333aaff222f5cc00cc962ab30edfcbe3f0e4d600e72441bb",
+      "required_terms": ["预约挂号", "健康咨询电话", "87373114"],
+      "reviewer": "CareGuide 苏中批次独立复核组",
+      "reviewed_at": "2026-11-08T17:30:00+08:00",
+      "decision": "approved"
     }
   ],
   "gap_reviews": [
@@ -382,6 +479,27 @@
       "reviewed_at": "2026-11-08T17:00:00+08:00",
       "decision": "needs_review",
       "reason": "已核验移动医保支付服务；当前预约规则、停车、公共交通、无障碍设施及服务实时可用性仍需医院确认。"
+    },
+    {
+      "hospital_id": "js_changzhou_001",
+      "reviewer": "CareGuide 苏中批次独立复核组",
+      "reviewed_at": "2026-11-08T17:30:00+08:00",
+      "decision": "needs_review",
+      "reason": "已核验基层医疗机构预约市一院号源服务；面向个人的直接预约规则、停车、公共交通、无障碍设施及实时号源仍需医院确认。"
+    },
+    {
+      "hospital_id": "js_nantong_001",
+      "reviewer": "CareGuide 苏中批次独立复核组",
+      "reviewed_at": "2026-11-08T17:30:00+08:00",
+      "decision": "needs_review",
+      "reason": "已核验多种预约渠道和实名制要求；停车、公共交通、无障碍设施及实时号源仍需医院确认。"
+    },
+    {
+      "hospital_id": "js_yangzhou_001",
+      "reviewer": "CareGuide 苏中批次独立复核组",
+      "reviewed_at": "2026-11-08T17:30:00+08:00",
+      "decision": "needs_review",
+      "reason": "已核验就诊、预约挂号和健康咨询电话；详细预约规则、停车、公共交通、无障碍设施及实时状态仍需医院确认。"
     }
   ]
 }

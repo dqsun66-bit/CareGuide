@@ -160,5 +160,41 @@
     "http_status": 200,
     "content_type": "text/html",
     "retrieved_sha256": "3578befad4b985a543d2575a2ee3e2e357ec2d1c0e4e03d78484dd8f5e3e7f54"
+  },
+  {
+    "source_id": "src_changzhou_001_service",
+    "hospital_id": "js_changzhou_001",
+    "campus_id": "js_changzhou_001_main",
+    "title": "常州市基层预约市一院号源服务",
+    "url": "https://zx.changzhou.gov.cn/html/czzx/2024/MQQPPFOM_0104/22205.html",
+    "source_tier": "government",
+    "category": "appointment",
+    "published_at": "2024-06-05",
+    "valid_until": "2027-02-08",
+    "collected_at": "2026-11-08T08:44:59.700410+00:00",
+    "reviewed_at": null,
+    "review_status": "needs_review",
+    "snapshot_path": "snapshots/js_changzhou_001/src_changzhou_001_service.html",
+    "http_status": 200,
+    "content_type": "text/html; charset=utf-8",
+    "retrieved_sha256": "946d731209e72c6272c29858838f3a14c68ccab9fe4e410cd42291f4b0e064ca"
+  },
+  {
+    "source_id": "src_nantong_001_service",
+    "hospital_id": "js_nantong_001",
+    "campus_id": "js_nantong_001_main",
+    "title": "南通大学附属医院预约挂号操作指南",
+    "url": "https://www.ahnmc.com/jyzn1.asp",
+    "source_tier": "hospital_official",
+    "category": "appointment",
+    "published_at": null,
+    "valid_until": "2027-02-08",
+    "collected_at": "2026-11-08T08:44:07.666782+00:00",
+    "reviewed_at": null,
+    "review_status": "needs_review",
+    "snapshot_path": "snapshots/js_nantong_001/src_nantong_001_service.html",
+    "http_status": 200,
+    "content_type": "text/html",
+    "retrieved_sha256": "3468fb4803b5b20db7c6d2a1b3b0e3b50e78d35bd08fffb670fa42b1027c7f5c"
   }
 ]
