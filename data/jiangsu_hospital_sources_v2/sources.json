@@ -124,5 +124,41 @@
     "http_status": 200,
     "content_type": "text/html; charset=utf-8",
     "retrieved_sha256": "1b279d22c65e74e805a24533bb8b277ac191b903af37141434051348b226464b"
+  },
+  {
+    "source_id": "src_wuxi_001_service",
+    "hospital_id": "js_wuxi_001",
+    "campus_id": "js_wuxi_001_main",
+    "title": "无锡市人民医院就诊小程序使用指南",
+    "url": "https://www.wuxi.gov.cn/doc/2024/11/21/4512401.shtml",
+    "source_tier": "government",
+    "category": "appointment",
+    "published_at": "2024-11-21",
+    "valid_until": "2027-02-08",
+    "collected_at": "2026-11-08T08:37:48.347098+00:00",
+    "reviewed_at": null,
+    "review_status": "needs_review",
+    "snapshot_path": "snapshots/js_wuxi_001/src_wuxi_001_service.html",
+    "http_status": 200,
+    "content_type": "text/html",
+    "retrieved_sha256": "bddf98a7c518118f44843af33b43289b67ef163c24c503a25563ee130df9ebf1"
+  },
+  {
+    "source_id": "src_wuxi_002_service",
+    "hospital_id": "js_wuxi_002",
+    "campus_id": "js_wuxi_002_main",
+    "title": "无锡市互联网医疗便民服务整改情况",
+    "url": "https://jggw.wuxi.gov.cn/doc/2024/09/18/4395124.shtml",
+    "source_tier": "government",
+    "category": "visit_preparation",
+    "published_at": "2024-09-18",
+    "valid_until": "2027-02-08",
+    "collected_at": "2026-11-08T08:37:51.655739+00:00",
+    "reviewed_at": null,
+    "review_status": "needs_review",
+    "snapshot_path": "snapshots/js_wuxi_002/src_wuxi_002_service.html",
+    "http_status": 200,
+    "content_type": "text/html",
+    "retrieved_sha256": "3578befad4b985a543d2575a2ee3e2e357ec2d1c0e4e03d78484dd8f5e3e7f54"
   }
 ]

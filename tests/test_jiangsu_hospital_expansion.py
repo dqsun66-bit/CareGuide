@@ -338,3 +338,7 @@ def test_suzhou_batch_has_three_reviewable_candidates_per_hospital():
         "js_suzhou_002",
         "js_suzhou_003",
     ))
+
+
+def test_wuxi_batch_has_three_reviewable_candidates_per_hospital():
+    _assert_city_batch(("js_wuxi_001", "js_wuxi_002"))

@@ -56,6 +56,22 @@
       "reviewed_at": "2026-11-07T17:30:00+08:00",
       "decision": "approved",
       "note": "医院官网门诊流程与冻结快照哈希一致。"
+    },
+    {
+      "source_id": "src_wuxi_001_service",
+      "retrieved_sha256": "bddf98a7c518118f44843af33b43289b67ef163c24c503a25563ee130df9ebf1",
+      "reviewer": "CareGuide 无锡批次独立复核组",
+      "reviewed_at": "2026-11-08T17:00:00+08:00",
+      "decision": "approved",
+      "note": "无锡市政府就诊指南与冻结快照哈希一致。"
+    },
+    {
+      "source_id": "src_wuxi_002_service",
+      "retrieved_sha256": "3578befad4b985a543d2575a2ee3e2e357ec2d1c0e4e03d78484dd8f5e3e7f54",
+      "reviewer": "CareGuide 无锡批次独立复核组",
+      "reviewed_at": "2026-11-08T17:00:00+08:00",
+      "decision": "approved",
+      "note": "无锡市官方整改报告与冻结快照哈希一致。"
     }
   ],
   "record_reviews": [
@@ -247,6 +263,60 @@
       "reviewer": "CareGuide 苏州批次独立复核组",
       "reviewed_at": "2026-11-07T17:30:00+08:00",
       "decision": "approved"
+    },
+    {
+      "document_id": "js_wuxi_001_identity_v2",
+      "source_ids": ["src_wuxi_001_identity"],
+      "content_hash": "112915fe4b18517946bffdf9e5c8b7334c6d75021b35a63298b240f482393616",
+      "required_terms": ["无锡市人民医院", "Grade III Level A"],
+      "reviewer": "CareGuide 无锡批次独立复核组",
+      "reviewed_at": "2026-11-08T17:00:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_wuxi_001_campus_v2",
+      "source_ids": ["src_wuxi_001_identity"],
+      "content_hash": "7e544bcc2bd91902f7e98c70a3b0dc30755cfcb26bf307561614ac14f0ee1577",
+      "required_terms": ["无锡市人民医院", "无锡市清扬路299号"],
+      "reviewer": "CareGuide 无锡批次独立复核组",
+      "reviewed_at": "2026-11-08T17:00:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_wuxi_001_service_v2",
+      "source_ids": ["src_wuxi_001_service"],
+      "content_hash": "02f5374c0aa7072f9bb70bf5ca5c5283be151c9af2c8c31b59df33646bb6b8ea",
+      "required_terms": ["无锡市人民医院患者端", "预约挂号支付", "检查预约改约", "电子就诊卡"],
+      "reviewer": "CareGuide 无锡批次独立复核组",
+      "reviewed_at": "2026-11-08T17:00:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_wuxi_002_identity_v2",
+      "source_ids": ["src_wuxi_002_identity"],
+      "content_hash": "6bbdb87cea84729e385a5ca172ae93b321233850a1a67b361e0f8403ba0b64bd",
+      "required_terms": ["无锡市中医医院", "Grade III Level A"],
+      "reviewer": "CareGuide 无锡批次独立复核组",
+      "reviewed_at": "2026-11-08T17:00:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_wuxi_002_campus_v2",
+      "source_ids": ["src_wuxi_002_identity"],
+      "content_hash": "4875c431a37aaa1257efd3ac4a133a44913294b1defcfd9574d69cb216d97d1f",
+      "required_terms": ["无锡市中医医院", "无锡市中南西路8号"],
+      "reviewer": "CareGuide 无锡批次独立复核组",
+      "reviewed_at": "2026-11-08T17:00:00+08:00",
+      "decision": "approved"
+    },
+    {
+      "document_id": "js_wuxi_002_service_v2",
+      "source_ids": ["src_wuxi_002_service"],
+      "content_hash": "30c4e9398bc77e8abaf0dea7c6b2beaed70f356e0be2a484d1305e7cbcf74ff9",
+      "required_terms": ["市中医医院", "微信小程序端医保脱卡支付", "诊间支付"],
+      "reviewer": "CareGuide 无锡批次独立复核组",
+      "reviewed_at": "2026-11-08T17:00:00+08:00",
+      "decision": "approved"
     }
   ],
   "gap_reviews": [
@@ -298,6 +368,20 @@
       "reviewed_at": "2026-11-07T17:30:00+08:00",
       "decision": "needs_review",
       "reason": "已核验门诊预约渠道；尚缺停车、公共交通、无障碍设施和实时号源的官方接口证据。"
+    },
+    {
+      "hospital_id": "js_wuxi_001",
+      "reviewer": "CareGuide 无锡批次独立复核组",
+      "reviewed_at": "2026-11-08T17:00:00+08:00",
+      "decision": "needs_review",
+      "reason": "已核验就诊小程序功能；尚缺停车、公共交通、无障碍设施及实时号源的官方接口证据。"
+    },
+    {
+      "hospital_id": "js_wuxi_002",
+      "reviewer": "CareGuide 无锡批次独立复核组",
+      "reviewed_at": "2026-11-08T17:00:00+08:00",
+      "decision": "needs_review",
+      "reason": "已核验移动医保支付服务；当前预约规则、停车、公共交通、无障碍设施及服务实时可用性仍需医院确认。"
     }
   ]
 }
