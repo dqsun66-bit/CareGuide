@@ -243,7 +243,7 @@
     "collected_at": "2026-11-05T13:45:19.435244+08:00",
     "reviewed_at": null,
     "review_status": "needs_review",
-    "content_hash": "9873b78fa20db9550618ceb11aae6f7e32b9e39409600e03d87b316a8869778f",
+    "content_hash": "99b15b55c3aeb55a28b4cfaea3ec9610d91e0a175a971a9449acc604f1bbef2f",
     "language": "zh-CN"
   },
   {
@@ -262,7 +262,7 @@
     "collected_at": "2026-11-05T13:45:19.435244+08:00",
     "reviewed_at": null,
     "review_status": "needs_review",
-    "content_hash": "3c4bb9e9ffce6578b2b29b18ac8d6be9cdfdb71aeda79695383baff29c191907",
+    "content_hash": "752591ba51c30a8f92ff37f92543f49a2dbbd2e5dd03db9d6afa20694705265a",
     "language": "zh-CN"
   },
   {
@@ -281,7 +281,7 @@
     "collected_at": "2026-11-07T08:23:24.796818+00:00",
     "reviewed_at": null,
     "review_status": "needs_review",
-    "content_hash": "21fb87bb0d52770e0d80523dd37ca0a68e193c95732b2f450c78215b6c87df4d",
+    "content_hash": "fcf9b80d1326560c3fdb0fb9f35b36f0eabc45a032f06617f589c925a42ac4b4",
     "language": "zh-CN"
   },
   {
@@ -300,7 +300,7 @@
     "collected_at": "2026-11-05T13:45:19.752292+08:00",
     "reviewed_at": null,
     "review_status": "needs_review",
-    "content_hash": "21f8a51d42598ad06314a030aac081aa6f456844f44c7efc05f5e6ff74ad5b0b",
+    "content_hash": "791d3792188fc3cf23e481549a8a83e4c39994c293da0d68fdc6127362eb6c53",
     "language": "zh-CN"
   },
   {
@@ -319,7 +319,7 @@
     "collected_at": "2026-11-05T13:45:19.752292+08:00",
     "reviewed_at": null,
     "review_status": "needs_review",
-    "content_hash": "146f0da61a64359af7e310af633500978031305351715b4b897f29d15f99ed21",
+    "content_hash": "1347195d3f8c17bbc843d861b9b32cfef528d29ab5638c5027daadf0f3234b89",
     "language": "zh-CN"
   },
   {
@@ -338,7 +338,7 @@
     "collected_at": "2026-11-07T08:23:28.448943+00:00",
     "reviewed_at": null,
     "review_status": "needs_review",
-    "content_hash": "4759e3f8b514ced71cf63fa2eb5a6580bf56ea2840000238e678546672e213dc",
+    "content_hash": "a51599c1aa1af039e0f005e09aa8084cbc11123e73e6c429540fbb3499039cd7",
     "language": "zh-CN"
   },
   {
@@ -357,7 +357,7 @@
     "collected_at": "2026-11-05T13:45:20.038998+08:00",
     "reviewed_at": null,
     "review_status": "needs_review",
-    "content_hash": "7ba554c059b4f83948bd07def053a6aabdad6637db0f172788385dbb9623c5f5",
+    "content_hash": "a531260656ce8af4d37fb22a7e9d1096a20666a10e8b26b6f6e70d843f34ad8b",
     "language": "zh-CN"
   },
   {
@@ -376,7 +376,7 @@
     "collected_at": "2026-11-05T13:45:20.038998+08:00",
     "reviewed_at": null,
     "review_status": "needs_review",
-    "content_hash": "ccf45fce199883cbfc9c65f649a98f52972de74594c4bba1bb8510374b52252f",
+    "content_hash": "9517096362e582e4720f3e7ccc89c5cfbada26cbc9bff51848467ba80b6b075f",
     "language": "zh-CN"
   },
   {
@@ -395,7 +395,7 @@
     "collected_at": "2026-11-07T08:23:31.969972+00:00",
     "reviewed_at": null,
     "review_status": "needs_review",
-    "content_hash": "d65985a7b50efafbf603e0acbd1169232404f062d3ecce3436dd902517eab639",
+    "content_hash": "30d30eba73c31dfb3a5fdb63d4736077c46fec776c4824001d6bc8ae780cad91",
     "language": "zh-CN"
   },
   {
@@ -414,7 +414,7 @@
     "collected_at": "2026-11-05T13:45:20.089042+08:00",
     "reviewed_at": null,
     "review_status": "needs_review",
-    "content_hash": "112915fe4b18517946bffdf9e5c8b7334c6d75021b35a63298b240f482393616",
+    "content_hash": "f8ce673cd80efbf0bbf6322eec760445e5ff608792ef06a2be7d1b8e9e755c7f",
     "language": "zh-CN"
   },
   {
@@ -433,7 +433,7 @@
     "collected_at": "2026-11-05T13:45:20.089042+08:00",
     "reviewed_at": null,
     "review_status": "needs_review",
-    "content_hash": "7e544bcc2bd91902f7e98c70a3b0dc30755cfcb26bf307561614ac14f0ee1577",
+    "content_hash": "f210f72bb5dd93b4c3ce260c92d400c98f2a329a30f5c50cf5c3ddedbca4238c",
     "language": "zh-CN"
   },
   {
@@ -452,7 +452,7 @@
     "collected_at": "2026-11-08T08:37:48.347098+00:00",
     "reviewed_at": null,
     "review_status": "needs_review",
-    "content_hash": "02f5374c0aa7072f9bb70bf5ca5c5283be151c9af2c8c31b59df33646bb6b8ea",
+    "content_hash": "f9daf4cde98d49150726989e9b21f508c7ffebdaa16dd34006a985fd5a2aec49",
     "language": "zh-CN"
   },
   {
@@ -471,7 +471,7 @@
     "collected_at": "2026-11-05T13:45:20.170184+08:00",
     "reviewed_at": null,
     "review_status": "needs_review",
-    "content_hash": "6bbdb87cea84729e385a5ca172ae93b321233850a1a67b361e0f8403ba0b64bd",
+    "content_hash": "66a4a060f4afe8a1899f2f2bfd38d94315314b44cb652e045e0d7bddc2b1f338",
     "language": "zh-CN"
   },
   {
@@ -490,7 +490,7 @@
     "collected_at": "2026-11-05T13:45:20.170184+08:00",
     "reviewed_at": null,
     "review_status": "needs_review",
-    "content_hash": "4875c431a37aaa1257efd3ac4a133a44913294b1defcfd9574d69cb216d97d1f",
+    "content_hash": "b511a0217ea963a450c6daa9547862fd5597ae21c72d0e45332ea901ce010865",
     "language": "zh-CN"
   },
   {
@@ -509,16 +509,16 @@
     "collected_at": "2026-11-08T08:37:51.655739+00:00",
     "reviewed_at": null,
     "review_status": "needs_review",
-    "content_hash": "30c4e9398bc77e8abaf0dea7c6b2beaed70f356e0be2a484d1305e7cbcf74ff9",
+    "content_hash": "ee54b495fa96482361f0230e336da81d340c97a4a2e7fb6bd65b592999e203ff",
     "language": "zh-CN"
   },
-  {"document_id":"js_changzhou_001_identity_v2","hospital_id":"js_changzhou_001","campus_id":"js_changzhou_001_main","city":"常州","category":"identity","title":"常州市第一人民医院身份与等级","content":"常州市第一人民医院为三级甲等综合医院。本记录依据常州市政府和江苏省卫生健康委员会冻结页面核验；最新安排以医院公告为准。","source_id":"src_changzhou_001_identity","supporting_source_ids":["src_changzhou_001_grade"],"source_url":"https://www.changzhou.gov.cn/gi_news/670178419973618","source_tier":"health_authority","published_at":null,"collected_at":"2026-11-05T13:45:20.363062+08:00","reviewed_at":null,"review_status":"needs_review","content_hash":"7a8244912f5b783e866788004dbd4c7f48aca14463aed393a912f4a3e6ba513c","language":"zh-CN"},
-  {"document_id":"js_changzhou_001_campus_v2","hospital_id":"js_changzhou_001","campus_id":"js_changzhou_001_main","city":"常州","category":"campus","title":"常州市第一人民医院本部位置","content":"常州市第一人民医院本部位于江苏省常州市局前街185号。该信息仅用于静态定位，临时调整应向医院确认。","source_id":"src_changzhou_001_identity","supporting_source_ids":[],"source_url":"https://www.changzhou.gov.cn/gi_news/670178419973618","source_tier":"health_authority","published_at":null,"collected_at":"2026-11-05T13:45:20.363062+08:00","reviewed_at":null,"review_status":"needs_review","content_hash":"944a3f2525c7d598363cd73202899c1aea4e8eb3e9121601426e5dceccac3918","language":"zh-CN"},
-  {"document_id":"js_changzhou_001_service_v2","hospital_id":"js_changzhou_001","campus_id":"js_changzhou_001_main","city":"常州","category":"appointment","title":"常州市第一人民医院基层预约服务","content":"常州市卫健委公开答复显示，天宁区基层医疗机构已开放常州市第一人民医院预约挂号服务，其他区设有试点机构。适用范围及号源应实时确认。","source_id":"src_changzhou_001_service","supporting_source_ids":[],"source_url":"https://zx.changzhou.gov.cn/html/czzx/2024/MQQPPFOM_0104/22205.html","source_tier":"government","published_at":"2024-06-05","collected_at":"2026-11-08T08:44:59.700410+00:00","reviewed_at":null,"review_status":"needs_review","content_hash":"83676bc5725065ef1aab2f979cda86016b05cac4ecc6630f69eb6c25bcff75b5","language":"zh-CN"},
-  {"document_id":"js_nantong_001_identity_v2","hospital_id":"js_nantong_001","campus_id":"js_nantong_001_main","city":"南通","category":"identity","title":"南通大学附属医院身份与等级","content":"南通大学附属医院为三级甲等综合医院。本记录依据江苏省卫生健康委员会冻结页面核验；最新安排以医院公告为准。","source_id":"src_nantong_001_identity","supporting_source_ids":["src_nantong_001_grade"],"source_url":"https://wjw.jiangsu.gov.cn/art/2024/7/25/art_49490_6012987.html","source_tier":"health_authority","published_at":null,"collected_at":"2026-11-05T13:45:20.681863+08:00","reviewed_at":null,"review_status":"needs_review","content_hash":"eb448242d36f6e88b2dbe6a0b45df7819f12dac3de858951ed13100022930b14","language":"zh-CN"},
-  {"document_id":"js_nantong_001_campus_v2","hospital_id":"js_nantong_001","campus_id":"js_nantong_001_main","city":"南通","category":"campus","title":"南通大学附属医院西院区位置","content":"南通大学附属医院西院区位于江苏省南通市西寺路20号。该信息仅用于静态定位，临时调整应向医院确认。","source_id":"src_nantong_001_identity","supporting_source_ids":[],"source_url":"https://wjw.jiangsu.gov.cn/art/2024/7/25/art_49490_6012987.html","source_tier":"health_authority","published_at":null,"collected_at":"2026-11-05T13:45:20.681863+08:00","reviewed_at":null,"review_status":"needs_review","content_hash":"6bc289601ade3f23d5d09196ee44bce3233f25d2c92074c7653075bc4e2b590d","language":"zh-CN"},
-  {"document_id":"js_nantong_001_service_v2","hospital_id":"js_nantong_001","campus_id":"js_nantong_001_main","city":"南通","category":"appointment","title":"南通大学附属医院预约方式","content":"医院官网列出12320电话、微信、江苏医保云、窗口、自助机、诊间、出院及电脑端等预约方式，所有渠道实行实名制。具体号源以当日系统为准。","source_id":"src_nantong_001_service","supporting_source_ids":[],"source_url":"https://www.ahnmc.com/jyzn1.asp","source_tier":"hospital_official","published_at":null,"collected_at":"2026-11-08T08:44:07.666782+00:00","reviewed_at":null,"review_status":"needs_review","content_hash":"406a04df9a3fac1cc5df967735a729b887dc37ecff31198115e0cee7607555cc","language":"zh-CN"},
-  {"document_id":"js_yangzhou_001_identity_v2","hospital_id":"js_yangzhou_001","campus_id":"js_yangzhou_001_main","city":"扬州","category":"identity","title":"江苏省苏北人民医院身份与等级","content":"江苏省苏北人民医院为三级甲等综合医院。本记录依据医院官网和江苏省卫生健康委员会冻结页面核验。","source_id":"src_yangzhou_001_identity","supporting_source_ids":["src_yangzhou_001_grade"],"source_url":"https://www.yzsbh.com/Html/Hospitals/Main/ContactUs.html","source_tier":"hospital_official","published_at":null,"collected_at":"2026-11-05T13:52:17.223531+08:00","reviewed_at":null,"review_status":"needs_review","content_hash":"aa478918afae12dfa9197eb6265c1d42d43c551127308611e19ba577d6677ea7","language":"zh-CN"},
-  {"document_id":"js_yangzhou_001_campus_v2","hospital_id":"js_yangzhou_001","campus_id":"js_yangzhou_001_main","city":"扬州","category":"campus","title":"江苏省苏北人民医院主院区位置","content":"江苏省苏北人民医院主院区位于江苏省扬州市南通西路98号。该信息仅用于静态定位，临时调整应向医院确认。","source_id":"src_yangzhou_001_identity","supporting_source_ids":[],"source_url":"https://www.yzsbh.com/Html/Hospitals/Main/ContactUs.html","source_tier":"hospital_official","published_at":null,"collected_at":"2026-11-05T13:52:17.223531+08:00","reviewed_at":null,"review_status":"needs_review","content_hash":"8ff55985dd64287698bf724f9f84ae70bd3111b70b13493a25273a4386182bec","language":"zh-CN"},
-  {"document_id":"js_yangzhou_001_service_v2","hospital_id":"js_yangzhou_001","campus_id":"js_yangzhou_001_main","city":"扬州","category":"contact","title":"江苏省苏北人民医院预约咨询电话","content":"医院官网公布就诊、预约挂号和健康咨询电话87373114。电话状态及号源具有实时性，拨打前后均应以医院最新公告为准。","source_id":"src_yangzhou_001_identity","supporting_source_ids":[],"source_url":"https://www.yzsbh.com/Html/Hospitals/Main/ContactUs.html","source_tier":"hospital_official","published_at":null,"collected_at":"2026-11-05T13:52:17.223531+08:00","reviewed_at":null,"review_status":"needs_review","content_hash":"819511789fc84fcf333aaff222f5cc00cc962ab30edfcbe3f0e4d600e72441bb","language":"zh-CN"}
+  {"document_id":"js_changzhou_001_identity_v2","hospital_id":"js_changzhou_001","campus_id":"js_changzhou_001_main","city":"常州","category":"identity","title":"常州市第一人民医院身份与等级","content":"常州市第一人民医院为三级甲等综合医院。本记录依据常州市政府和江苏省卫生健康委员会冻结页面核验；最新安排以医院公告为准。","source_id":"src_changzhou_001_identity","supporting_source_ids":["src_changzhou_001_grade"],"source_url":"https://www.changzhou.gov.cn/gi_news/670178419973618","source_tier":"health_authority","published_at":null,"collected_at":"2026-11-05T13:45:20.363062+08:00","reviewed_at":null,"review_status":"needs_review","content_hash":"f7e672442972a46d1dac739638d8bed6add172013c97e18397706504fb87fe33","language":"zh-CN"},
+  {"document_id":"js_changzhou_001_campus_v2","hospital_id":"js_changzhou_001","campus_id":"js_changzhou_001_main","city":"常州","category":"campus","title":"常州市第一人民医院本部位置","content":"常州市第一人民医院本部位于江苏省常州市局前街185号。该信息仅用于静态定位，临时调整应向医院确认，出行前请复核院区名称。","source_id":"src_changzhou_001_identity","supporting_source_ids":[],"source_url":"https://www.changzhou.gov.cn/gi_news/670178419973618","source_tier":"health_authority","published_at":null,"collected_at":"2026-11-05T13:45:20.363062+08:00","reviewed_at":null,"review_status":"needs_review","content_hash":"11037b6adfbb64d1df33588d9a51ed5aa43fffd5863524e8d098214b194bec55","language":"zh-CN"},
+  {"document_id":"js_changzhou_001_service_v2","hospital_id":"js_changzhou_001","campus_id":"js_changzhou_001_main","city":"常州","category":"appointment","title":"常州市第一人民医院基层预约服务","content":"常州市卫健委公开答复显示，天宁区基层医疗机构已开放常州市第一人民医院预约挂号服务，其他区设有试点机构。适用范围及号源应实时确认。","source_id":"src_changzhou_001_service","supporting_source_ids":[],"source_url":"https://zx.changzhou.gov.cn/html/czzx/2024/MQQPPFOM_0104/22205.html","source_tier":"government","published_at":"2024-06-05","collected_at":"2026-11-08T08:44:59.700410+00:00","reviewed_at":null,"review_status":"needs_review","content_hash":"4bbe05b3f5304e296fcf11cbfb59cf0f0aa69e9e0813d48c5a13d52e95caa6f7","language":"zh-CN"},
+  {"document_id":"js_nantong_001_identity_v2","hospital_id":"js_nantong_001","campus_id":"js_nantong_001_main","city":"南通","category":"identity","title":"南通大学附属医院身份与等级","content":"南通大学附属医院为三级甲等综合医院。本记录依据江苏省卫生健康委员会冻结页面核验；最新安排以医院公告为准。","source_id":"src_nantong_001_identity","supporting_source_ids":["src_nantong_001_grade"],"source_url":"https://wjw.jiangsu.gov.cn/art/2024/7/25/art_49490_6012987.html","source_tier":"health_authority","published_at":null,"collected_at":"2026-11-05T13:45:20.681863+08:00","reviewed_at":null,"review_status":"needs_review","content_hash":"cb237eda3e95222a793bf8df78daf903c1d3267e719d116cab11554f457301ef","language":"zh-CN"},
+  {"document_id":"js_nantong_001_campus_v2","hospital_id":"js_nantong_001","campus_id":"js_nantong_001_main","city":"南通","category":"campus","title":"南通大学附属医院西院区位置","content":"南通大学附属医院西院区位于江苏省南通市西寺路20号。该信息仅用于静态定位，临时调整应向医院确认，出行前请复核院区名称。","source_id":"src_nantong_001_identity","supporting_source_ids":[],"source_url":"https://wjw.jiangsu.gov.cn/art/2024/7/25/art_49490_6012987.html","source_tier":"health_authority","published_at":null,"collected_at":"2026-11-05T13:45:20.681863+08:00","reviewed_at":null,"review_status":"needs_review","content_hash":"4c193dd47c25c43885c7348dc0679f4d171b628a13105fe6e205442ee03a7e8b","language":"zh-CN"},
+  {"document_id":"js_nantong_001_service_v2","hospital_id":"js_nantong_001","campus_id":"js_nantong_001_main","city":"南通","category":"appointment","title":"南通大学附属医院预约方式","content":"医院官网列出12320电话、微信、江苏医保云、窗口、自助机、诊间、出院及电脑端等预约方式，所有渠道实行实名制。具体号源以当日系统为准。","source_id":"src_nantong_001_service","supporting_source_ids":[],"source_url":"https://www.ahnmc.com/jyzn1.asp","source_tier":"hospital_official","published_at":null,"collected_at":"2026-11-08T08:44:07.666782+00:00","reviewed_at":null,"review_status":"needs_review","content_hash":"bef6e4a3515b0a1e9699c3817f108a8bec95cbe6920ac23d036568827b8e2a14","language":"zh-CN"},
+  {"document_id":"js_yangzhou_001_identity_v2","hospital_id":"js_yangzhou_001","campus_id":"js_yangzhou_001_main","city":"扬州","category":"identity","title":"江苏省苏北人民医院身份与等级","content":"江苏省苏北人民医院为三级甲等综合医院。本记录依据医院官网和江苏省卫生健康委员会冻结页面核验；最新等级以主管部门公告为准。","source_id":"src_yangzhou_001_identity","supporting_source_ids":["src_yangzhou_001_grade"],"source_url":"https://www.yzsbh.com/Html/Hospitals/Main/ContactUs.html","source_tier":"hospital_official","published_at":null,"collected_at":"2026-11-05T13:52:17.223531+08:00","reviewed_at":null,"review_status":"needs_review","content_hash":"2928702063125e6dd2a5891624ccdb31e7bdaf2bab9e0d9275d9f2ecc5fea46b","language":"zh-CN"},
+  {"document_id":"js_yangzhou_001_campus_v2","hospital_id":"js_yangzhou_001","campus_id":"js_yangzhou_001_main","city":"扬州","category":"campus","title":"江苏省苏北人民医院主院区位置","content":"江苏省苏北人民医院主院区位于江苏省扬州市南通西路98号。该信息仅用于静态定位，临时调整应向医院确认。","source_id":"src_yangzhou_001_identity","supporting_source_ids":[],"source_url":"https://www.yzsbh.com/Html/Hospitals/Main/ContactUs.html","source_tier":"hospital_official","published_at":null,"collected_at":"2026-11-05T13:52:17.223531+08:00","reviewed_at":null,"review_status":"needs_review","content_hash":"b3752d9acae9cc9ff527e35e6b49b3c8f8ca5e3af43ec664988f2f3bb5638f79","language":"zh-CN"},
+  {"document_id":"js_yangzhou_001_service_v2","hospital_id":"js_yangzhou_001","campus_id":"js_yangzhou_001_main","city":"扬州","category":"contact","title":"江苏省苏北人民医院预约咨询电话","content":"医院官网公布就诊、预约挂号和健康咨询电话87373114。电话状态及号源具有实时性，拨打前后均应以医院最新公告为准。","source_id":"src_yangzhou_001_identity","supporting_source_ids":[],"source_url":"https://www.yzsbh.com/Html/Hospitals/Main/ContactUs.html","source_tier":"hospital_official","published_at":null,"collected_at":"2026-11-05T13:52:17.223531+08:00","reviewed_at":null,"review_status":"needs_review","content_hash":"56672541f980e8da65f175c21122e989a5da223a421605479cced378ae46db72","language":"zh-CN"}
 ]

@@ -100,6 +100,7 @@ AUTHORITATIVE_TIERS = {
 
 RECORD_EVIDENCE_CATEGORIES = {
     Category.CAMPUS: {Category.IDENTITY, Category.CAMPUS, Category.CONTACT},
+    Category.CONTACT: {Category.IDENTITY, Category.CONTACT},
 }
 
 

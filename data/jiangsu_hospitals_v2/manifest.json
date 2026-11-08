@@ -1,0 +1,15 @@
+{
+  "version": "jiangsu-hospitals-v2",
+  "stage": "expanded_core_15_of_15",
+  "built_at": "2026-11-08T17:30:00+08:00",
+  "hospital_count": 15,
+  "source_count": 40,
+  "record_count": 45,
+  "verification_count": 100,
+  "files": {
+    "hospitals.json": "9c24d38df469f803bd6becbff2a6301f010037d6f37cf0eb718dc3b5898e3182",
+    "sources.json": "a2e72359df629f17495bc952ce6a7decf4a96b9cf6097ef3268c955e5d40da39",
+    "records.json": "9a70adebd99c7a51309b8898c29b083a5ebc68f549446d84715ae3ff3705a459",
+    "verification.json": "966d13a2b4fac85fcbaa43855862db2e82fcffdeb0a5a01e51cebe5607727c4c"
+  }
+}

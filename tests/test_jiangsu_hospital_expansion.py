@@ -1,7 +1,8 @@
 """Offline expansion of the frozen Taizhou pilot into a 15-hospital v2 corpus."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from collections import Counter
+from datetime import date, datetime, timedelta, timezone
 import hashlib
 import html
 import json
@@ -21,6 +22,7 @@ NOW = datetime(2026, 11, 7, 12, 0, tzinfo=CN_TZ)
 ROOT = Path(__file__).resolve().parents[1]
 V1 = ROOT / "data/jiangsu_hospitals_v1"
 V2_SOURCES = ROOT / "data/jiangsu_hospital_sources_v2"
+V2 = ROOT / "data/jiangsu_hospitals_v2"
 
 
 def _dump(path: Path, value) -> None:
@@ -248,6 +250,25 @@ def test_expansion_builder_is_offline(monkeypatch, tmp_path, expansion_inputs, c
     assert len(corpus.records) == 45
 
 
+def test_reviewed_hospital_source_extends_only_v2_domain_allowlist():
+    v1 = HospitalCorpus.load(V1)
+    updated = command._expanded_hospitals(v1.hospitals, [{
+        "hospital_id": "js_nantong_001",
+        "source_tier": "hospital_official",
+        "url": "https://www.ahnmc.com/jyzn1.asp",
+    }])
+    original = next(
+        hospital for hospital in v1.hospitals
+        if hospital.hospital_id == "js_nantong_001"
+    )
+    expanded = next(
+        hospital for hospital in updated
+        if hospital.hospital_id == "js_nantong_001"
+    )
+    assert original.official_domains == ()
+    assert expanded.official_domains == ("www.ahnmc.com",)
+
+
 def test_expansion_preserves_v1_records_and_refuses_overwrite(tmp_path, expansion_inputs):
     output = tmp_path / "v2"
     command.main(_arguments(expansion_inputs, output, apply=True))
@@ -360,3 +381,45 @@ def test_remaining_city_batch_has_three_reviewable_candidates_per_hospital():
         "js_nantong_001",
         "js_yangzhou_001",
     ))
+
+
+def test_published_v2_asset_meets_expansion_contract():
+    integrity = json.loads(
+        (V2_SOURCES / "v1_integrity.json").read_text(encoding="utf-8")
+    )
+    assert integrity == {
+        "version": "jiangsu-v1-integrity-v1",
+        "files": _hash_tree(V1),
+    }
+
+    corpus = HospitalCorpus.load(V2)
+    assert corpus.manifest.version == "jiangsu-hospitals-v2"
+    assert corpus.manifest.stage == "expanded_core_15_of_15"
+    assert len(corpus.hospitals) == 15
+    assert len(corpus.records) == 45
+    assert Counter(record.hospital_id for record in corpus.records) == {
+        hospital.hospital_id: 3 for hospital in corpus.hospitals
+    }
+
+    report = corpus.validate(today=date(2026, 11, 8))
+    assert not report.errors, report.errors
+    assert not report.expired_source_ids
+    assert not report.conflict_ids
+    assert not report.duplicate_groups
+
+    verified_subjects = {
+        subject_id
+        for entry in corpus.verification
+        if entry.status.value == "verified_official"
+        for subject_id in entry.subject_ids
+    }
+    assert {record.document_id for record in corpus.records} <= verified_subjects
+
+    for hospital in corpus.hospitals:
+        evidence = "\n".join(
+            _decode_snapshot(V2 / source.snapshot_path)
+            for source in corpus.sources
+            if source.hospital_id == hospital.hospital_id
+        )
+        for alias in hospital.aliases:
+            assert alias in evidence, (hospital.hospital_id, alias)

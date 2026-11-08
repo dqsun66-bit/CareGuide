@@ -25,3 +25,5 @@ data/eval/medical_intent_v3/*.jsonl -text
 # Official source snapshots are immutable evidence; hashes cover their exact bytes.
 data/jiangsu_hospital_sources_v1/snapshots/** binary
 data/jiangsu_hospitals_v1/snapshots/** binary
+data/jiangsu_hospital_sources_v2/snapshots/** binary
+data/jiangsu_hospitals_v2/snapshots/** binary

@@ -202,7 +202,7 @@
     {
       "document_id": "js_suzhou_001_identity_v2",
       "source_ids": ["src_suzhou_001_identity", "src_suzhou_001_grade"],
-      "content_hash": "9873b78fa20db9550618ceb11aae6f7e32b9e39409600e03d87b316a8869778f",
+      "content_hash": "99b15b55c3aeb55a28b4cfaea3ec9610d91e0a175a971a9449acc604f1bbef2f",
       "required_terms": ["苏州大学附属第一医院", "三级甲等"],
       "reviewer": "CareGuide 苏州批次独立复核组",
       "reviewed_at": "2026-11-07T17:30:00+08:00",
@@ -211,7 +211,7 @@
     {
       "document_id": "js_suzhou_001_campus_v2",
       "source_ids": ["src_suzhou_001_identity"],
-      "content_hash": "3c4bb9e9ffce6578b2b29b18ac8d6be9cdfdb71aeda79695383baff29c191907",
+      "content_hash": "752591ba51c30a8f92ff37f92543f49a2dbbd2e5dd03db9d6afa20694705265a",
       "required_terms": ["苏州大学附属第一医院", "平海路899号"],
       "reviewer": "CareGuide 苏州批次独立复核组",
       "reviewed_at": "2026-11-07T17:30:00+08:00",
@@ -220,7 +220,7 @@
     {
       "document_id": "js_suzhou_001_service_v2",
       "source_ids": ["src_suzhou_001_service"],
-      "content_hash": "21fb87bb0d52770e0d80523dd37ca0a68e193c95732b2f450c78215b6c87df4d",
+      "content_hash": "fcf9b80d1326560c3fdb0fb9f35b36f0eabc45a032f06617f589c925a42ac4b4",
       "required_terms": ["苏州大学附属第一医院", "12320苏州卫生热线", "线下门诊自助服务机", "平海路公园P+R停车场"],
       "reviewer": "CareGuide 苏州批次独立复核组",
       "reviewed_at": "2026-11-07T17:30:00+08:00",
@@ -229,7 +229,7 @@
     {
       "document_id": "js_suzhou_002_identity_v2",
       "source_ids": ["src_suzhou_002_identity", "src_suzhou_002_grade"],
-      "content_hash": "21f8a51d42598ad06314a030aac081aa6f456844f44c7efc05f5e6ff74ad5b0b",
+      "content_hash": "791d3792188fc3cf23e481549a8a83e4c39994c293da0d68fdc6127362eb6c53",
       "required_terms": ["苏州大学附属第二医院", "三级甲等"],
       "reviewer": "CareGuide 苏州批次独立复核组",
       "reviewed_at": "2026-11-07T17:30:00+08:00",
@@ -238,7 +238,7 @@
     {
       "document_id": "js_suzhou_002_campus_v2",
       "source_ids": ["src_suzhou_002_identity"],
-      "content_hash": "146f0da61a64359af7e310af633500978031305351715b4b897f29d15f99ed21",
+      "content_hash": "1347195d3f8c17bbc843d861b9b32cfef528d29ab5638c5027daadf0f3234b89",
       "required_terms": ["苏州大学附属第二医院", "三香路1055号"],
       "reviewer": "CareGuide 苏州批次独立复核组",
       "reviewed_at": "2026-11-07T17:30:00+08:00",
@@ -247,7 +247,7 @@
     {
       "document_id": "js_suzhou_002_service_v2",
       "source_ids": ["src_suzhou_002_service"],
-      "content_hash": "4759e3f8b514ced71cf63fa2eb5a6580bf56ea2840000238e678546672e213dc",
+      "content_hash": "a51599c1aa1af039e0f005e09aa8084cbc11123e73e6c429540fbb3499039cd7",
       "required_terms": ["苏州大学附属第二医院", "智能院内导航", "出院床旁结算"],
       "reviewer": "CareGuide 苏州批次独立复核组",
       "reviewed_at": "2026-11-07T17:30:00+08:00",
@@ -256,7 +256,7 @@
     {
       "document_id": "js_suzhou_003_identity_v2",
       "source_ids": ["src_suzhou_003_identity"],
-      "content_hash": "7ba554c059b4f83948bd07def053a6aabdad6637db0f172788385dbb9623c5f5",
+      "content_hash": "a531260656ce8af4d37fb22a7e9d1096a20666a10e8b26b6f6e70d843f34ad8b",
       "required_terms": ["苏州大学附属儿童医院", "三甲"],
       "reviewer": "CareGuide 苏州批次独立复核组",
       "reviewed_at": "2026-11-07T17:30:00+08:00",
@@ -265,7 +265,7 @@
     {
       "document_id": "js_suzhou_003_campus_v2",
       "source_ids": ["src_suzhou_003_identity"],
-      "content_hash": "ccf45fce199883cbfc9c65f649a98f52972de74594c4bba1bb8510374b52252f",
+      "content_hash": "9517096362e582e4720f3e7ccc89c5cfbada26cbc9bff51848467ba80b6b075f",
       "required_terms": ["苏州大学附属儿童医院", "钟南街92号"],
       "reviewer": "CareGuide 苏州批次独立复核组",
       "reviewed_at": "2026-11-07T17:30:00+08:00",
@@ -274,7 +274,7 @@
     {
       "document_id": "js_suzhou_003_service_v2",
       "source_ids": ["src_suzhou_003_service"],
-      "content_hash": "d65985a7b50efafbf603e0acbd1169232404f062d3ecce3436dd902517eab639",
+      "content_hash": "30d30eba73c31dfb3a5fdb63d4736077c46fec776c4824001d6bc8ae780cad91",
       "required_terms": ["请务必提前预约", "苏州卫生12320微信公众号", "12320电话", "健康苏州掌上行APP"],
       "reviewer": "CareGuide 苏州批次独立复核组",
       "reviewed_at": "2026-11-07T17:30:00+08:00",
@@ -283,7 +283,7 @@
     {
       "document_id": "js_wuxi_001_identity_v2",
       "source_ids": ["src_wuxi_001_identity"],
-      "content_hash": "112915fe4b18517946bffdf9e5c8b7334c6d75021b35a63298b240f482393616",
+      "content_hash": "f8ce673cd80efbf0bbf6322eec760445e5ff608792ef06a2be7d1b8e9e755c7f",
       "required_terms": ["无锡市人民医院", "Grade III Level A"],
       "reviewer": "CareGuide 无锡批次独立复核组",
       "reviewed_at": "2026-11-08T17:00:00+08:00",
@@ -292,7 +292,7 @@
     {
       "document_id": "js_wuxi_001_campus_v2",
       "source_ids": ["src_wuxi_001_identity"],
-      "content_hash": "7e544bcc2bd91902f7e98c70a3b0dc30755cfcb26bf307561614ac14f0ee1577",
+      "content_hash": "f210f72bb5dd93b4c3ce260c92d400c98f2a329a30f5c50cf5c3ddedbca4238c",
       "required_terms": ["无锡市人民医院", "无锡市清扬路299号"],
       "reviewer": "CareGuide 无锡批次独立复核组",
       "reviewed_at": "2026-11-08T17:00:00+08:00",
@@ -301,7 +301,7 @@
     {
       "document_id": "js_wuxi_001_service_v2",
       "source_ids": ["src_wuxi_001_service"],
-      "content_hash": "02f5374c0aa7072f9bb70bf5ca5c5283be151c9af2c8c31b59df33646bb6b8ea",
+      "content_hash": "f9daf4cde98d49150726989e9b21f508c7ffebdaa16dd34006a985fd5a2aec49",
       "required_terms": ["无锡市人民医院患者端", "预约挂号支付", "检查预约改约", "电子就诊卡"],
       "reviewer": "CareGuide 无锡批次独立复核组",
       "reviewed_at": "2026-11-08T17:00:00+08:00",
@@ -310,7 +310,7 @@
     {
       "document_id": "js_wuxi_002_identity_v2",
       "source_ids": ["src_wuxi_002_identity"],
-      "content_hash": "6bbdb87cea84729e385a5ca172ae93b321233850a1a67b361e0f8403ba0b64bd",
+      "content_hash": "66a4a060f4afe8a1899f2f2bfd38d94315314b44cb652e045e0d7bddc2b1f338",
       "required_terms": ["无锡市中医医院", "Grade III Level A"],
       "reviewer": "CareGuide 无锡批次独立复核组",
       "reviewed_at": "2026-11-08T17:00:00+08:00",
@@ -319,7 +319,7 @@
     {
       "document_id": "js_wuxi_002_campus_v2",
       "source_ids": ["src_wuxi_002_identity"],
-      "content_hash": "4875c431a37aaa1257efd3ac4a133a44913294b1defcfd9574d69cb216d97d1f",
+      "content_hash": "b511a0217ea963a450c6daa9547862fd5597ae21c72d0e45332ea901ce010865",
       "required_terms": ["无锡市中医医院", "无锡市中南西路8号"],
       "reviewer": "CareGuide 无锡批次独立复核组",
       "reviewed_at": "2026-11-08T17:00:00+08:00",
@@ -328,7 +328,7 @@
     {
       "document_id": "js_wuxi_002_service_v2",
       "source_ids": ["src_wuxi_002_service"],
-      "content_hash": "30c4e9398bc77e8abaf0dea7c6b2beaed70f356e0be2a484d1305e7cbcf74ff9",
+      "content_hash": "ee54b495fa96482361f0230e336da81d340c97a4a2e7fb6bd65b592999e203ff",
       "required_terms": ["市中医医院", "微信小程序端医保脱卡支付", "诊间支付"],
       "reviewer": "CareGuide 无锡批次独立复核组",
       "reviewed_at": "2026-11-08T17:00:00+08:00",
@@ -337,7 +337,7 @@
     {
       "document_id": "js_changzhou_001_identity_v2",
       "source_ids": ["src_changzhou_001_identity", "src_changzhou_001_grade"],
-      "content_hash": "7a8244912f5b783e866788004dbd4c7f48aca14463aed393a912f4a3e6ba513c",
+      "content_hash": "f7e672442972a46d1dac739638d8bed6add172013c97e18397706504fb87fe33",
       "required_terms": ["常州市第一人民医院", "三级甲等"],
       "reviewer": "CareGuide 苏中批次独立复核组",
       "reviewed_at": "2026-11-08T17:30:00+08:00",
@@ -346,7 +346,7 @@
     {
       "document_id": "js_changzhou_001_campus_v2",
       "source_ids": ["src_changzhou_001_identity"],
-      "content_hash": "944a3f2525c7d598363cd73202899c1aea4e8eb3e9121601426e5dceccac3918",
+      "content_hash": "11037b6adfbb64d1df33588d9a51ed5aa43fffd5863524e8d098214b194bec55",
       "required_terms": ["常州市第一人民医院", "局前街185号"],
       "reviewer": "CareGuide 苏中批次独立复核组",
       "reviewed_at": "2026-11-08T17:30:00+08:00",
@@ -355,7 +355,7 @@
     {
       "document_id": "js_changzhou_001_service_v2",
       "source_ids": ["src_changzhou_001_service"],
-      "content_hash": "83676bc5725065ef1aab2f979cda86016b05cac4ecc6630f69eb6c25bcff75b5",
+      "content_hash": "4bbe05b3f5304e296fcf11cbfb59cf0f0aa69e9e0813d48c5a13d52e95caa6f7",
       "required_terms": ["市一院", "预约挂号服务", "天宁区"],
       "reviewer": "CareGuide 苏中批次独立复核组",
       "reviewed_at": "2026-11-08T17:30:00+08:00",
@@ -364,7 +364,7 @@
     {
       "document_id": "js_nantong_001_identity_v2",
       "source_ids": ["src_nantong_001_identity", "src_nantong_001_grade"],
-      "content_hash": "eb448242d36f6e88b2dbe6a0b45df7819f12dac3de858951ed13100022930b14",
+      "content_hash": "cb237eda3e95222a793bf8df78daf903c1d3267e719d116cab11554f457301ef",
       "required_terms": ["南通大学附属医院", "三级甲等"],
       "reviewer": "CareGuide 苏中批次独立复核组",
       "reviewed_at": "2026-11-08T17:30:00+08:00",
@@ -373,7 +373,7 @@
     {
       "document_id": "js_nantong_001_campus_v2",
       "source_ids": ["src_nantong_001_identity"],
-      "content_hash": "6bc289601ade3f23d5d09196ee44bce3233f25d2c92074c7653075bc4e2b590d",
+      "content_hash": "4c193dd47c25c43885c7348dc0679f4d171b628a13105fe6e205442ee03a7e8b",
       "required_terms": ["南通大学附属医院", "西寺路20号"],
       "reviewer": "CareGuide 苏中批次独立复核组",
       "reviewed_at": "2026-11-08T17:30:00+08:00",
@@ -382,7 +382,7 @@
     {
       "document_id": "js_nantong_001_service_v2",
       "source_ids": ["src_nantong_001_service"],
-      "content_hash": "406a04df9a3fac1cc5df967735a729b887dc37ecff31198115e0cee7607555cc",
+      "content_hash": "bef6e4a3515b0a1e9699c3817f108a8bec95cbe6920ac23d036568827b8e2a14",
       "required_terms": ["电话预约", "12320", "微信预约", "诊间预约", "实名制预约"],
       "reviewer": "CareGuide 苏中批次独立复核组",
       "reviewed_at": "2026-11-08T17:30:00+08:00",
@@ -391,7 +391,7 @@
     {
       "document_id": "js_yangzhou_001_identity_v2",
       "source_ids": ["src_yangzhou_001_identity", "src_yangzhou_001_grade"],
-      "content_hash": "aa478918afae12dfa9197eb6265c1d42d43c551127308611e19ba577d6677ea7",
+      "content_hash": "2928702063125e6dd2a5891624ccdb31e7bdaf2bab9e0d9275d9f2ecc5fea46b",
       "required_terms": ["江苏省苏北人民医院", "三级甲等"],
       "reviewer": "CareGuide 苏中批次独立复核组",
       "reviewed_at": "2026-11-08T17:30:00+08:00",
@@ -400,7 +400,7 @@
     {
       "document_id": "js_yangzhou_001_campus_v2",
       "source_ids": ["src_yangzhou_001_identity"],
-      "content_hash": "8ff55985dd64287698bf724f9f84ae70bd3111b70b13493a25273a4386182bec",
+      "content_hash": "b3752d9acae9cc9ff527e35e6b49b3c8f8ca5e3af43ec664988f2f3bb5638f79",
       "required_terms": ["江苏省苏北人民医院", "南通西路98号"],
       "reviewer": "CareGuide 苏中批次独立复核组",
       "reviewed_at": "2026-11-08T17:30:00+08:00",
@@ -409,7 +409,7 @@
     {
       "document_id": "js_yangzhou_001_service_v2",
       "source_ids": ["src_yangzhou_001_identity"],
-      "content_hash": "819511789fc84fcf333aaff222f5cc00cc962ab30edfcbe3f0e4d600e72441bb",
+      "content_hash": "56672541f980e8da65f175c21122e989a5da223a421605479cced378ae46db72",
       "required_terms": ["预约挂号", "健康咨询电话", "87373114"],
       "reviewer": "CareGuide 苏中批次独立复核组",
       "reviewed_at": "2026-11-08T17:30:00+08:00",

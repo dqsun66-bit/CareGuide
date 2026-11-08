@@ -1,0 +1,571 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<meta name ="viewport" content ="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+	<meta name="keywords" content="苏州大学附属儿童医院  - 苏州大学附属儿童医院">
+	<meta name="description" content="苏州大学附属儿童医院  - 苏州大学附属儿童医院">
+	<title>苏州大学附属儿童医院</title>
+	<link rel="stylesheet" href="/static/plugs/layui/css/layui.css?ver=261107">
+	<link href="/static/pc/default/css/style.css?ver=261107" rel="stylesheet" type="text/css" />
+	<link href="/static/pc/default/css/all.css?ver=261107" rel="stylesheet"  type="text/css" />
+	<script type="text/javascript" src="/static/pc/default/js/jquery-1.11.3.min.js?ver=261107"></script>
+	<script type="text/javascript" src="/static/pc/default/js/swiper.js?ver=261107"></script>
+	<script type="text/javascript" src="/static/pc/default/js/base.js?ver=261107"></script>
+	<script type="text/javascript" src="/static/pc/default/js/common.js"></script>
+	<script type="text/javascript" src="/static/plugs/layui/layui.js?ver=261107"></script>
+	<style type="text/css">
+		#login{
+			background: #fff;
+			width: 300px;
+			height: 280px;
+			border-radius: 5px;
+			display: none;
+		}
+		#login>div>h3{
+			color: #0b347c;
+			text-align: center;
+			height: 45px;
+			font: bold 18px/45px "simhei";
+		}
+		.input-box{position: relative;width: 100%;margin-bottom:10px;height:38px;}
+		.input-box>input{width: 240px !important;position: absolute;transform: translateX(-50%);left: 50%;border-radius: 5px;background: #f5f5f5;}
+		.login-link{
+			display: flex;
+			justify-content: center;
+			font-size: 12px;
+			width: 100%;
+
+		}
+		.login-link>section{width: 240px;display: flex;justify-content: space-between}
+		#login-submit{
+			display: flex;
+			justify-content: center;
+		}
+		#login-submit>button[type='button']{
+			width: 240px;margin-top: 20px;border-radius: 3px;background: #0b347c;
+		}
+		#captcha-img{
+			position: absolute;right: 32px;
+		}
+		#captcha-img{
+
+			width: 100px;
+			height: 38px;
+
+		}
+		#captcha-img>img{
+			position: absolute;
+			width: 100px;
+			height: 36px;
+			top: 50%;
+			transform: translateY(-50%);cursor: pointer;
+		}
+
+	</style>
+	
+</head>
+<body>
+
+<style>
+	/* 弹窗主体背景 */
+	/*body .customer.layui-layer {*/
+	/*	background-color: #f5f7fa !important; !* 背景颜色 *!*/
+		/*border-radius: 8px !important; !* 圆角 *!*/
+		/*box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; !* 阴影 *!*/
+	/*}*/
+
+	/* 遮罩层背景（可选） */
+	/*.layui-layer-shade {*/
+	/*	background-color: rgba(0,0,0,0.4) !important; !* 调整遮罩透明度 *!*/
+	/*}*/
+</style>
+<!-- 头部 -->
+<div class="header">
+	<div class="inner clearfix" style="position:relative;">
+		<a href="/" class="logo"><img src="/static/pc/default/images/logo.png" alt=""></a>
+		<div class="logo_txt">
+			<p>省卫健委直属三甲儿童专科医院</p>
+			<p>江苏省儿童区域医疗中心</p>
+			<!--<p>苏州市基本医疗保险定点医院</p>-->
+			<!--<p>国家儿童区域医疗中心创建单位</p>-->
+			<p>江苏省高水平医院建设单位</p>
+		</div>
+		<div class="logo_txt" style="border-left:none;">
+            <p>江苏省研究型医院</p>
+            <p>江苏省儿童血液肿瘤中心</p>
+            <p>江苏省血液区域医疗中心</p>
+		</div>
+		<img class="nav_more" src="/static/pc/default/images/nav_more.png" alt="">
+		<p class="english">
+			<a href="https://720yun.com/t/6avkt9flz8m?scene_id=70897262" target="_blank">院史馆</a>
+			&nbsp;<a>|</a>&nbsp;
+			<!--<a href="/en" target="_blank">ENGLISH</a>-->
+			<!--&nbsp;<a>|</a>&nbsp;-->
+			<a class="top-wechat">官方微信<img src="/static/pc/images/26.png"></a>
+			&nbsp;<a>|</a>&nbsp;
+			<a class="top-wechat">互联网医院<img src="/static/pc/images/hlwyy.jpg" width="150" height="150"></a>
+			<a>|</a>&nbsp;
+			<a class="user-login" href="javascript:;">登录</a>
+			<a>|</a>&nbsp;
+			<a class="ur" href="/consumer.html?isLogin=2&type=link">注册</a>
+			<a href="/user_center.html?type=link" class="center" style="display: none">用户中心</a>
+			<a href="javascript:;" class="logout" data-logout="/logout.html" style="display: none">退出</a>
+		</p>
+		<div class="search clearfix">
+			<form method="get" action="/search.html">
+				<input type="text" name="search" value="" placeholder="请输入关键词">
+				<img src="/static/pc/default/images/search.png" alt="">
+			</form>
+		</div>
+	</div>
+</div>
+<div class="nav">
+	<div class="pc-nav inner clearfix">
+		<ul class="layui-nav">
+						<li class="layui-nav-item" style="width: 10%">
+							<a href="/"  target="_self">首页</a>
+						</li>
+						<li class="layui-nav-item" style="width: 10%">
+							<a href="/men-zhen-liu-cheng.html" class="on" target="_self">就医指南</a>
+							<dl class="layui-nav-child">
+										<dd><a href="/men-ji-zhen-zhi-nan.html" class="on"  target="_self">门急诊指南</a></dd>
+															<dd><a href="/zhu-yuan-zhi-nan.html"   target="_self">住院指南</a></dd>
+															<dd><a href="/tou-su-chu-li-liu-cheng.html"   target="_self">投诉处理流程</a></dd>
+														</dl>
+							</li>
+						<li class="layui-nav-item" style="width: 10%">
+							<a href="/yi-yuan-jie-shao.html"  target="_self">医院简介</a>
+							<dl class="layui-nav-child">
+										<dd><a href="/yi-yuan-jie-shao.html"   target="_self">医院介绍</a></dd>
+															<dd><a href="/unit/list.html?type=link"  target="_self">门诊科室信息</a></dd>
+														</dl>
+							</li>
+						<li class="layui-nav-item" style="width: 10%">
+							<a href="http://cps.suda.edu.cn"  target="_blank">儿科教学</a>
+						</li>
+						<li class="layui-nav-item" style="width: 10%">
+						<a href="/ke-yan-jiao-yu.html"  target="_self">科研教育</a>
+							<dl class="layui-nav-child">
+										<dd><a href="/ke-yan.html"   target="_self">科研信息</a></dd>
+															<dd><a href="/ke-yan-ping-tai.html"   target="_self">科研平台</a></dd>
+															<dd><a href="/zhu-yuan-yi-shi-gui-fan-hua-pei-xun.html"   target="_self">住院医师规范化培训</a></dd>
+															<dd><a href="/xue-shu-jiao-liu.html"   target="_self">继续医学教育与学术交流</a></dd>
+															<dd><a href="/jin-xiu-guan-li.html"   target="_self">进修管理</a></dd>
+															<dd><a href="/shi-yan-ji-gou.html"   target="_self">药物临床试验机构</a></dd>
+															<dd><a href="/lun-li-wei-yuan-hui.html"   target="_self">药物临床试验伦理委员会</a></dd>
+															<dd><a href="/gui-fan-hua-pei-xun.html"   target="_self">临床药师规范化培训</a></dd>
+															<dd><a href="/xia-zai-zhong-xin.html"   target="_self">下载中心</a></dd>
+														</dl>
+							</li>
+						<li class="layui-nav-item" style="width: 10%">
+						<a href="/dang-jian-hang-feng.html"  target="_self">党建行风</a>
+							<dl class="layui-nav-child">
+										<dd><a href="/xing-feng-jian-she.html"   target="_self">行风建设</a></dd>
+															<dd><a href="/dang-jian-zhuan-ti.html"   target="_self">党建专题</a></dd>
+														</dl>
+							</li>
+						<li class="layui-nav-item" style="width: 10%">
+						<a href="/yuan-wu-gong-kai.html"  target="_self">院务公开</a>
+							<dl class="layui-nav-child">
+										<dd><a href="/yi-yuan-zi-zhi.html"   target="_self">医院资质</a></dd>
+															<dd><a href="/ji-gou-she-zhi.html"   target="_self">机构设置</a></dd>
+															<dd><a href="/cai-wu-gong-kai.html"   target="_self">财务公开</a></dd>
+															<dd><a href="/shou-fei.html"   target="_self">收费信息</a></dd>
+															<dd><a href="/yi-bao-zheng-ce.html"   target="_self">医保政策</a></dd>
+															<dd><a href="/zhao-biao.html"   target="_self">招标公告</a></dd>
+														</dl>
+							</li>
+						<li class="layui-nav-item" style="width: 10%">
+							<a href="/zong-yuan.html"  target="_self">联系我们</a>
+							<dl class="layui-nav-child">
+										<dd><a href="/zong-yuan.html"   target="_self">总院</a></dd>
+															<dd><a href="/jing-de-lu-yuan-qu.html"   target="_self">景德路院区</a></dd>
+														</dl>
+							</li>
+						<li class="layui-nav-item" style="width: 10%">
+							<a href="javascript:;"  target="_self">医联体</a>
+							<dl class="layui-nav-child">
+										<dd><a href="http://www.wjetyy.cn/"  target="_blank">吴江院区</a></dd>
+															<dd><a href="https://www.syy.org.cn/introduce/77.html"  target="_blank">张家港医学中心</a></dd>
+														</dl>
+							</li>
+						<li class="layui-nav-item" style="width: 10%">
+							<a href="/user_center.html?type=link"  target="_self"></a>
+						</li>
+					</ul>
+	</div>
+	<div class="mobile-nav">
+		<div class="layui-tab layui-tab-card" style="margin-top:0;border:none;border-top:1px solid #0b347c;">
+			<ul class="layui-tab-title">
+				<li >主菜单</li>
+				<li class="layui-this">二级菜单</li>
+			</ul>
+			<div class="layui-tab-content" style="display:inline-block;min-width:96%;padding:2%;">
+				<div class="layui-tab-item ">
+										<a href="/"  target="_self">首页</a>
+															<a href="/men-zhen-liu-cheng.html" class="on" target="_self">就医指南</a>
+															<a href="/yi-yuan-jie-shao.html"  target="_self">医院简介</a>
+															<a href="http://cps.suda.edu.cn"  target="_blank">儿科教学</a>
+															<a href="/ke-yan-jiao-yu.html"  target="_self">科研教育</a>
+															<a href="/dang-jian-hang-feng.html"  target="_self">党建行风</a>
+															<a href="/yuan-wu-gong-kai.html"  target="_self">院务公开</a>
+															<a href="/zong-yuan.html"  target="_self">联系我们</a>
+															<a href="javascript:;"  target="_self">医联体</a>
+															<a href="/user_center.html?type=link"  target="_self">个人中心</a>
+														</div>
+				<div class="layui-tab-item layui-show">
+					<ul>
+												<li>
+														<h3 class="on">门急诊指南</h3>
+														<div class="channel-sub">
+																<p><a href="/men-zhen-liu-cheng.html" class="on">门诊流程</a></p>
+																								<p><a href="/ji-zhen-zhi-zheng.html" >急诊指征</a></p>
+																							</div>
+													</li>
+												<li>
+														<h3 >住院指南</h3>
+														<div class="channel-sub">
+																<p><a href="/zhu-yuan-liu-cheng.html" >住院流程</a></p>
+																								<p><a href="/zhu-yuan-zhi-du.html" >住院制度</a></p>
+																							</div>
+													</li>
+												<li>
+														<h3 >投诉处理流程</h3>
+														<div class="channel-sub">
+																<p><a href="/gong-zuo-ri.html" >工作日</a></p>
+																								<p><a href="/jie-jia-ri-ye-jian.html" >节假日、夜间</a></p>
+																							</div>
+													</li>
+												<li>
+														<h2><a href="/zhuan-jia-pai-ban.html" >专家门诊排班</a></h2>
+																				</li>
+												<li>
+														<h3 >预约挂号</h3>
+														<div class="channel-sub">
+																<p><a href="/consumer.html?isLogin=2&amp;type=link" >用户注册</a></p>
+																								<p><a href="/consumer.html?isLogin=1&amp;type=link" >用户登录</a></p>
+																								<p><a href="/hospital/choice.html?type=link" >科室选择</a></p>
+																								<p><a href="/booking.html?type=link" >预约挂号</a></p>
+																								<p><a href="/find/secret?type=link" >找回密码</a></p>
+																							</div>
+													</li>
+												<li>
+														<h3 >满意度</h3>
+														<div class="channel-sub">
+																<p><a href="/clinic.html?type=link" >门诊满意度</a></p>
+																								<p><a href="/outpatient.html?type=link" >住院满意度</a></p>
+																							</div>
+													</li>
+												<li>
+														<h2><a href="/health.html" >健康宣教</a></h2>
+																				</li>
+												<li>
+														<h2><a href="/complaint.html" >投诉与建议</a></h2>
+																				</li>
+												<li>
+														<h2><a href="https://pdbox.cn/eh-h5/#/specificationSearch?jwt=P7JafZ_J4Xjakg-VD4o6xw" >药品说明书</a></h2>
+																				</li>
+												<li>
+														<h2><a href="http://rczp.sdfey.cn:8080/wenxian//index.html?source=10.200.1.211&amp;auth={%22autherKey%22:%22FD8AF0D87CDCF5332E71564D568F0FD2%22}" >医学知识</a></h2>
+																				</li>
+												<li>
+														<h2><a href="/prescription.html?type=link" >个人处方</a></h2>
+																				</li>
+												<li>
+														<h2><a href="/jiu-zhen-zhu-yi-shi-xiang.html" >就诊注意事项</a></h2>
+																				</li>
+											</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div id="login" data-login='' style="display: none">
+	<div>
+		<h3>登录</h3>
+
+		<div class="input-box">
+			<input type="text" name="phone" class="layui-input" placeholder="请输入手机号">
+		</div>
+
+		<div class="input-box">
+			<input type="password" class="layui-input" placeholder="请输入密码">
+		</div>
+
+		<div class="input-box">
+			<input type="text" name="captcha" class="layui-input" placeholder="请输入验证码">
+			<div id="captcha-img"><img src="/captcha.html" alt="captcha" /></div>
+		</div>
+		<div class="login-link">
+			<section>
+				<span>还没有帐号? 去 <a href="/consumer.html?isLogin=2&type=link">注册</a> </span>
+				<a style="color: red" href="javascript:;" class="find">找回密码</a>
+			</section>
+		</div>
+		<div id="login-submit">
+			<button type="button" id="alert-login" class="layui-btn" data-loginurl="/login.html">登 录</button>
+		</div>
+	</div>
+</div>
+
+<script type="text/javascript">
+	let login_data = $('#login').data('login')
+	let index = -1
+	// 登录弹窗
+	$(".user-login").click(function(ev){
+		// 阻止默认事件
+		ev.preventDefault()
+		// 判断是否已经登录了
+		if (login_data != ''){
+			//layer.tips( login_data.username + '：您好，您已登录苏州大学附属儿童医院', this,{tips: 1})
+		}else {
+			// 弹出登录弹窗
+			index = layer.open({
+				type: 1,
+				title: false,
+				closeBtn: 0,
+				shadeClose: true,
+				area: ['300px', '290px'],
+				content: $('#login'),
+			})
+		}
+	})
+	// 登录
+	$('#alert-login').click(function (){
+		login(this)
+	})
+	// 触发回车键弹起事件
+	$('input[name="captcha"]').keyup(function (ev){
+		if (ev.keyCode == 13){
+			login('#alert-login')
+		}
+	})
+	function login(el){
+		let data = {
+			mobile: $('input[name="phone"]').val(),
+			password: $('input[type="password"]').val(),
+			captcha: $('input[name="captcha"]').val(),
+		}
+		let url = $(el).data('loginurl')
+		$.post(url, data, function (response){
+			let user = response.data
+			if (response.code == 1) {
+				layer.close(index)
+				layer.msg(response.msg, {icon: 1,time:3000}, function (){
+					// $('.user-logi	n').html('<span>' + user.username + ':您好</span> ')
+					// $('.logout').css('display','')
+					//sessionStorage.setItem('login', JSON.stringify(user))
+					location.href = ''
+				})
+				$('#login').attr('data-login', response.data)
+			}else{
+				layer.msg(response.msg, {icon: 5})
+			}
+		})
+	}
+	if ($('#login').data('login')){
+		//'<small style="font-size: 10px">【'+login_data.patid+'】</small>'
+		$('.user-login').html('<span>您好: ' + login_data.username +'<small style="font-size: 10px">【'+login_data.ybdm+'】</small></span> ')
+		$('.logout').css('display','')
+		$('.center').css('display','')
+		$('.ur').css({'display':'none'})
+	}
+	// 退出
+	$('.logout').click(function (){
+		let that = this
+		// 弹出确认框
+		// layer.confirm('确定需要退出登录？', {
+		// 	btnAsync: true,
+		// 	skin:'customer',
+		// 	btn: ['确定', '取消'] // 按钮
+		// }, function (index) {
+		layer.confirm('是否需要退出?',{icon:2},function(){
+			// 发送 GET 请求到指定的退出登录地址
+			$.get($(that).data('logout'), {}, function () {
+				// 页面跳转，这里可以填入你要跳转的页面 URL
+				location.href = '';
+				// 清除本地存储中的 login 信息
+				//sessionStorage.setItem('login', null);
+				$('#login').attr('data-login', '')
+			})
+		})
+
+	})
+			// }.bind(this));
+			// 关闭确认框
+			//layer.close(index);
+		// }.bind(this))
+	//})
+
+	$('#captcha-img>img').click(function (){
+		$(this).attr('src', $(this).attr('src') + '?' + (Math.random()))
+	})
+
+	$('.find').click(function (){
+		layer.close(index)
+		window.location.href = '/find/secret?type=link'
+	})
+
+</script>
+<style>
+	.layui-layer-msg{
+		/*background-color: #fff !important;*/
+	}
+</style>
+<div class="base_banner" >
+	<h3>门诊流程</h3>
+	</div>
+<div class="base-div">
+	<div class="content">
+		<div class="tab">
+			<div class="title">
+	<h3>门急诊指南</h3>
+	<span></span>
+</div>
+			<ul>
+				<li>
+			<h3 class="on">门急诊指南</h3>
+					<p><a href="/men-zhen-liu-cheng.html" class="on">门诊流程</a></p>
+									<p><a href="/ji-zhen-zhi-zheng.html" >急诊指征</a></p>
+						</li>
+<li>
+			<h3 >住院指南</h3>
+					<p><a href="/zhu-yuan-liu-cheng.html" >住院流程</a></p>
+									<p><a href="/zhu-yuan-zhi-du.html" >住院制度</a></p>
+						</li>
+<li>
+			<h3 >投诉处理流程</h3>
+					<p><a href="/gong-zuo-ri.html" >工作日</a></p>
+									<p><a href="/jie-jia-ri-ye-jian.html" >节假日、夜间</a></p>
+						</li>
+<li>
+			<h2><a href="/zhuan-jia-pai-ban.html" >专家门诊排班</a></h2>
+			</li>
+<li>
+			<h3 >预约挂号</h3>
+				<p><a href="/consumer.html?isLogin=2&amp;type=link" >用户注册</a></p>
+								<p><a href="/consumer.html?isLogin=1&amp;type=link" >用户登录</a></p>
+										<p><a href="/booking.html?type=link" >预约挂号</a></p>
+								</li>
+<li>
+			<h3 >满意度</h3>
+				<p><a href="/clinic.html?type=link" >门诊满意度</a></p>
+								<p><a href="/outpatient.html?type=link" >住院满意度</a></p>
+						</li>
+<li>
+			<h2><a href="/health.html" >健康宣教</a></h2>
+			</li>
+<li>
+			<h2><a href="/complaint.html" >投诉与建议</a></h2>
+			</li>
+<li>
+					<h2><a href="https://pdbox.cn/eh-h5/#/specificationSearch?jwt=P7JafZ_J4Xjakg-VD4o6xw"  target="_blank">药品说明书</a></h2>
+				</li>
+<li>
+					<h2><a href="http://rczp.sdfey.cn:8080/wenxian//index.html?source=10.200.1.211&amp;auth={%22autherKey%22:%22FD8AF0D87CDCF5332E71564D568F0FD2%22}"  target="_blank">医学知识</a></h2>
+				</li>
+<li>
+					<h2><a href="/prescription.html?type=link"  target="_self">个人处方</a></h2>
+				</li>
+<li>
+			<h2><a href="/jiu-zhen-zhu-yi-shi-xiang.html" >就诊注意事项</a></h2>
+			</li>
+
+
+			</ul>
+		</div>
+		<div class="con">
+			<div class="con-title">
+				<h3>门诊流程</h3>
+				<div class="position">
+			<img src="/static/pc/default/images/home.png" alt="">
+		<a>您当前位置&nbsp;:&nbsp;</a>
+		<a href="/">首页</a>
+				<a>&nbsp;>&nbsp;</a>
+				<a href="/men-zhen-liu-cheng.html">就医指南</a>
+						<a>&nbsp;>&nbsp;</a>
+				<a href="/men-ji-zhen-zhi-nan.html">门急诊指南</a>
+						<a>&nbsp;>&nbsp;</a>
+				<a href="/men-zhen-liu-cheng.html">门诊流程</a>
+					</div>
+				<span></span>
+			</div>
+			<div class="single-content">
+				<div class="single-bottom">
+					<p>各位家长您好！您的孩子来我院门诊就诊请务必提前预约，可通过“苏州大学附属儿童医院微信公众号、苏州卫生12320微信公众号、12320电话、阳光医保APP、健康苏州掌上行APP、支付宝”等途径预约，请您务必携带好既往就诊病历卡（新病人除外）、医保卡、无微信、支付宝支付功能可准备现金或银行卡（银联卡）。请您参照我院的门诊流程就诊，祝您的孩子早日康复。</p><p><br/></p><p style="text-align: center;"><img src="/upload/ueditor/image/20250919/1758258045919014.png" title="1758258045919014.png" alt="image.png"/></p>				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<!--footer -->
+<div class="footer wow animated fadeInUp">
+	<div class="inner">
+		<div class="footer_left">
+			<div class="link clearfix">
+				<h3>友情链接:</h3>
+								<a href="http://wjw.jiangsu.gov.cn/" target="_blank">江苏省卫生健康委员会</a>
+								<a href="http://www.suda.edu.cn" target="_blank">苏州大学</a>
+								<a href="http://wsjkw.suzhou.gov.cn/" target="_blank">苏州市卫生健康委员会</a>
+											</div>
+			<div class="safe clearfix">
+				<div class="footer_left" style="padding:10px">
+				    <script type="text/javascript">document.write(unescape("%3Cspan id='_ideConac' %3E%3C/span%3E%3Cscript  src='https://dcs.conac.cn/js/11/000/0000/60401846/CA110000000604018460002.js' type='text/javascript'%3E%3C/script%3E"));</script>
+				</div>
+			
+				<div class="safe_info">
+					<h3>苏州大学附属儿童医院</h3>
+					<p>总院地址:苏州工业园区钟南街92号&nbsp;&nbsp;&nbsp;景德路院区地址:苏州市景德路303号</p>
+					<p>Copyright苏州大学附属儿童医院2017, All Rights Reserved &nbsp;&nbsp;<a href="https://beian.miit.gov.cn" target="_blank">苏ICP备06024250号-1</a></p>
+					<p>本网站已被访问：7910648&nbsp;&nbsp;技术支持：<a href="http://www.fanduo.com.cn" target="_blank">泛多网络</a></p>
+				</div>
+			</div>
+		</div>
+		<div class="footer_right clearfix">
+			<div class="number">
+				<h3>医院总机</h3>
+				<p>0512-80693588</p>
+			</div>
+			<div class="ewm">
+				<img src="/static/pc/images/hlwyy.jpg" alt="">
+				<p>互联网医院</p>
+			</div>
+			<div class="ewm">
+				<img src="/static/pc/default/images/ewm.jpeg" alt="">
+				<p>微信公众号</p>
+			</div>
+		</div>
+	<!--	<a href="/bao-gao.html" style="position:fixed;right:0;top:20%;display:none;"><img src="/static/pc/default/images/cxbg.jpg" width="150" /></a>-->
+	</div>
+</div>
+<!--footer end-->
+
+
+
+
+<!--通知-->
+
+</body>
+</html>
+
+
+<script type="text/javascript">
+	layui.use(['layer','element'], function(){
+		var element = layui.element,layer = layui.layer;
+		$('.search img').click(function(){
+			var search = $('.search input').val();
+			if(search == ''){
+				layer.msg("请输入关键词",{icon:2});
+			}else{
+				$('.search form').submit();
+			}
+		})
+		
+		// 面包削导航处理
+		$('.position a:last-child').attr('href', 'javascript:;');
+		
+	});
+
+
+</script>

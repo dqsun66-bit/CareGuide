@@ -7,6 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 import sys
+from urllib.parse import urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -17,6 +18,24 @@ from careguide.hospital_corpus.store import DATA_FILES, HospitalCorpus, write_co
 EXPECTED_HOSPITALS = 15
 EXPECTED_RECORDS = 45
 EXPECTED_NEW_RECORDS = 36
+
+
+def _expanded_hospitals(hospitals, reviewed_sources):
+    """Extend only the v2 registry with domains from approved hospital sources."""
+    approved_hosts: dict[str, set[str]] = {}
+    for source in reviewed_sources:
+        if source.get("source_tier") != "hospital_official":
+            continue
+        host = (urlparse(source.get("url", "")).hostname or "").lower().rstrip(".")
+        if host:
+            approved_hosts.setdefault(source["hospital_id"], set()).add(host)
+
+    expanded = []
+    for hospital in hospitals:
+        additions = approved_hosts.get(hospital.hospital_id, set())
+        domains = tuple(dict.fromkeys((*hospital.official_domains, *sorted(additions))))
+        expanded.append(hospital.model_copy(update={"official_domains": domains}))
+    return tuple(expanded)
 
 
 def _read_list(path: Path, label: str) -> list[dict]:
@@ -123,12 +142,13 @@ def main(argv=None) -> int:
     merged_sources = (*v1.sources, *reviewed.sources)
     merged_records = (*v1.records, *reviewed.records)
     merged_verification = (*v1.verification, *reviewed.verification)
+    expanded_hospitals = _expanded_hospitals(v1.hospitals, reviewed.sources)
     reviewed_times = [entry.reviewed_at for entry in v1.verification]
     reviewed_times.extend(entry["reviewed_at"] for entry in reviewed.verification)
     built_at = max(reviewed_times)
     corpus = write_corpus(
         args.output_dir,
-        hospitals=v1.hospitals,
+        hospitals=expanded_hospitals,
         sources=merged_sources,
         records=merged_records,
         verification=merged_verification,
