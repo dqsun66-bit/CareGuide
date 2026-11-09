@@ -423,3 +423,14 @@ def test_published_v2_asset_meets_expansion_contract():
         )
         for alias in hospital.aliases:
             assert alias in evidence, (hospital.hospital_id, alias)
+
+
+def test_hashed_hospital_json_is_checkout_stable_on_windows():
+    attributes = (ROOT / ".gitattributes").read_text(encoding="utf-8")
+    for directory in (
+        "data/jiangsu_hospital_sources_v1",
+        "data/jiangsu_hospital_sources_v2",
+        "data/jiangsu_hospitals_v1",
+        "data/jiangsu_hospitals_v2",
+    ):
+        assert f"{directory}/*.json -text" in attributes
