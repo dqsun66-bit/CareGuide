@@ -1,0 +1,451 @@
+{
+  "case_count": 45,
+  "case_file_sha256": "cca24d6a65adb01381e617e18ab705b71d59c7ff08f623c717405072115b3876",
+  "cases": [
+    {
+      "case_id": "tz1-identity",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_taizhou_001_identity_0001"
+      ],
+      "retrieved_ids": [
+        "js_taizhou_001_identity_0001"
+      ]
+    },
+    {
+      "case_id": "tz1-appointment",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_taizhou_001_appointment_0003"
+      ],
+      "retrieved_ids": [
+        "js_taizhou_001_appointment_0003"
+      ]
+    },
+    {
+      "case_id": "tz1-live-parking-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "tz-tcm-identity",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_taizhou_002_identity_0004"
+      ],
+      "retrieved_ids": [
+        "js_taizhou_002_identity_0004"
+      ]
+    },
+    {
+      "case_id": "tz-tcm-appointment",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_taizhou_002_appointment_0006"
+      ],
+      "retrieved_ids": [
+        "js_taizhou_002_appointment_0006"
+      ]
+    },
+    {
+      "case_id": "tz-tcm-schedule-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "tz2-identity",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_taizhou_003_identity_0007"
+      ],
+      "retrieved_ids": [
+        "js_taizhou_003_identity_0007"
+      ]
+    },
+    {
+      "case_id": "tz2-contact",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_taizhou_003_contact_0008"
+      ],
+      "retrieved_ids": [
+        "js_taizhou_003_contact_0008"
+      ]
+    },
+    {
+      "case_id": "tz2-route-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "nj1-identity",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_nanjing_001_identity_v2"
+      ],
+      "retrieved_ids": [
+        "js_nanjing_001_identity_v2"
+      ]
+    },
+    {
+      "case_id": "nj1-elder-appointment",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_nanjing_001_service_v2"
+      ],
+      "retrieved_ids": [
+        "js_nanjing_001_service_v2"
+      ]
+    },
+    {
+      "case_id": "nj1-live-parking-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "nj2-identity",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_nanjing_002_identity_v2"
+      ],
+      "retrieved_ids": [
+        "js_nanjing_002_identity_v2"
+      ]
+    },
+    {
+      "case_id": "nj2-contact",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_nanjing_002_service_v2"
+      ],
+      "retrieved_ids": [
+        "js_nanjing_002_service_v2"
+      ]
+    },
+    {
+      "case_id": "nj2-route-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "nj3-identity",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_nanjing_003_identity_v2"
+      ],
+      "retrieved_ids": [
+        "js_nanjing_003_identity_v2"
+      ]
+    },
+    {
+      "case_id": "nj3-appointment",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_nanjing_003_service_v2"
+      ],
+      "retrieved_ids": [
+        "js_nanjing_003_service_v2"
+      ]
+    },
+    {
+      "case_id": "nj3-schedule-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "nj4-identity",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_nanjing_004_identity_v2"
+      ],
+      "retrieved_ids": [
+        "js_nanjing_004_identity_v2"
+      ]
+    },
+    {
+      "case_id": "nj4-appointment",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_nanjing_004_service_v2"
+      ],
+      "retrieved_ids": [
+        "js_nanjing_004_service_v2"
+      ]
+    },
+    {
+      "case_id": "nj4-parking-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "sz1-identity",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_suzhou_001_identity_v2"
+      ],
+      "retrieved_ids": [
+        "js_suzhou_001_identity_v2"
+      ]
+    },
+    {
+      "case_id": "sz1-appointment",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_suzhou_001_service_v2"
+      ],
+      "retrieved_ids": [
+        "js_suzhou_001_service_v2"
+      ]
+    },
+    {
+      "case_id": "sz1-parking-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "sz2-identity",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_suzhou_002_identity_v2"
+      ],
+      "retrieved_ids": [
+        "js_suzhou_002_identity_v2"
+      ]
+    },
+    {
+      "case_id": "sz2-visit-preparation",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_suzhou_002_service_v2"
+      ],
+      "retrieved_ids": [
+        "js_suzhou_002_service_v2"
+      ]
+    },
+    {
+      "case_id": "sz2-route-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "sz3-identity",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_suzhou_003_identity_v2"
+      ],
+      "retrieved_ids": [
+        "js_suzhou_003_identity_v2"
+      ]
+    },
+    {
+      "case_id": "sz3-appointment",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_suzhou_003_service_v2"
+      ],
+      "retrieved_ids": [
+        "js_suzhou_003_service_v2"
+      ]
+    },
+    {
+      "case_id": "sz3-schedule-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "wx1-identity",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_wuxi_001_identity_v2"
+      ],
+      "retrieved_ids": [
+        "js_wuxi_001_identity_v2"
+      ]
+    },
+    {
+      "case_id": "wx1-appointment",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_wuxi_001_service_v2"
+      ],
+      "retrieved_ids": [
+        "js_wuxi_001_service_v2"
+      ]
+    },
+    {
+      "case_id": "wx1-parking-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "wx2-identity",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_wuxi_002_identity_v2"
+      ],
+      "retrieved_ids": [
+        "js_wuxi_002_identity_v2"
+      ]
+    },
+    {
+      "case_id": "wx2-visit-preparation",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_wuxi_002_service_v2"
+      ],
+      "retrieved_ids": [
+        "js_wuxi_002_service_v2"
+      ]
+    },
+    {
+      "case_id": "wx2-route-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "cz1-identity",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_changzhou_001_identity_v2"
+      ],
+      "retrieved_ids": [
+        "js_changzhou_001_identity_v2"
+      ]
+    },
+    {
+      "case_id": "cz1-appointment",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_changzhou_001_service_v2"
+      ],
+      "retrieved_ids": [
+        "js_changzhou_001_service_v2"
+      ]
+    },
+    {
+      "case_id": "cz1-parking-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "nt1-identity",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_nantong_001_identity_v2"
+      ],
+      "retrieved_ids": [
+        "js_nantong_001_identity_v2"
+      ]
+    },
+    {
+      "case_id": "nt1-appointment",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_nantong_001_service_v2"
+      ],
+      "retrieved_ids": [
+        "js_nantong_001_service_v2"
+      ]
+    },
+    {
+      "case_id": "nt1-schedule-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    },
+    {
+      "case_id": "yz1-identity",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_yangzhou_001_identity_v2"
+      ],
+      "retrieved_ids": [
+        "js_yangzhou_001_identity_v2"
+      ]
+    },
+    {
+      "case_id": "yz1-contact",
+      "hard_negative": false,
+      "reciprocal_rank": 1.0,
+      "relevant_ids": [
+        "js_yangzhou_001_service_v2"
+      ],
+      "retrieved_ids": [
+        "js_yangzhou_001_service_v2"
+      ]
+    },
+    {
+      "case_id": "yz1-parking-negative",
+      "hard_negative": true,
+      "reciprocal_rank": 0.0,
+      "relevant_ids": [],
+      "retrieved_ids": []
+    }
+  ],
+  "corpus_manifest_sha256": "d9d0297c10e24f446fd1327d100cf06798a03e788b9492c9982fdf972c8028c1",
+  "corpus_stage": "expanded_core_15_of_15",
+  "corpus_version": "jiangsu-hospitals-v2",
+  "hard_negative_accuracy": 1.0,
+  "mrr": 1.0,
+  "recall_at_1": 1.0,
+  "recall_at_3": 1.0,
+  "recall_at_5": 1.0,
+  "scope_violations": 0,
+  "top_k": 5
+}
