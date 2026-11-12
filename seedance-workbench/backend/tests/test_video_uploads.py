@@ -26,6 +26,10 @@ class FakeTunnel:
         self.stops += 1
 
 
+async def always_public(url):
+    return True
+
+
 def test_store_persists_and_releases_video_upload(tmp_path):
     async def exercise():
         store = TaskStore(tmp_path / "db.sqlite")
@@ -69,6 +73,7 @@ def test_manager_resolves_and_cleans_released_upload(tmp_path, monkeypatch):
             grace=0,
             tunnel=tunnel,
             media_server=TemporaryMediaServer(),
+            public_probe=always_public,
         )
         monkeypatch.setattr(
             "backend.video_uploads.probe_video",
@@ -158,5 +163,48 @@ def test_poller_notifies_upload_manager_on_terminal_state():
         )
         await poller._loop("task-1")
         assert released == ["task-1"]
+
+    asyncio.run(exercise())
+
+
+def test_manager_waits_until_public_url_is_reachable(tmp_path, monkeypatch):
+    async def exercise():
+        store = TaskStore(tmp_path / "db.sqlite")
+        await store.open()
+        attempts = []
+
+        async def probe(url):
+            attempts.append(url)
+            return len(attempts) >= 3
+
+        manager = VideoUploadManager(
+            store=store,
+            root=tmp_path / "videos",
+            max_bytes=1024,
+            ttl=10,
+            grace=0,
+            tunnel=FakeTunnel(),
+            media_server=TemporaryMediaServer(),
+            public_probe=probe,
+            public_check_timeout=2,
+            public_check_interval=0,
+        )
+        monkeypatch.setattr(
+            "backend.video_uploads.probe_video",
+            lambda path, filename, declared: VideoMetadata(5.0, "video/mp4", path.stat().st_size),
+        )
+        await manager.start()
+        try:
+            upload_file = UploadFile(
+                filename="clip.mp4",
+                file=BytesIO(b"\x00\x00\x00\x18ftypisom" + b"x" * 16),
+                headers={"content-type": "video/mp4"},
+            )
+            item = await manager.accept(upload_file)
+            assert item.status == "ready"
+            assert len(attempts) == 3
+        finally:
+            await manager.stop()
+            await store.close()
 
     asyncio.run(exercise())

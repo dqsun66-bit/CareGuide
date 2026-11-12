@@ -191,6 +191,9 @@ def create_app(
             if tunnel_factory is not None
             else LazyQuickTunnel(settings.cloudflared_path, settings.tunnel_start_timeout)
         )
+        async def mock_public_probe(url: str) -> bool:
+            return True
+
         video_uploads = VideoUploadManager(
             store=store,
             root=settings.data_dir / "video_uploads",
@@ -198,6 +201,8 @@ def create_app(
             ttl=settings.video_upload_ttl,
             grace=settings.video_post_task_grace,
             tunnel=tunnel,
+            public_probe=mock_public_probe if settings.mock_mode else None,
+            public_check_timeout=settings.tunnel_start_timeout,
         )
         await video_uploads.start()
         if client_factory is not None:
@@ -343,6 +348,13 @@ def create_app(
     ):
         current: Settings = request.app.state.settings
         store: TaskStore = request.app.state.store
+
+        # Resolve idempotency before touching ephemeral local-upload IDs. A retry
+        # must still return its original task after the temporary video is cleaned.
+        if is_valid_uuid(client_request_id):
+            existing = await store.find_by_client_request_id(client_request_id)
+            if existing is not None:
+                return _ok(_serialize_row(existing), 200, meta={"reused": True})
 
         # 请求体总量护栏：官方上限 64MB，本地预检拒绝明显超限的请求，
         # 避免超大表单先占满内存再被平台拒绝。

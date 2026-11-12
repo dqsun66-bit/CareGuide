@@ -10,6 +10,7 @@ import time
 import uuid
 
 from fastapi import UploadFile
+import httpx
 
 from backend.media_server import TemporaryMediaServer
 from backend.store import TaskStore
@@ -51,6 +52,9 @@ class VideoUploadManager:
         grace: float,
         tunnel,
         media_server: TemporaryMediaServer | None = None,
+        public_probe=None,
+        public_check_timeout: float = 30.0,
+        public_check_interval: float = 0.5,
     ) -> None:
         self._store = store
         self._root = Path(root)
@@ -59,6 +63,9 @@ class VideoUploadManager:
         self._grace = grace
         self._tunnel = tunnel
         self._media = media_server or TemporaryMediaServer()
+        self._public_probe = public_probe or self._probe_public_url
+        self._public_check_timeout = public_check_timeout
+        self._public_check_interval = public_check_interval
         self._tokens: dict[str, str] = {}
         self._public_base: str | None = None
         self._lock = asyncio.Lock()
@@ -116,6 +123,10 @@ class VideoUploadManager:
                 token = secrets.token_urlsafe(32)
                 self._tokens[upload_id] = token
                 self._media.publish(token, final, metadata.content_type)
+                assert self._public_base is not None
+                await self._wait_until_public(
+                    f"{self._public_base}/media/{token}"
+                )
                 now = time.time()
                 await self._store.create_video_upload(
                     {
@@ -147,6 +158,7 @@ class VideoUploadManager:
             if token:
                 self._media.unpublish(token)
             await self._store.delete_video_upload(upload_id)
+            await self._stop_tunnel_if_idle()
             raise
 
     async def resolve(self, upload_id: str) -> str:
@@ -203,3 +215,21 @@ class VideoUploadManager:
         while True:
             await asyncio.sleep(30)
             await self.cleanup_once()
+
+    async def _wait_until_public(self, url: str) -> None:
+        deadline = time.monotonic() + self._public_check_timeout
+        while True:
+            if await self._public_probe(url):
+                return
+            if time.monotonic() >= deadline:
+                raise ValueError("临时 HTTPS 通道已建立，但公网读取检查超时")
+            await asyncio.sleep(self._public_check_interval)
+
+    @staticmethod
+    async def _probe_public_url(url: str) -> bool:
+        try:
+            async with httpx.AsyncClient(timeout=5, follow_redirects=False) as client:
+                response = await client.head(url)
+            return response.status_code == 200
+        except httpx.HTTPError:
+            return False

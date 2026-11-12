@@ -84,3 +84,25 @@ def test_non_local_origin_cannot_upload(settings, monkeypatch):
             files={"video": ("clip.mp4", b"x", "video/mp4")},
         )
         assert response.status_code == 403
+
+
+def test_idempotent_retry_does_not_require_expired_local_upload(settings, monkeypatch):
+    with _client(settings, monkeypatch) as client:
+        upload_id = _upload(client).json()["data"]["upload_id"]
+        crid = str(uuid4())
+        form = {
+            "mode": "edit",
+            "prompt": "复刻视频1",
+            "duration": "5",
+            "resolution": "480p",
+            "ratio": "9:16",
+            "generate_audio": "false",
+            "client_request_id": crid,
+            "video_upload_ids": upload_id,
+        }
+        first = client.post("/api/seedance/generations", data=form)
+        assert first.status_code == 201
+        form["video_upload_ids"] = "already-cleaned"
+        retry = client.post("/api/seedance/generations", data=form)
+        assert retry.status_code == 200
+        assert retry.json()["meta"]["reused"] is True
