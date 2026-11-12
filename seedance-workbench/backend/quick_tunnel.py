@@ -123,3 +123,28 @@ class QuickTunnel:
             task.cancel()
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
+
+
+class LazyQuickTunnel:
+    """Resolve cloudflared only when the first local video needs a tunnel."""
+
+    def __init__(self, configured_path: str, timeout: float = 30.0) -> None:
+        self._configured_path = configured_path
+        self._timeout = timeout
+        self._inner: QuickTunnel | None = None
+
+    @property
+    def alive(self) -> bool:
+        return self._inner is not None and self._inner.alive
+
+    async def start(self, port: int) -> str:
+        if self._inner is None:
+            self._inner = QuickTunnel(
+                resolve_cloudflared(self._configured_path), timeout=self._timeout
+            )
+        return await self._inner.start(port)
+
+    async def stop(self) -> None:
+        inner, self._inner = self._inner, None
+        if inner is not None:
+            await inner.stop()
