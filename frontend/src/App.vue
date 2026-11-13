@@ -40,13 +40,6 @@
         </div>
       </div>
 
-      <details class="access-settings">
-        <summary>{{ identity.mode === 'bearer' ? `已认证：${settings.userId}` : identity.mode === 'required' ? '需要访问令牌' : '本地演示 / 访问设置' }}</summary>
-        <label>访问令牌 <input v-model="accessInput" type="password" autocomplete="off" placeholder="仅启用认证的服务需要" /></label>
-        <button :disabled="busy" @click="connectIdentity">连接</button>
-        <small>令牌仅保存在当前浏览器标签页会话中。</small>
-      </details>
-
       <div class="chat-layout" :class="{ 'is-wide': sidebarCollapsed }">
         <button
           v-if="!focusMode"
@@ -80,6 +73,9 @@
               </div>
               <AnswerBody v-if="item.role === 'assistant'" :content="item.answer?.body || item.content" :sources="item.answer?.sources || []" />
               <p v-else>{{ item.content }}</p>
+              <div v-if="item.role === 'assistant' && (item.answer?.body || item.content)" class="message-actions">
+                <button class="link-button message-copy" type="button" @click="copyMessage(item)">复制回答</button>
+              </div>
               <section v-if="item.mapSelection" class="chat-map-card" aria-label="真实院区候选">
                 <div class="chat-map-card-heading">
                   <strong>请选择真实院区</strong>
@@ -210,17 +206,21 @@
 
           <form class="composer" @submit.prevent="sendMessage">
             <textarea
+              ref="composerRef"
               v-model="draft"
-              rows="3"
-              placeholder="输入消息..."
-              @keydown.meta.enter.prevent="sendMessage"
-              @keydown.ctrl.enter.prevent="sendMessage"
+              rows="2"
+              aria-label="输入消息"
+              placeholder="描述症状、科室或挂号问题…"
+              @input="autoGrowComposer"
+              @keydown="onComposerKeydown"
             ></textarea>
             <div class="composer-bottom">
-              <span>{{ busy ? '正在接收实时进度，可停止接收。' : '⌘ / Ctrl + Enter 发送' }}</span>
-              <button v-if="busy" class="quiet-button" type="button" @click="cancelRequest">停止接收</button>
-              <button v-else type="submit" :disabled="!draft.trim()">发送</button>
-              <button class="quiet-button" type="button" :disabled="!settings.conversationId" @click="restoreWorkflow">恢复会话任务</button>
+              <span>{{ busy ? '正在接收实时进度，可停止接收。' : 'Enter 发送 · Shift + Enter 换行' }}</span>
+              <div class="composer-actions">
+                <button class="quiet-button" type="button" :disabled="!settings.conversationId" @click="restoreWorkflow">恢复会话任务</button>
+                <button v-if="busy" class="quiet-button" type="button" @click="cancelRequest">停止接收</button>
+                <button v-else type="submit" :disabled="!draft.trim()">发送</button>
+              </div>
             </div>
           </form>
         </section>
@@ -269,6 +269,15 @@
                 <button class="quiet-button" @click="refreshConsole">刷新</button>
               </div>
             </section>
+
+            <details class="access-settings side-access">
+              <summary>
+                <span>{{ identity.mode === 'bearer' ? `已认证：${settings.userId}` : identity.mode === 'required' ? '需要访问令牌' : '访问设置（本地演示无需填写）' }}</span>
+              </summary>
+              <label>访问令牌 <input v-model="accessInput" type="password" autocomplete="off" placeholder="仅启用认证的服务需要" /></label>
+              <button :disabled="busy" @click="connectIdentity">连接</button>
+              <small>令牌仅保存在当前浏览器标签页会话中。</small>
+            </details>
 
             <section class="side-card trace-card">
               <div class="card-heading">
@@ -619,6 +628,40 @@ import {
 const settings = reactive(createInitialSettings())
 const identity = reactive({ mode: 'unknown', role: 'demo' })
 const accessInput = ref(accessToken(backendMeta(settings.backend, settings).baseUrl))
+const composerRef = ref(null)
+
+// 输入框随内容自动增高（54~200px），发送后回到初始高度
+function autoGrowComposer() {
+  const el = composerRef.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${Math.min(Math.max(el.scrollHeight, 54), 200)}px`
+}
+
+function resetComposerHeight() {
+  const el = composerRef.value
+  if (el) el.style.height = ''
+}
+
+// Enter 发送、Shift+Enter 换行；输入法组词中的 Enter 不触发发送
+function onComposerKeydown(event) {
+  if (event.key !== 'Enter' || event.shiftKey) return
+  if (event.isComposing || event.keyCode === 229) return
+  event.preventDefault()
+  if (!busy.value && draft.value.trim()) sendMessage()
+}
+
+async function copyMessage(item) {
+  const text = item.answer?.body || item.content || ''
+  if (!text) return
+  try {
+    await navigator.clipboard.writeText(text)
+    showToast('已复制回答')
+  } catch {
+    showToast('复制失败，请手动选择文本')
+  }
+}
+
 async function connectIdentity() {
   setAccessToken(currentBackend.value.baseUrl, accessInput.value)
   try {
@@ -1084,6 +1127,7 @@ async function sendMessage(workflowEvent, mapEvent, displayContent) {
   messages.value.push({ id: createMessageId(), role: 'user', content })
   followOutput.value = true
   draft.value = ''
+  nextTick(resetComposerHeight)
   busy.value = true
   chatAbortController = new AbortController()
   const assistantId = createMessageId()
