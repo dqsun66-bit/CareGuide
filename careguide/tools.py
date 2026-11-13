@@ -89,6 +89,15 @@ HOSPITAL_SECTION_QUERIES = {
     'followup': '复诊和报告查询联系方式',
     'all': '医院就诊信息',
 }
+HOSPITAL_QUERY_CATEGORY_TERMS = {
+    'parking': ('停车', '车位', '停车场'),
+    'accessibility': ('无障碍', '轮椅', '行动不便'),
+    'campus': ('院区', '地址', '在哪里'),
+    'appointment': ('挂号', '预约', '退号'),
+    'visit_preparation': ('材料', '证件', '携带', '带什么'),
+    'contact': ('电话', '联系', '咨询'),
+    'report': ('报告', '检查结果'),
+}
 
 
 def normalize_specification(value: str | None) -> str | None:
@@ -278,20 +287,36 @@ class MedicalToolRegistry:
                 } for item in hospital.campuses],
                 **common,
             )
+        query = args.query or HOSPITAL_SECTION_QUERIES[args.section]
+        inferred_categories = {
+            category for category, terms in HOSPITAL_QUERY_CATEGORY_TERMS.items()
+            if any(term in query for term in terms)
+        }
+        section_categories = HOSPITAL_SECTION_CATEGORIES[args.section]
+        categories = (
+            inferred_categories if section_categories is None
+            else section_categories | inferred_categories
+        ) or None
         search = self.hospital_knowledge.search_with_report(
-            args.query or HOSPITAL_SECTION_QUERIES[args.section],
+            query,
             hospital.hospital_id,
             campus=campus.campus_id,
-            category=HOSPITAL_SECTION_CATEGORIES[args.section],
+            category=categories,
             top_k=min(args.top_k, 5),
         )
         retrieval = asdict(search.report)
         evidence = list(search.evidence)
+        returned_categories = {
+            item['scope']['category'] for item in evidence
+        }
+        missing_categories = sorted((categories or set()) - returned_categories)
         if not evidence:
             return result(
                 'not_covered', '当前官方医院资料未覆盖此问题，无法核实。',
                 retrieval=retrieval,
                 retrieval_mode=search.report.mode,
+                requested_categories=sorted(categories or ()),
+                missing_categories=missing_categories,
                 **common,
             )
         return result(
@@ -299,5 +324,7 @@ class MedicalToolRegistry:
             evidence=evidence,
             retrieval=retrieval,
             retrieval_mode=search.report.mode,
+            requested_categories=sorted(categories or ()),
+            missing_categories=missing_categories,
             **common,
         )
