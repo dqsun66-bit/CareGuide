@@ -5,11 +5,17 @@ from functools import lru_cache
 from pathlib import Path
 
 from careguide.corpus import Corpus
+from careguide.hospital_corpus.retrieval import (
+    HospitalKnowledgeBase,
+    hospital_collection_name,
+)
+from careguide.hospital_corpus.store import HospitalCorpus
 from careguide.retrieval.knowledge_base import MedicalKnowledgeBase, versioned_collection_name
 from careguide.tools import MedicalToolRegistry
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 OPEN_CORPUS_ROOT = PROJECT_ROOT / 'data' / 'careguide_kuake_rag_v1'
+HOSPITAL_CORPUS_ROOT = PROJECT_ROOT / 'data' / 'jiangsu_hospitals_v2'
 
 
 @dataclass(frozen=True)
@@ -122,6 +128,67 @@ def load_runtime_corpus(corpus_dir=None):
     return KnowledgeWorkflow(store).extend(corpus)
 
 
+def load_hospital_corpus(corpus_dir=None):
+    root = Path(corpus_dir or os.environ.get('CAREGUIDE_HOSPITAL_CORPUS_DIR')
+                or HOSPITAL_CORPUS_ROOT)
+    if not root.is_absolute():
+        root = PROJECT_ROOT / root
+    return HospitalCorpus.load(root)
+
+
+def build_hospital_knowledge(corpus=None, *, client=None):
+    mode = os.environ.get(
+        'CAREGUIDE_HOSPITAL_RETRIEVAL_MODE', 'disabled').strip().casefold()
+    if mode not in {'disabled', 'bm25', 'hybrid'}:
+        raise ValueError('Unknown hospital retrieval mode')
+    if mode == 'disabled':
+        return None, RetrievalRuntimeStatus(
+            mode, 'disabled', None, None, None, None)
+    corpus = corpus or load_hospital_corpus()
+    if mode == 'bm25':
+        knowledge = HospitalKnowledgeBase(corpus, mode='bm25')
+        return knowledge, RetrievalRuntimeStatus(
+            mode, 'bm25', None, None, None, None)
+
+    client = client or chroma_client()
+    name = hospital_collection_name(corpus)
+    names = {getattr(collection, 'name', str(collection))
+             for collection in client.list_collections()}
+    if name not in names:
+        raise ValueError('hospital_hybrid_index_unavailable')
+    collection = client.get_collection(name, embedding_function=None)
+    embedding = semantic_embedding()
+    reranker = None
+    if os.environ.get(
+        'CAREGUIDE_HOSPITAL_RERANK_ENABLED', 'false').strip().casefold() == 'true':
+        reranker = semantic_reranker()
+    try:
+        knowledge = HospitalKnowledgeBase(
+            corpus,
+            mode='hybrid',
+            collection=collection,
+            embedding=embedding,
+            reranker=reranker,
+            hybrid_candidates=min(_positive_integer(
+                'CAREGUIDE_HOSPITAL_HYBRID_CANDIDATES', '20'), 20),
+            min_rerank_score=float(os.environ.get(
+                'CAREGUIDE_HOSPITAL_MIN_RERANK_SCORE', '0.35')),
+        )
+    except ValueError:
+        close = getattr(embedding, 'close', None)
+        if close is not None:
+            close()
+        raise ValueError('hospital_hybrid_index_invalid') from None
+    return knowledge, RetrievalRuntimeStatus(
+        requested_mode=mode,
+        active_mode='hybrid',
+        embedding_provider=embedding.provider_name,
+        rerank_provider=getattr(reranker, 'provider_name', None),
+        index_collection=name,
+        degraded_reason=None,
+    )
+
+
 def build_retrieval_knowledge(corpus: Corpus, *, client=None):
     mode = os.environ.get('CAREGUIDE_RETRIEVAL_MODE', 'bm25').strip().casefold()
     if mode not in {'bm25', 'dense', 'hybrid'}:
@@ -169,8 +236,11 @@ def get_registry():
     # any frozen corpus explicitly through CAREGUIDE_CORPUS_DIR.
     corpus = load_runtime_corpus()
     knowledge, status = build_retrieval_knowledge(corpus)
-    registry = MedicalToolRegistry(knowledge)
+    hospital_knowledge, hospital_status = build_hospital_knowledge()
+    registry = MedicalToolRegistry(
+        knowledge, hospital_knowledge=hospital_knowledge)
     registry.retrieval_status = status
+    registry.hospital_retrieval_status = hospital_status
     return registry
 
 

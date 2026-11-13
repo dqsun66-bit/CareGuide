@@ -176,15 +176,18 @@ class HospitalKnowledgeBase:
         self,
         corpus: HospitalCorpus,
         *,
-        collection: Any,
-        embedding: Any,
+        collection: Any = None,
+        embedding: Any = None,
+        mode: str = "hybrid",
         reranker: Any = None,
         dense_weight: float = 4.0,
         lexical_weight: float = 1.0,
         hybrid_candidates: int = 20,
         min_rerank_score: float = 0.35,
     ):
-        if collection is None or embedding is None:
+        if mode not in {"bm25", "hybrid"}:
+            raise ValueError("Hospital retrieval mode must be bm25 or hybrid")
+        if mode == "hybrid" and (collection is None or embedding is None):
             raise ValueError("Hospital hybrid retrieval requires collection and embedding")
         if dense_weight <= 0 or lexical_weight <= 0:
             raise ValueError("Hospital RRF weights must be positive")
@@ -193,6 +196,7 @@ class HospitalKnowledgeBase:
         if not 0 <= float(min_rerank_score) <= 1:
             raise ValueError("Hospital rerank threshold must be between 0 and 1")
         self.corpus = corpus
+        self.mode = mode
         self.collection = collection
         self.embedding = embedding
         self.reranker = reranker
@@ -220,7 +224,8 @@ class HospitalKnowledgeBase:
                 "category": record.category.value,
             },
         } for record in corpus.records)
-        self._validate_collection()
+        if self.mode == "hybrid":
+            self._validate_collection()
 
     def _validate_collection(self) -> None:
         metadata = self.collection.metadata or {}
@@ -265,10 +270,9 @@ class HospitalKnowledgeBase:
             campus.campus_id.casefold(), campus.official_name.casefold()
         }), None)
 
-    @staticmethod
-    def _empty(reason: str) -> HospitalRetrievalResult:
+    def _empty(self, reason: str) -> HospitalRetrievalResult:
         return HospitalRetrievalResult((), HospitalRetrievalReport(
-            "hybrid", 0, 0, 0, False, 0, 0, reason))
+            self.mode, 0, 0, 0, False, 0, 0, reason))
 
     def search_with_report(
         self,
@@ -276,7 +280,7 @@ class HospitalKnowledgeBase:
         hospital: str,
         *,
         campus: str | None = None,
-        category: Category | str | None = None,
+        category: Category | str | set[Category | str] | None = None,
         top_k: int = 5,
     ) -> HospitalRetrievalResult:
         if not str(query).strip():
@@ -292,7 +296,12 @@ class HospitalKnowledgeBase:
             reason = "campus_not_covered" if campus else "campus_required"
             return self._empty(reason)
         try:
-            selected_category = Category(category) if category is not None else None
+            if category is None:
+                selected_categories = None
+            elif isinstance(category, set):
+                selected_categories = {Category(value) for value in category}
+            else:
+                selected_categories = {Category(category)}
         except ValueError:
             return self._empty("category_not_covered")
 
@@ -300,7 +309,7 @@ class HospitalKnowledgeBase:
             record.document_id: record for record in self.corpus.records
             if record.hospital_id == selected_hospital.hospital_id
             and record.campus_id == selected_campus.campus_id
-            and (selected_category is None or record.category == selected_category)
+            and (selected_categories is None or record.category in selected_categories)
             and record.review_status == ReviewStatus.VERIFIED_OFFICIAL
         }
         if not eligible:
@@ -312,34 +321,42 @@ class HospitalKnowledgeBase:
             top_k=candidate_depth,
             eligible_ids=set(eligible),
         )
-        filters = [
-            {"record_id": {"$in": sorted(eligible)}},
-            {"hospital_id": selected_hospital.hospital_id},
-            {"campus_id": selected_campus.campus_id},
-        ]
-        if selected_category is not None:
-            filters.append({"category": selected_category.value})
-        where = filters[0] if len(filters) == 1 else {"$and": filters}
-        dense_result = self.collection.query(
-            query_embeddings=[self.embedding.embed_query(query)],
-            n_results=candidate_depth,
-            where=where,
-            include=["distances"],
-        )
-        dense = [
-            (identity, 1.0 - float(distance))
-            for identity, distance in zip(
-                dense_result["ids"][0], dense_result["distances"][0])
-            if identity in eligible
-        ]
+        dense = []
+        if self.mode == "hybrid":
+            filters = [
+                {"record_id": {"$in": sorted(eligible)}},
+                {"hospital_id": selected_hospital.hospital_id},
+                {"campus_id": selected_campus.campus_id},
+            ]
+            if selected_categories is not None:
+                values = sorted(item.value for item in selected_categories)
+                filters.append({
+                    "category": values[0] if len(values) == 1 else {"$in": values}
+                })
+            where = {"$and": filters}
+            dense_result = self.collection.query(
+                query_embeddings=[self.embedding.embed_query(query)],
+                n_results=candidate_depth,
+                where=where,
+                include=["distances"],
+            )
+            dense = [
+                (identity, 1.0 - float(distance))
+                for identity, distance in zip(
+                    dense_result["ids"][0], dense_result["distances"][0])
+                if identity in eligible
+            ]
 
         rows: dict[str, dict[str, Any]] = {}
         for rank, hit in enumerate(lexical, 1):
             rows[hit.chunk_id] = {
-                "mode": "hybrid_rrf",
+                "mode": "bm25" if self.mode == "bm25" else "hybrid_rrf",
                 "bm25_rank": rank,
                 "bm25_score": hit.score,
-                "rank_score": self.lexical_weight / (60 + rank),
+                "rank_score": (
+                    hit.score if self.mode == "bm25"
+                    else self.lexical_weight / (60 + rank)
+                ),
                 "rrf_weights": {
                     "dense": self.dense_weight,
                     "bm25": self.lexical_weight,
@@ -362,7 +379,7 @@ class HospitalKnowledgeBase:
         )[:20]
 
         reranked = False
-        if self.reranker is not None and ordered:
+        if self.mode == "hybrid" and self.reranker is not None and ordered:
             identities, scores, _ = self.reranker.rerank(
                 query,
                 [(identity, hospital_retrieval_text(self.corpus, eligible[identity]))
@@ -381,7 +398,11 @@ class HospitalKnowledgeBase:
         evidence: list[dict] = []
         filtered_count = 0
         for identity in ordered:
-            if self.reranker is not None and rows[identity]["rerank_score"] < self.min_rerank_score:
+            if (
+                self.mode == "hybrid"
+                and self.reranker is not None
+                and rows[identity]["rerank_score"] < self.min_rerank_score
+            ):
                 filtered_count += 1
                 continue
             evidence.append({
@@ -391,7 +412,7 @@ class HospitalKnowledgeBase:
             if len(evidence) == top_k:
                 break
         return HospitalRetrievalResult(tuple(evidence), HospitalRetrievalReport(
-            mode="hybrid",
+            mode=self.mode,
             lexical_count=len(lexical),
             dense_count=len(dense),
             fused_count=fused_count,
