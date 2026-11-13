@@ -1,0 +1,674 @@
+<title>CareGuide 临床冷静</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="fonts/noto-serif-sc.css">
+<style>
+/* ============================================================
+   CareGuide「临床冷静」设计稿 v1
+   布局：顶栏 + 三栏（流程导轨 | 对话舞台 | 信息栏）+ 规范区
+   来源：NHS 的体系纪律 / Ada 的衬线排版 / 丁香的克制灰阶
+   ============================================================ */
+:root {
+  color-scheme: light;
+  --paper: #f4f6f7;          /* 画布：微冷纸灰 */
+  --surface: #ffffff;        /* 面板 */
+  --ink: #1c2b33;            /* 墨青主文字 */
+  --ink-soft: #40525b;       /* 次级文字 */
+  --muted: #6a7b83;          /* 辅助文字 */
+  --hairline: #e2e8ec;       /* 发丝线 */
+  --hairline-strong: #cfd8dd;
+  --teal: #0e6e64;           /* 临床青绿：唯一品牌色 */
+  --teal-deep: #0a544c;
+  --teal-soft: #e6f2f0;      /* 青绿浅底 */
+  --focus: #ffb800;          /* 琥珀：键盘焦点专用 */
+  --danger: #c0392b;         /* 仅紧急 */
+  --ok: #2e7d5b;             /* 仅状态 */
+  --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+  --serif: "Noto Serif SC", "Songti SC", "STSong", "FangSong", Georgia, serif;
+  --sans: "MiSans", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --r-lg: 12px;
+  --r-md: 8px;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom: 64px;
+}
+.skip {
+  position: absolute;
+  left: -9999px;
+  top: 8px;
+  background: var(--focus);
+  color: var(--ink);
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  z-index: 50;
+}
+.skip:focus { left: 16px; }
+a { color: var(--teal); }
+button { font-family: inherit; cursor: pointer; }
+:focus-visible {
+  /* 双环焦点：墨色内环提供对比度（≥3:1），琥珀外环提供信号（NHS 焦点黄体系变体） */
+  outline: 3px solid var(--focus);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+/* ---------------- 顶栏 ---------------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 18px 4px 16px;
+  border-bottom: 1px solid var(--hairline-strong);
+}
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
+.brand-mark {
+  width: 30px; height: 30px; border-radius: 7px;
+  background: var(--teal);
+  display: grid; place-items: center;
+  color: #fff; font-family: var(--serif); font-size: 17px; font-weight: 700;
+}
+.brand-name { font-family: var(--serif); font-size: 20px; font-weight: 700; letter-spacing: .01em; }
+.nav { display: flex; gap: 20px; margin-left: 8px; }
+.nav a {
+  color: var(--muted); text-decoration: none; font-size: 14px;
+  padding: 6px 2px; border-bottom: 2px solid transparent;
+}
+.nav a:hover { color: var(--ink); }
+.nav a.active { color: var(--teal); border-bottom-color: var(--teal); font-weight: 600; }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.search {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--hairline-strong); border-radius: 999px;
+  padding: 6px 14px; background: var(--surface); color: var(--muted);
+  font-size: 13px; min-width: 180px;
+}
+.status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.status i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+.avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--ink); color: var(--paper);
+  display: grid; place-items: center; font-size: 13px; font-weight: 600;
+}
+
+/* ---------------- 页面头部 ---------------- */
+.page { max-width: 1240px; margin: 0 auto; }
+.page-head { padding: 34px 4px 22px; display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.kicker { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--teal); font-weight: 600; }
+.page-head h1 {
+  font-family: var(--serif); font-size: clamp(26px, 3.4vw, 38px);
+  font-weight: 700; line-height: 1.25; margin: 8px 0 0; max-width: 620px;
+  text-wrap: balance;
+}
+.page-head p { margin: 10px 0 0; color: var(--ink-soft); max-width: 560px; font-size: 14px; }
+.session-chip { font-family: var(--mono); font-size: 12px; color: var(--muted); border: 1px solid var(--hairline-strong); border-radius: 999px; padding: 5px 12px; background: var(--surface); }
+
+/* ---------------- 三栏布局 ---------------- */
+.layout {
+  display: grid;
+  grid-template-columns: 196px minmax(0, 1fr) 288px;
+  gap: 0;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  min-height: 620px;
+  overflow: hidden;
+}
+
+/* 左：流程导轨 */
+.rail { border-right: 1px solid var(--hairline); padding: 22px 18px; background: #fbfcfc; }
+.rail h2 { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 16px; font-weight: 600; }
+.steps { list-style: none; margin: 0; padding: 0; position: relative; }
+.steps::before { content: ""; position: absolute; left: 7px; top: 8px; bottom: 8px; width: 1px; background: var(--hairline-strong); }
+.step { position: relative; padding: 0 0 22px 26px; }
+.step:last-child { padding-bottom: 0; }
+.step::before {
+  content: ""; position: absolute; left: 2px; top: 7px;
+  width: 11px; height: 11px; border-radius: 50%;
+  background: var(--surface); border: 1.5px solid var(--hairline-strong);
+}
+.step.done::before { background: var(--teal); border-color: var(--teal); }
+.step.active::before { background: var(--surface); border-color: var(--teal); border-width: 3px; }
+.step b { display: block; font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.step.done b, .step.active b { color: var(--teal-deep); }
+.step span { font-size: 12px; color: var(--muted); }
+.rail-foot { margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--hairline); font-size: 12px; color: var(--muted); display: grid; gap: 4px; }
+.rail-foot code { font-family: var(--mono); font-size: 11px; color: var(--ink-soft); }
+
+/* 中：对话舞台 */
+.stage { display: grid; grid-template-rows: auto minmax(0,1fr) auto; min-height: 0; }
+.stage-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 22px; border-bottom: 1px solid var(--hairline);
+  font-size: 11.5px; color: var(--muted); letter-spacing: .04em;
+}
+.messages { padding: 26px 26px 14px; display: flex; flex-direction: column; gap: 26px; }
+
+/* 回信式消息：无气泡 */
+.msg { max-width: 92%; }
+.msg-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.msg-speaker { font-family: var(--serif); font-size: 15px; font-weight: 700; color: var(--teal-deep); }
+.msg-time { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.msg p { margin: 0; color: var(--ink); line-height: 1.8; }
+.msg p + p { margin-top: 8px; }
+.msg.user { align-self: flex-end; text-align: left; border-top: 1px solid var(--hairline-strong); padding-top: 10px; min-width: 280px; }
+.msg.user .msg-speaker { color: var(--ink); }
+.msg-note { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+
+/* 来源芯片 */
+.sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.source-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; color: var(--teal-deep);
+  background: var(--teal-soft); border-radius: 999px; padding: 3px 10px;
+  border: 1px solid #cfe5e1; text-decoration: none;
+}
+.source-chip::before { content: "◈"; font-size: 10px; }
+
+/* 地图候选卡：真实操作对象，允许成卡 */
+.place-card {
+  margin-top: 14px; border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-lg); overflow: hidden;
+}
+.place-head { padding: 10px 16px; border-bottom: 1px solid var(--hairline); font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
+.place-row { display: flex; align-items: center; gap: 14px; padding: 12px 16px; }
+.place-row + .place-row { border-top: 1px solid var(--hairline); }
+.place-row:hover { background: #fafcfc; }
+.place-name { font-weight: 600; font-size: 14px; }
+.place-meta { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+.place-row button {
+  margin-left: auto; border: 1px solid var(--teal); background: transparent;
+  color: var(--teal); font-size: 12.5px; border-radius: 999px; padding: 5px 14px;
+}
+.place-row button:hover { background: var(--teal-soft); }
+
+/* 待确认操作卡：唯一的主色卡 */
+.action-card {
+  margin-top: 14px; border: 1px solid var(--teal); border-radius: var(--r-lg);
+  background: linear-gradient(180deg, #f7fbfa, #ffffff);
+  padding: 16px 18px;
+}
+.action-label { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--teal); font-weight: 700; }
+.action-card h3 { font-family: var(--serif); font-size: 17px; margin: 6px 0 4px; }
+.action-card p { font-size: 13px; color: var(--ink-soft); margin: 0; }
+.action-buttons { display: flex; gap: 10px; margin-top: 14px; }
+.btn-primary {
+  background: var(--teal); color: #fff; border: none;
+  padding: 9px 20px; border-radius: var(--r-md); font-size: 14px; font-weight: 600;
+}
+.btn-primary:hover { background: var(--teal-deep); }
+.btn-quiet {
+  background: transparent; border: 1px solid var(--hairline-strong);
+  color: var(--ink-soft); padding: 9px 16px; border-radius: var(--r-md); font-size: 14px;
+}
+.btn-quiet:hover { border-color: var(--ink-soft); color: var(--ink); }
+
+/* 追踪行 */
+.trace { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-top: 10px; }
+
+/* 输入区 */
+.composer { border-top: 1px solid var(--hairline); padding: 14px 22px 16px; background: #fbfcfc; }
+.composer-box {
+  border: 1px solid var(--hairline-strong); border-radius: var(--r-lg);
+  background: var(--surface); padding: 12px 14px; display: grid; gap: 8px;
+}
+.composer-box:focus-within { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal); }
+.composer textarea {
+  border: none; outline: none; resize: none; font: inherit; color: var(--ink);
+  min-height: 44px; background: transparent;
+}
+.composer textarea::placeholder { color: #9aa8ae; }
+.composer-row { display: flex; align-items: center; justify-content: space-between; }
+.composer-hint { font-size: 11.5px; color: var(--muted); }
+.send {
+  background: var(--ink); color: var(--paper); border: none;
+  border-radius: var(--r-md); padding: 8px 22px; font-size: 14px; font-weight: 600;
+}
+.send:hover { background: #2a3d47; }
+
+/* 右：信息栏 */
+.aside { border-left: 1px solid var(--hairline); padding: 22px 20px; background: #fbfcfc; display: flex; flex-direction: column; gap: 22px; }
+.aside section h2 { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+.wf { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.wf li { display: flex; gap: 10px; font-size: 13px; align-items: baseline; }
+.wf .state { font-family: var(--mono); font-size: 10.5px; padding: 1px 8px; border-radius: 999px; flex: none; }
+.wf .state.done { background: var(--teal-soft); color: var(--teal-deep); }
+.wf .state.wait { background: #f0f3f4; color: var(--muted); }
+.aside dl { margin: 0; display: grid; gap: 8px; font-size: 13px; }
+.aside dl div { display: flex; justify-content: space-between; gap: 12px; }
+.aside dt { color: var(--muted); }
+.aside dd { margin: 0; font-family: var(--mono); font-size: 12px; color: var(--ink-soft); text-align: right; }
+.quick { display: grid; gap: 8px; }
+.quick button {
+  text-align: left; border: 1px solid var(--hairline-strong); background: var(--surface);
+  color: var(--ink-soft); font-size: 13px; border-radius: var(--r-md); padding: 9px 12px;
+}
+.quick button:hover { border-color: var(--teal); color: var(--teal-deep); background: var(--teal-soft); }
+
+/* ---------------- 页面骨架区 ---------------- */
+.skeletons { max-width: 1240px; margin: 56px auto 0; }
+.skeletons h2 { font-family: var(--serif); font-size: 26px; margin: 0 0 6px; }
+.skeletons .intro { color: var(--ink-soft); font-size: 14px; margin: 0 0 24px; max-width: 680px; }
+.sken-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+.page-frame { border: 1px solid var(--hairline-strong); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; }
+.page-frame.wide { grid-column: 1 / -1; }
+.frame-bar { display: flex; justify-content: space-between; align-items: center; padding: 9px 16px; border-bottom: 1px solid var(--hairline); background: #fbfcfc; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.frame-bar b { color: var(--teal-deep); font-weight: 700; }
+.frame-body { padding: 18px 20px; display: grid; gap: 14px; }
+.mini-eyebrow { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--teal); font-weight: 700; }
+.mini-h { font-family: var(--serif); font-size: 21px; font-weight: 700; margin: -6px 0 0; line-height: 1.3; }
+.mini-sub { font-size: 12px; color: var(--muted); margin: -8px 0 0; }
+.mini-search { display: flex; gap: 8px; }
+.mini-search input { flex: 1; border: 1px solid var(--hairline-strong); border-radius: 8px; padding: 7px 11px; font-size: 12.5px; font-family: inherit; background: var(--surface); color: var(--ink); }
+.mini-search button { background: var(--teal); color: #fff; border: none; border-radius: 8px; padding: 0 16px; font-size: 12.5px; font-weight: 600; }
+.mini-toggles { display: flex; gap: 14px; font-size: 11.5px; color: var(--ink-soft); }
+.mini-list { display: grid; }
+.mini-row { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--hairline); font-size: 12.5px; align-items: baseline; min-width: 0; }
+.mini-row:last-child { border-bottom: none; }
+.mini-num { font-family: var(--mono); font-size: 11px; color: var(--teal); flex: none; }
+.mini-row b { font-weight: 600; }
+.mini-muted { color: var(--muted); font-size: 11.5px; }
+.status-pill { font-family: var(--mono); font-size: 10px; padding: 1px 9px; border-radius: 999px; flex: none; }
+.status-pill.open { background: #fdf3e3; color: #7a5100; }
+.status-pill.done { background: var(--teal-soft); color: var(--teal-deep); }
+.sim-banner { border-left: 3px solid var(--focus); background: #fffaf0; color: #6b4b00; font-size: 11.5px; padding: 8px 12px; border-radius: 4px; }
+.split { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; }
+.split > div { min-width: 0; }
+.mini-form { display: grid; gap: 9px; font-size: 12px; color: var(--ink-soft); }
+.mini-form input, .mini-form textarea { border: 1px solid var(--hairline-strong); border-radius: 8px; padding: 6px 10px; font-size: 12px; font-family: inherit; background: var(--surface); color: var(--ink); }
+.mini-form textarea { min-height: 44px; resize: none; }
+.mini-btn { background: var(--ink); color: var(--paper); border: none; border-radius: 8px; padding: 7px 14px; font-size: 12.5px; font-weight: 600; justify-self: start; }
+.map-box {
+  position: relative; height: 150px; border: 1px solid var(--hairline-strong); border-radius: 10px;
+  background:
+    linear-gradient(90deg, transparent 49.4%, #e6ecee 50%, transparent 50.6%),
+    linear-gradient(0deg, transparent 49.4%, #e6ecee 50%, transparent 50.6%),
+    #f7faf9;
+  background-size: 46px 46px, 46px 46px, auto;
+  overflow: hidden;
+}
+.pin { position: absolute; width: 12px; height: 12px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--teal); border: 2px solid #fff; box-shadow: 0 1px 4px rgba(28,43,51,.35); }
+.pin.alt { background: var(--ink-soft); }
+.empty-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.empty-card { border: 1px solid var(--hairline-strong); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: var(--ink-soft); background: var(--surface); text-align: left; }
+.empty-card:hover { border-color: var(--teal); color: var(--teal-deep); }
+.appt-row { display: flex; align-items: baseline; gap: 14px; padding: 11px 0; border-bottom: 1px solid var(--hairline); font-size: 13px; min-width: 0; }
+.appt-row:last-child { border-bottom: none; }
+.appt-dept { font-weight: 600; flex: none; }
+.appt-id { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-left: auto; white-space: nowrap; }
+.candidate-row { display: flex; align-items: baseline; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--hairline); font-size: 12px; }
+.candidate-row:last-child { border-bottom: none; }
+.candidate-row b { font-weight: 600; }
+.candidate-row button { margin-left: auto; border: 1px solid var(--teal); background: transparent; color: var(--teal); font-size: 11.5px; border-radius: 999px; padding: 3px 11px; flex: none; }
+@media (max-width: 1080px) {
+  .sken-grid { grid-template-columns: 1fr; }
+  .split { grid-template-columns: 1fr; }
+  .empty-cards { grid-template-columns: 1fr; }
+}
+
+/* ---------------- 设计规范区 ---------------- */
+.spec { max-width: 1240px; margin: 56px auto 0; }
+.spec h2 { font-family: var(--serif); font-size: 26px; margin: 0 0 6px; }
+.spec-intro { color: var(--ink-soft); font-size: 14px; margin: 0 0 24px; max-width: 640px; }
+.spec-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; }
+.swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.swatch { border: 1px solid var(--hairline-strong); border-radius: var(--r-md); overflow: hidden; background: var(--surface); }
+.swatch-fill { height: 56px; }
+.swatch-meta { padding: 8px 10px; }
+.swatch-meta b { display: block; font-size: 12.5px; }
+.swatch-meta span { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.type-scale { display: grid; gap: 14px; }
+.type-row { display: flex; align-items: baseline; gap: 16px; border-bottom: 1px solid var(--hairline); padding-bottom: 10px; }
+.type-row .sample-serif { font-family: var(--serif); font-weight: 700; }
+.type-row .label { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.rules { margin-top: 36px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.rule { border-top: 2px solid var(--teal); padding-top: 12px; }
+.rule b { display: block; font-size: 14px; margin-bottom: 4px; }
+.rule p { margin: 0; font-size: 13px; color: var(--ink-soft); }
+.foot { max-width: 1240px; margin: 40px auto 0; padding-top: 16px; border-top: 1px solid var(--hairline-strong); font-size: 12px; color: var(--muted); }
+
+/* ---------------- 响应式 ---------------- */
+@media (max-width: 1080px) {
+  .layout { grid-template-columns: 1fr; }
+  .rail { border-right: none; border-bottom: 1px solid var(--hairline); }
+  .steps { display: flex; gap: 18px; flex-wrap: wrap; }
+  .steps::before { display: none; }
+  .step { padding: 0 0 0 20px; }
+  .step::before { top: 6px; }
+  .aside { border-left: none; border-top: 1px solid var(--hairline); }
+  .spec-grid { grid-template-columns: 1fr; }
+  .rules { grid-template-columns: 1fr; }
+  .nav { display: none; }
+}
+@media (max-width: 640px) {
+  .swatches { grid-template-columns: repeat(2, 1fr); }
+  .msg { max-width: 100%; }
+  .msg.user { min-width: 0; align-self: stretch; }
+  .topbar { flex-wrap: wrap; gap: 12px; }
+  .search { display: none; }
+}
+</style>
+
+<a class="skip" href="#main">跳到主要内容</a>
+
+<header class="topbar">
+  <a class="brand" href="#">
+    <span class="brand-mark" aria-hidden="true">十</span>
+    <span class="brand-name">CareGuide</span>
+  </a>
+  <nav class="nav" aria-label="主导航">
+    <a href="#" class="active" aria-current="page">对话</a>
+    <a href="#spec">知识库</a>
+    <a href="#spec">咨询记录</a>
+    <a href="#spec">预约</a>
+    <a href="#spec">行程重规划</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="search" role="search">⌕ 搜索科室、症状、医院</span>
+    <span class="status"><i></i>服务正常</span>
+    <span class="avatar" title="当前用户">孙</span>
+  </div>
+</header>
+
+<main id="main" class="page">
+  <div class="page-head">
+    <div>
+      <span class="kicker">个人学习项目 · 南京鼓楼医院导诊</span>
+      <h1>你好，我是 CareGuide，先帮你把路线理清。</h1>
+      <p>说明来意或描述症状，我会先确认科室与院区，再整理挂号、停车和就诊顺序。所有建议都附来源。</p>
+    </div>
+    <span class="session-chip">会话 cg-20261114-041</span>
+  </div>
+
+  <div class="layout">
+    <!-- 流程导轨 -->
+    <aside class="rail" aria-label="本次咨询流程">
+      <h2>本次咨询流程</h2>
+      <ol class="steps">
+        <li class="step done"><b>挂号科室</b><span>消化内科 · 已确认</span></li>
+        <li class="step active"><b>院内导航</b><span>门诊 3 楼 · 进行中</span></li>
+        <li class="step"><b>停车与接驳</b><span>待规划</span></li>
+        <li class="step"><b>就诊提醒</b><span>待生成</span></li>
+      </ol>
+      <div class="rail-foot">
+        <span>接入环境</span>
+        <code>hospital-retrieval-v2</code>
+        <span>数据标注</span>
+        <code>示例会话，非真实就诊</code>
+      </div>
+    </aside>
+
+    <!-- 对话舞台 -->
+    <section class="stage" aria-label="对话">
+      <div class="stage-bar">
+        <span>实时会话</span>
+        <span>SSE 已连接 · 延迟 42ms</span>
+      </div>
+
+      <div class="messages">
+        <article class="msg">
+          <div class="msg-head"><span class="msg-speaker">CareGuide</span><span class="msg-time">14:21</span></div>
+          <p>胃部反复胀痛两周，你描述的部位在上腹偏左。根据鼓楼医院官网的科室说明，这类情况建议先挂<b>消化内科</b>；如果伴随夜间痛醒或黑便，需要改为急诊绿色通道。</p>
+          <div class="sources">
+            <a class="source-chip" href="#">鼓楼医院官网 · 科室介绍</a>
+            <a class="source-chip" href="#">江苏省卫健委 · 就医指南</a>
+          </div>
+          <div class="trace">本次回答 2.3s · 调用检索 2 次 · 工具 hospital_lookup</div>
+        </article>
+
+        <article class="msg user">
+          <div class="msg-head"><span class="msg-speaker">你</span><span class="msg-time">14:22</span></div>
+          <p>帮我看看下午去的话，车停哪里方便，门诊怎么走。</p>
+        </article>
+
+        <article class="msg">
+          <div class="msg-head"><span class="msg-speaker">CareGuide</span><span class="msg-time">14:22</span></div>
+          <p>鼓楼医院本部在中山路 321 号，下午门诊高峰在 14:00–15:30。院内车位紧张，建议优先看这两个周边车场，步行都在 8 分钟以内：</p>
+          <div class="place-card">
+            <div class="place-head"><span>高德地图 · 周边停车 · 14:22 实测</span><span>实时车位未知</span></div>
+            <div class="place-row">
+              <div>
+                <div class="place-name">鼓楼医院地下停车场</div>
+                <div class="place-meta">距门诊 120m · 25 元/小时 · 通常 14:00 后满位</div>
+              </div>
+              <button>查看路线</button>
+            </div>
+            <div class="place-row">
+              <div>
+                <div class="place-name">绿地中心停车场</div>
+                <div class="place-meta">距门诊 480m · 12 元/小时 · 步行 6 分钟</div>
+              </div>
+              <button>查看路线</button>
+            </div>
+          </div>
+          <div class="sources"><a class="source-chip" href="#">高德地图 · map_poi</a></div>
+
+          <div class="action-card">
+            <span class="action-label">待确认操作</span>
+            <h3>模拟预约 · 消化内科普通号</h3>
+            <p>南京鼓楼医院本部 · 今日 15:30 · 张医生 · 需现场取号。此操作为演示数据，不会真实提交。</p>
+            <div class="action-buttons">
+              <button class="btn-primary" id="confirmBtn">确认预约</button>
+              <button class="btn-quiet" id="rejectBtn">暂不预约</button>
+            </div>
+          </div>
+          <div class="trace">本次回答 1.8s · 地图工具 1 次 · 工作流待确认 1 项</div>
+        </article>
+      </div>
+
+      <div class="composer">
+        <div class="composer-box">
+          <textarea id="composerInput" rows="1" placeholder="继续描述症状、时间，或问停车、楼层、取号流程…" aria-label="输入消息"></textarea>
+          <div class="composer-row">
+            <span class="composer-hint">Enter 发送 · Shift + Enter 换行 · 回答附来源</span>
+            <button class="send" id="sendBtn">发送</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 信息栏：只保留与导轨不重复的信息 -->
+    <aside class="aside" aria-label="会话信息">
+      <section>
+        <h2>会话设置</h2>
+        <dl>
+          <div><dt>接入环境</dt><dd>retrieval-v2</dd></div>
+          <div><dt>模型</dt><dd>cg-guide</dd></div>
+          <div><dt>来源</dt><dd>医院官网 · 卫健委</dd></div>
+        </dl>
+      </section>
+      <section>
+        <h2>可以这样问</h2>
+        <div class="quick">
+          <button class="starter">儿科夜间门诊到几点？</button>
+          <button class="starter">从南京站坐地铁怎么走？</button>
+          <button class="starter">复诊需要带什么材料？</button>
+        </div>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<section id="pages" class="skeletons" aria-label="其余页面骨架">
+  <h2>其余页面骨架</h2>
+  <p class="intro">四个功能页 + 新会话空态。同一套纪律：发丝线代替卡片、宋体标题、青绿只给行动点、状态用文字加颜色双编码。</p>
+
+  <div class="sken-grid">
+    <!-- 知识库 -->
+    <div class="page-frame">
+      <div class="frame-bar"><b>知识库</b><span>检索优先 · 审核在后</span></div>
+      <div class="frame-body">
+        <span class="mini-eyebrow">Knowledge</span>
+        <h3 class="mini-h">先检索，再谈管理</h3>
+        <p class="mini-sub">结果带来源与分数；新增资料必须经过审核队列。</p>
+        <div class="mini-search">
+          <input value="头痛就诊前记录哪些信息" aria-label="检索知识库" />
+          <button>搜索</button>
+        </div>
+        <div class="mini-toggles"><label><input type="checkbox" checked /> 查询改写</label><label><input type="checkbox" /> 模型重排</label></div>
+        <div class="mini-list">
+          <div class="mini-row"><span class="mini-num">01</span><div><b>就诊前记录清单</b> · 症状起始时间、诱因、用药史<br /><span class="mini-muted">score 0.92 · 鼓楼医院官网</span></div></div>
+          <div class="mini-row"><span class="mini-num">02</span><div><b>头痛分诊指引</b> · 红旗症状清单<br /><span class="mini-muted">score 0.87 · 江苏省卫健委</span></div></div>
+          <div class="mini-row"><span class="mini-num">03</span><div><b>复诊材料要求</b> · 检查报告与转诊单<br /><span class="mini-muted">score 0.81 · 医院官网</span></div></div>
+        </div>
+        <div class="mini-row"><span class="status-pill open">待审核 2</span><span class="mini-muted">JSON 资料包 · 来源核对后发布</span></div>
+      </div>
+    </div>
+
+    <!-- 咨询记录与评测 -->
+    <div class="page-frame">
+      <div class="frame-bar"><b>咨询记录与评测</b><span>操作台</span></div>
+      <div class="frame-body">
+        <span class="mini-eyebrow">Operations</span>
+        <h3 class="mini-h">交接与评测</h3>
+        <div class="split">
+          <div>
+            <div class="mini-row"><b>ho-0412</b><span class="status-pill open">待处理</span><span class="mini-muted">胃痛 · 步行困难，需要人工协助</span></div>
+            <div class="mini-row"><b>ho-0409</b><span class="status-pill done">已完成</span><span class="mini-muted">停车路线 · 已电话回访</span></div>
+            <div class="mini-row"><b>ho-0403</b><span class="status-pill done">已完成</span><span class="mini-muted">预约改期 · 已确认</span></div>
+          </div>
+          <div class="mini-form">
+            <label>开发样本数 <input value="60" aria-label="样本数" /></label>
+            <label><input type="checkbox" checked /> 启用 Judge</label>
+            <textarea placeholder="可选：测试对话，每行一轮"></textarea>
+            <button class="mini-btn">运行开发评测</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 模拟预约 -->
+    <div class="page-frame">
+      <div class="frame-bar"><b>模拟预约</b><span>合成数据</span></div>
+      <div class="frame-body">
+        <span class="mini-eyebrow">Synthetic FHIR</span>
+        <h3 class="mini-h">预约清单</h3>
+        <div class="sim-banner">所有医生、号源与预约均为模拟数据，不可用于真实就诊。</div>
+        <div>
+          <div class="appt-row"><span class="appt-dept">消化内科</span><span>张医生 · 今日 15:30</span><span class="appt-id">apt-7f21 · slot-3</span></div>
+          <div class="appt-row"><span class="appt-dept">儿科</span><span>李医生 · 明日 09:00</span><span class="appt-id">apt-8c05 · slot-1</span></div>
+          <div class="appt-row"><span class="appt-dept">骨科</span><span>王医生 · 11-16 14:00</span><span class="appt-id">apt-9a13 · slot-2</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 行程重规划 -->
+    <div class="page-frame">
+      <div class="frame-bar"><b>行程重规划</b><span>真实地图 + 模拟重规划</span></div>
+      <div class="frame-body">
+        <span class="mini-eyebrow">Hospital journey</span>
+        <h3 class="mini-h">停车与接驳</h3>
+        <div class="split">
+          <div class="mini-form">
+            <label>医院名称 <input value="南京鼓楼医院" aria-label="医院名称" /></label>
+            <label>城市 <input value="南京" aria-label="城市" /></label>
+            <button class="mini-btn">查询真实院区</button>
+            <div class="candidate-row"><b>鼓楼医院本部</b><span class="mini-muted">中山路 321 号</span></div>
+            <div class="candidate-row"><b>江北院区</b><span class="mini-muted">浦珠路 1 号</span></div>
+          </div>
+          <div>
+            <div class="map-box" role="img" aria-label="地图示意">
+              <span class="pin" style="left:42%;top:44%"></span>
+              <span class="pin alt" style="left:58%;top:62%"></span>
+              <span class="pin alt" style="left:30%;top:64%"></span>
+            </div>
+            <div class="candidate-row"><b>绿地中心停车场</b><span class="mini-muted">480m · 12 元/时</span><button>路线</button></div>
+            <div class="candidate-row"><b>医院地下车场</b><span class="mini-muted">120m · 25 元/时</span><button>路线</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新会话空态 -->
+    <div class="page-frame wide">
+      <div class="frame-bar"><b>新会话空态</b><span>入口即示范</span></div>
+      <div class="frame-body">
+        <span class="mini-eyebrow">Empty state</span>
+        <h3 class="mini-h">先帮你把路线理清</h3>
+        <p class="mini-sub">描述来意或症状即可开始；也可以从这些常见问题进入——</p>
+        <div class="empty-cards">
+          <button class="empty-card">「胃胀两周，下午想去鼓楼医院，挂什么科？」</button>
+          <button class="empty-card">「儿科夜间门诊到几点？从南京站怎么走？」</button>
+          <button class="empty-card">「复诊需要带哪些材料？」</button>
+        </div>
+        <p class="mini-muted">回答附来源；不提供诊断与处方；模拟数据页会有明确横幅标注。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="spec" class="spec" aria-label="设计规范">
+  <h2>设计规范</h2>
+  <p class="spec-intro">「临床冷静」：纸白画布、墨青文字、单一青绿品牌色、琥珀焦点。学习自 NHS 的体系纪律、Ada 的衬线排版与丁香的灰阶克制；界面结构经 REA 实测分析（未复制任何代码或素材）。</p>
+
+  <div class="spec-grid">
+    <div class="swatches">
+      <div class="swatch"><div class="swatch-fill" style="background:#f4f6f7;border-bottom:1px solid #e2e8ec"></div><div class="swatch-meta"><b>纸白</b><span>#F4F6F7 · 画布</span></div></div>
+      <div class="swatch"><div class="swatch-fill" style="background:#1c2b33"></div><div class="swatch-meta"><b>墨青</b><span>#1C2B33 · 主文字</span></div></div>
+      <div class="swatch"><div class="swatch-fill" style="background:#0e6e64"></div><div class="swatch-meta"><b>临床青绿</b><span>#0E6E64 · 品牌与行动</span></div></div>
+      <div class="swatch"><div class="swatch-fill" style="background:#e6f2f0"></div><div class="swatch-meta"><b>青绿浅底</b><span>#E6F2F0 · 选中与标签</span></div></div>
+      <div class="swatch"><div class="swatch-fill" style="background:#ffb800"></div><div class="swatch-meta"><b>琥珀焦点</b><span>#FFB800 · 键盘焦点专用</span></div></div>
+      <div class="swatch"><div class="swatch-fill" style="background:#c0392b"></div><div class="swatch-meta"><b>警示红</b><span>#C0392B · 仅紧急</span></div></div>
+    </div>
+
+    <div class="type-scale">
+      <div class="type-row"><span class="sample-serif" style="font-size:34px">路线理清</span><span class="label">宋体 · 34 / 页面标题</span></div>
+      <div class="type-row"><span class="sample-serif" style="font-size:20px">预约确认</span><span class="label">宋体 · 20 / 区块标题</span></div>
+      <div class="type-row"><span style="font-size:15px">正文十五像素，行高一点八，保持六十五字符宽度。</span><span class="label">黑体 · 15 / 正文</span></div>
+      <div class="type-row"><span style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6a7b83">LABEL · 小标签</span><span class="label">11 / 标签 · 字距</span></div>
+      <div class="type-row"><span style="font-family:var(--mono);font-size:13px">cg-20261114-041 · 2.3s</span><span class="label">等宽 · 数据</span></div>
+    </div>
+  </div>
+
+  <div class="rules">
+    <div class="rule"><b>取消卡片套卡片</b><p>消息、导航、信息栏全部开放排版，只有地图候选与待确认操作这类真实对象才用卡片。全页卡片数量从 20+ 降到 2。</p></div>
+    <div class="rule"><b>排版三档拉开层级</b><p>宋体标题 34/20、正文 15、标签 11 三档；正文取消粗体，靠字号、字体与留白建立层级，而不是靠加粗。</p></div>
+    <div class="rule"><b>琥珀只给键盘焦点</b><p>品牌青绿只用于行动点与选中态；键盘焦点一律"墨色内环 + 琥珀外环"双环描边（内环保证 3:1 对比度，外环承担信号），这是页面唯一的"亮色瞬间"。</p></div>
+  </div>
+
+  <p class="foot">CareGuide 重设计 · 方向 A「临床冷静」· 2026-11-14 · 对标：NHS.uk / Mayo Clinic / 丁香医生 / 好大夫在线 / Ada Health（REA 实测结构 + 设计令牌提取）</p>
+</section>
+
+<script>
+  // 演示交互：起始问题填入输入框；确认/暂不预约给出页面内反馈（mockup 专用）
+  document.querySelectorAll('.starter').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var input = document.getElementById('composerInput');
+      input.value = btn.textContent.trim();
+      input.focus();
+    });
+  });
+  var confirmBtn = document.getElementById('confirmBtn');
+  var rejectBtn = document.getElementById('rejectBtn');
+  function markResolved(btn, text) {
+    btn.textContent = text;
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+  }
+  confirmBtn.addEventListener('click', function () {
+    markResolved(confirmBtn, '已确认（演示）');
+    markResolved(rejectBtn, '暂不预约');
+  });
+  rejectBtn.addEventListener('click', function () {
+    markResolved(rejectBtn, '已忽略（演示）');
+    confirmBtn.disabled = true;
+    confirmBtn.style.opacity = '0.4';
+  });
+  document.getElementById('sendBtn').addEventListener('click', function () {
+    var input = document.getElementById('composerInput');
+    if (!input.value.trim()) { input.focus(); return; }
+    input.value = '';
+    input.placeholder = '演示原型：发送后不会有真实回复';
+  });
+</script>

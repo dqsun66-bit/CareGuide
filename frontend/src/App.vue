@@ -1,8 +1,9 @@
 <template>
-  <main :class="['app-shell', `app-shell-${activeView}`]">
+  <main :class="['app-shell', `app-shell-${activeView}`, { 'is-focus': focusMode }]">
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
     <header class="topbar">
       <a class="brand" href="#" aria-label="CareGuide 首页" @click.prevent="activeView = 'chat'">
-        <span class="brand-mark">C</span>
+        <span class="brand-mark" aria-hidden="true">十</span>
         <span class="brand-name">CareGuide</span>
       </a>
 
@@ -20,23 +21,13 @@
           {{ healthOk ? '服务在线' : '服务未连接' }}
         </span>
         <a class="docs-link" :href="docsUrl" target="_blank" rel="noreferrer">API 文档</a>
-        <button
-          class="theme-toggle"
-          type="button"
-          :aria-label="settings.theme === 'dark' ? '切换到浅色主题' : '切换到深色主题'"
-          :title="settings.theme === 'dark' ? '切换到浅色主题' : '切换到深色主题'"
-          @click="toggleTheme"
-        >
-          <span aria-hidden="true">{{ settings.theme === 'dark' ? '☀' : '☾' }}</span>
-          <span>{{ settings.theme === 'dark' ? '浅色' : '深色' }}</span>
-        </button>
         <button class="avatar-button" title="当前用户">{{ userInitial }}</button>
       </div>
     </header>
 
     <div v-if="toast" class="toast" role="status">{{ toast }}</div>
 
-    <section v-if="activeView === 'chat'" class="page page-chat">
+    <section v-if="activeView === 'chat'" id="main-content" class="page page-chat">
       <div class="page-heading">
         <div class="heading-copy">
           <span class="kicker">个人学习项目</span>
@@ -56,14 +47,21 @@
         <small>令牌仅保存在当前浏览器标签页会话中。</small>
       </details>
 
-      <div class="chat-layout">
+      <div class="chat-layout" :class="{ 'is-wide': sidebarCollapsed }">
         <section class="chat-stage">
           <div class="stage-bar">
             <div class="stage-context">
               <span class="context-dot"></span>
               <span>{{ currentBackend.baseUrl }}</span>
             </div>
-            <span>{{ messages.length }} 条消息</span>
+            <div class="stage-bar-actions">
+              <button v-if="!focusMode" class="link-button stage-sidebar-toggle" type="button" @click="sidebarCollapsed = !sidebarCollapsed">
+                {{ sidebarCollapsed ? '显示侧栏' : '展开对话区' }}
+              </button>
+              <button class="link-button stage-sidebar-toggle" type="button" @click="focusMode = !focusMode">
+                {{ focusMode ? '退出半全屏 · Esc' : '半全屏' }}
+              </button>
+            </div>
           </div>
 
           <div class="messages" ref="messageList" @scroll="trackScroll">
@@ -219,7 +217,7 @@
           </form>
         </section>
 
-        <aside class="chat-sidebar" ref="sidebarRef">
+        <aside v-show="!sidebarCollapsed" class="chat-sidebar" ref="sidebarRef">
           <div class="chat-sidebar-scroll">
             <section class="side-card session-card">
               <div class="card-heading">
@@ -344,7 +342,7 @@
       </div>
     </section>
 
-    <section v-else-if="activeView === 'knowledge'" class="page page-knowledge">
+    <section v-else-if="activeView === 'knowledge'" id="main-content" class="page page-knowledge">
       <div class="page-heading">
         <div class="heading-copy">
           <span class="kicker">Knowledge operations</span>
@@ -408,7 +406,7 @@
       </section>
     </section>
 
-    <section v-else-if="activeView === 'operations'" class="page">
+    <section v-else-if="activeView === 'operations'" id="main-content" class="page">
       <div class="page-heading"><h1>咨询记录与开发评测</h1><button @click="loadOperations">刷新</button></div>
       <section class="workspace-card">
         <h2>我的咨询交接记录</h2>
@@ -434,7 +432,7 @@
       </section>
     </section>
 
-    <section v-else-if="activeView === 'appointments'" class="page">
+    <section v-else-if="activeView === 'appointments'" id="main-content" class="page">
       <div class="page-heading">
         <div class="heading-copy"><span class="kicker">Synthetic FHIR</span><h1>模拟预约</h1>
           <p>这里只显示 CareGuide 合成医院数据，不连接中大医院或任何真实医院。</p></div>
@@ -454,7 +452,7 @@
       </section>
     </section>
 
-    <section v-else-if="activeView === 'parking'" class="page page-parking">
+    <section v-else-if="activeView === 'parking'" id="main-content" class="page page-parking">
       <div class="page-heading">
         <div class="heading-copy">
           <span class="kicker">Hospital journey</span>
@@ -627,6 +625,8 @@ async function connectIdentity() {
   } catch (error) { identity.mode = 'required'; showToast(error.message) }
 }
 const activeView = ref('chat')
+const sidebarCollapsed = ref(false)
+const focusMode = ref(false)
 const messages = ref([])
 const draft = ref('')
 const busy = ref(false)
@@ -968,7 +968,6 @@ const lastTrace = ref(null)
 const toast = ref('')
 let toastTimer
 let messageSequence = 0
-let sidebarObserver
 let chatAbortController
 
 const currentBackend = computed(() => backendMeta(settings.backend, settings))
@@ -979,11 +978,16 @@ const agentCount = computed(() => Object.keys(monitorData.value.agentStats).leng
 const totalRequests = computed(() => Object.values(monitorData.value.agentStats).reduce((sum, item) => sum + Number(item.total || 0), 0))
 
 watch(() => settings.conversationId, persist)
-watch(() => settings.theme, (theme) => {
-  applyTheme(theme)
-  persist()
-}, { immediate: true })
+// 半全屏专注模式：隐藏顶栏/标题/侧栏，Esc 退出；离开对话页自动退出
+function onFocusModeKeydown(event) {
+  if (event.key === 'Escape' && focusMode.value) focusMode.value = false
+}
+watch(activeView, (view) => {
+  if (view !== 'chat') focusMode.value = false
+})
+
 onMounted(() => {
+  window.addEventListener('keydown', onFocusModeKeydown)
   void requestIdentity(settings.backend, settings).then(value => {
     Object.assign(identity, value)
     if (value.user_id && value.user_id !== settings.userId) {
@@ -991,40 +995,17 @@ onMounted(() => {
     }
   }).catch(() => { identity.mode = 'required' })
   refreshConsole()
-  updateSidebarHeight()
-  if (typeof ResizeObserver !== 'undefined') {
-    sidebarObserver = new ResizeObserver(updateSidebarHeight)
-    if (sidebarRef.value) sidebarObserver.observe(sidebarRef.value)
-  }
-  window.addEventListener('resize', updateSidebarHeight)
 })
 
 onBeforeUnmount(() => {
   chatAbortController?.abort()
-  sidebarObserver?.disconnect?.()
-  window.removeEventListener('resize', updateSidebarHeight)
+  window.removeEventListener('keydown', onFocusModeKeydown)
 })
 
 function persist() { saveSettings(settings) }
 
 function emptyMonitorData() {
   return { agentStats: {}, toolStats: {}, activeAlerts: [], suggestions: [] }
-}
-
-function applyTheme(theme) {
-  document.documentElement.dataset.theme = theme
-}
-
-function toggleTheme() {
-  settings.theme = settings.theme === 'dark' ? 'light' : 'dark'
-}
-
-function updateSidebarHeight() {
-  const sidebar = sidebarRef.value
-  if (!sidebar) return
-  const rect = sidebar.getBoundingClientRect()
-  const height = Math.max(320, Math.floor(rect.height))
-  sidebar.style.setProperty('--sidebar-height', `${height}px`)
 }
 
 async function refreshConsole() {

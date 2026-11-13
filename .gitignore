@@ -20,3 +20,5 @@ data/eval/results/
 .study/
 .worktrees/
 *.part
+
+docs/design/fonts/
