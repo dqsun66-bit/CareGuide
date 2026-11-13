@@ -24,6 +24,7 @@ def main(argv=None) -> int:
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--config-file", type=Path)
     parser.add_argument("--corpus-dir", required=True, type=Path)
+    parser.add_argument("--chroma-dir", type=Path)
     parser.add_argument("--today", required=True, type=date.fromisoformat)
     args = parser.parse_args(argv)
 
@@ -54,8 +55,15 @@ def main(argv=None) -> int:
     load_config(args.config_file)
     embedding = semantic_embedding()
     try:
+        client = chroma_client()
+        if args.chroma_dir is not None:
+            import chromadb
+            client = chromadb.PersistentClient(
+                path=str(args.chroma_dir),
+                settings=chromadb.Settings(anonymized_telemetry=False),
+            )
         collection = index_hospital_collection(
-            chroma_client(), corpus, embedding, today=args.today)
+            client, corpus, embedding, today=args.today)
         payload = {
             "status": "indexed",
             "collection": collection.name,
