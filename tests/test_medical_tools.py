@@ -1,6 +1,8 @@
 import hashlib
 import json
+from dataclasses import dataclass
 from datetime import date
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,6 +10,10 @@ from fastapi.testclient import TestClient
 from careguide.api import app
 from careguide.corpus import Corpus, DEFAULT_CORPUS
 from careguide.domain import AgentType
+from careguide.hospital_corpus.retrieval import (
+    HospitalRetrievalReport,
+    HospitalRetrievalResult,
+)
 from careguide.retrieval.knowledge_base import MedicalKnowledgeBase
 from careguide.tools import MedicalToolRegistry
 
@@ -22,6 +28,56 @@ def registry():
 
 def query(registry, agent, tool, args, today=TODAY):
     return registry.query(agent, tool, args, today=today)
+
+
+@dataclass
+class FakeHospitalKnowledge:
+    unknown: bool = False
+    multiple_campuses: bool = False
+
+    def __post_init__(self):
+        self.corpus = SimpleNamespace(
+            manifest=SimpleNamespace(version="jiangsu-hospitals-v2"))
+        self.calls = []
+
+    def resolve_hospital(self, identity):
+        if self.unknown:
+            return None
+        campuses = [SimpleNamespace(
+            campus_id="js_taizhou_001_main", official_name="总院区")]
+        if self.multiple_campuses:
+            campuses.append(SimpleNamespace(
+                campus_id="js_taizhou_001_east", official_name="东院区"))
+        return SimpleNamespace(
+            hospital_id="js_taizhou_001",
+            official_name="南京医科大学附属泰州人民医院",
+            campuses=tuple(campuses),
+        )
+
+    def resolve_campus(self, hospital, identity=None):
+        if identity is None:
+            return hospital.campuses[0] if len(hospital.campuses) == 1 else None
+        return next((campus for campus in hospital.campuses if identity in {
+            campus.campus_id, campus.official_name}), None)
+
+    def search_with_report(self, query, hospital, **kwargs):
+        self.calls.append((query, hospital, kwargs))
+        evidence = ({
+            "id": "js_taizhou_001_appointment_0003",
+            "content": "官方挂号资料",
+            "scope": {
+                "hospital_id": "js_taizhou_001",
+                "campus_id": "js_taizhou_001_main",
+                "category": "appointment",
+            },
+            "source": {
+                "url": "https://wjw.taizhou.gov.cn/official",
+                "review_status": "verified_official",
+            },
+            "retrieval": {"mode": "hybrid_rrf_rerank", "rerank_score": 0.91},
+        },)
+        return HospitalRetrievalResult(evidence, HospitalRetrievalReport(
+            "hybrid", 1, 1, 1, True, 0, 1))
 
 
 @pytest.mark.parametrize('spec,frequency,page', [
@@ -98,6 +154,73 @@ def test_lexical_search_cannot_return_other_hospital_rules(registry):
     assert result['evidence'][0]['record_id'] == 'pkufh-daxing-process'
     assert all(e['scope']['hospital_id'] == 'pkufh' and e['scope']['campus'] == '大兴院区'
                for e in result['evidence'])
+
+
+def test_hospital_guide_delegates_to_v2_and_clamps_top_k():
+    hospital_knowledge = FakeHospitalKnowledge()
+    registry = MedicalToolRegistry(
+        MedicalKnowledgeBase(Corpus()),
+        hospital_knowledge=hospital_knowledge,
+    )
+
+    response = query(registry, AgentType.APPOINTMENT, 'lookup_hospital_guide', {
+        'hospital_id': '南京医科大学附属泰州人民医院',
+        'query': '怎么挂号',
+        'section': 'channels',
+        'top_k': 10,
+    })
+
+    assert response['status'] == 'found'
+    assert response['hospital_corpus_version'] == 'jiangsu-hospitals-v2'
+    assert response['retrieval_mode'] == 'hybrid'
+    assert response['retrieval']['reranked'] is True
+    assert len(response['evidence']) <= 5
+    assert all(item['source']['review_status'] == 'verified_official'
+               for item in response['evidence'])
+    assert hospital_knowledge.calls[0][2]['top_k'] == 5
+    assert hospital_knowledge.calls[0][2]['category'] == {
+        'appointment', 'contact'}
+
+
+def test_hospital_v2_unknown_hospital_is_not_covered():
+    registry = MedicalToolRegistry(
+        MedicalKnowledgeBase(Corpus()),
+        hospital_knowledge=FakeHospitalKnowledge(unknown=True),
+    )
+
+    response = query(registry, AgentType.APPOINTMENT, 'lookup_hospital_guide', {
+        'hospital_id': '不存在医院', 'query': '怎么挂号'})
+
+    assert response['status'] == 'not_covered'
+    assert response['evidence'] == []
+
+
+def test_hospital_v2_ambiguous_campus_needs_clarification():
+    registry = MedicalToolRegistry(
+        MedicalKnowledgeBase(Corpus()),
+        hospital_knowledge=FakeHospitalKnowledge(multiple_campuses=True),
+    )
+
+    response = query(registry, AgentType.APPOINTMENT, 'lookup_hospital_guide', {
+        'hospital_id': '南京医科大学附属泰州人民医院',
+        'query': '怎么挂号',
+    })
+
+    assert response['status'] == 'needs_clarification'
+    assert response['missing_fields'] == ['campus']
+    assert len(response['available_campuses']) == 2
+
+
+def test_registry_without_hospital_v2_keeps_legacy_behavior(registry):
+    response = query(registry, AgentType.APPOINTMENT, 'lookup_hospital_guide', {
+        'hospital_id': 'pkufh',
+        'campus': '大兴院区',
+        'query': '挂号流程缴费',
+    })
+
+    assert response['status'] == 'found'
+    assert response['evidence'][0]['record_id'] == 'pkufh-daxing-process'
+    assert 'hospital_corpus_version' not in response
 
 
 def test_department_is_service_scope_not_a_diagnosis(registry):

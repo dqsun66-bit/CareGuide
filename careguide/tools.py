@@ -73,6 +73,31 @@ DESCRIPTIONS = {
     'lookup_drug_interaction': '查询确切产品的已收录说明书相互作用条目；未命中表示无法核实。',
     'lookup_hospital_guide': '查询指定医院和院区的挂号流程资料，不查实时号源、不提交预约。',
 }
+HOSPITAL_SECTION_CATEGORIES = {
+    'channels': {'appointment', 'contact'},
+    'process': {'appointment', 'visit_preparation'},
+    'materials': {'visit_preparation', 'appointment'},
+    'cancellation': {'appointment'},
+    'followup': {'report', 'contact'},
+    'all': None,
+}
+HOSPITAL_SECTION_QUERIES = {
+    'channels': '如何挂号预约以及联系医院',
+    'process': '挂号和就诊流程',
+    'materials': '就诊需要携带什么材料',
+    'cancellation': '如何取消预约或退号',
+    'followup': '复诊和报告查询联系方式',
+    'all': '医院就诊信息',
+}
+HOSPITAL_QUERY_CATEGORY_TERMS = {
+    'parking': ('停车', '车位', '停车场'),
+    'accessibility': ('无障碍', '轮椅', '行动不便'),
+    'campus': ('院区', '地址', '在哪里'),
+    'appointment': ('挂号', '预约', '退号'),
+    'visit_preparation': ('材料', '证件', '携带', '带什么'),
+    'contact': ('电话', '联系', '咨询'),
+    'report': ('报告', '检查结果'),
+}
 
 
 def normalize_specification(value: str | None) -> str | None:
@@ -95,8 +120,9 @@ def result(status: str, message: str, *, evidence: list[dict] | None = None, **f
 
 
 class MedicalToolRegistry:
-    def __init__(self, knowledge: MedicalKnowledgeBase):
+    def __init__(self, knowledge: MedicalKnowledgeBase, *, hospital_knowledge=None):
         self.knowledge = knowledge
+        self.hospital_knowledge = hospital_knowledge
         self.corpus: Corpus = knowledge.corpus
 
     def definitions(self, agent: AgentType) -> list[dict]:
@@ -222,6 +248,8 @@ class MedicalToolRegistry:
         return {**response, 'coverage': 'limited_label_entries', 'safe_to_combine': None}
 
     def lookup_hospital_guide(self, args: HospitalGuideArgs, today: date) -> dict:
+        if self.hospital_knowledge is not None:
+            return self._lookup_hospital_v2(args)
         records, problem = self._hospital_scope(
             [r for r in self.corpus.records if r.kind == DocumentKind.HOSPITAL_GUIDE],
             args.hospital_id, args.campus)
@@ -231,3 +259,72 @@ class MedicalToolRegistry:
         if args.query:
             return self._search(args.query, records, today, args.top_k)
         return self._read(records, today)
+
+    def _lookup_hospital_v2(self, args: HospitalGuideArgs) -> dict:
+        version = self.hospital_knowledge.corpus.manifest.version
+        common = {'hospital_corpus_version': version}
+        if not args.hospital_id:
+            return result(
+                'needs_clarification', '请指定医院。',
+                missing_fields=['hospital_id'], **common)
+        hospital = self.hospital_knowledge.resolve_hospital(args.hospital_id)
+        if hospital is None:
+            return result(
+                'not_covered', '当前官方医院资料未覆盖该医院，无法核实。',
+                **common)
+        campus = self.hospital_knowledge.resolve_campus(hospital, args.campus)
+        if campus is None:
+            if args.campus:
+                return result(
+                    'not_covered', '当前官方医院资料未覆盖该院区，不能套用其他院区规定。',
+                    **common)
+            return result(
+                'needs_clarification', '请确认院区或选择资料标注的适用范围。',
+                missing_fields=['campus'],
+                available_campuses=[{
+                    'campus_id': item.campus_id,
+                    'campus': item.official_name,
+                } for item in hospital.campuses],
+                **common,
+            )
+        query = args.query or HOSPITAL_SECTION_QUERIES[args.section]
+        inferred_categories = {
+            category for category, terms in HOSPITAL_QUERY_CATEGORY_TERMS.items()
+            if any(term in query for term in terms)
+        }
+        section_categories = HOSPITAL_SECTION_CATEGORIES[args.section]
+        categories = (
+            inferred_categories if section_categories is None
+            else section_categories | inferred_categories
+        ) or None
+        search = self.hospital_knowledge.search_with_report(
+            query,
+            hospital.hospital_id,
+            campus=campus.campus_id,
+            category=categories,
+            top_k=min(args.top_k, 5),
+        )
+        retrieval = asdict(search.report)
+        evidence = list(search.evidence)
+        returned_categories = {
+            item['scope']['category'] for item in evidence
+        }
+        missing_categories = sorted((categories or set()) - returned_categories)
+        if not evidence:
+            return result(
+                'not_covered', '当前官方医院资料未覆盖此问题，无法核实。',
+                retrieval=retrieval,
+                retrieval_mode=search.report.mode,
+                requested_categories=sorted(categories or ()),
+                missing_categories=missing_categories,
+                **common,
+            )
+        return result(
+            'found', '以下为已核验的医院官方资料，请按适用院区查看原文。',
+            evidence=evidence,
+            retrieval=retrieval,
+            retrieval_mode=search.report.mode,
+            requested_categories=sorted(categories or ()),
+            missing_categories=missing_categories,
+            **common,
+        )

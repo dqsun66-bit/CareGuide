@@ -667,7 +667,11 @@ class AgentOrchestrator:
                 # Render retrieved source text only; source tier remains visible.
                 content = item.get('content') or item.get('text') or item.get('summary') or ''
                 source = item.get('citation', {})
-                url = item.get('source_url') or item.get('url') or (source.get('url') if isinstance(source, dict) else '')
+                hospital_source = item.get('source', {})
+                url = (item.get('source_url') or item.get('url')
+                       or (source.get('url') if isinstance(source, dict) else '')
+                       or (hospital_source.get('url')
+                           if isinstance(hospital_source, dict) else ''))
                 if content:
                     tier = ('\n资料层级：开放研究数据（未经临床审核）'
                             if isinstance(source, dict) and source.get('review_status') == 'open_dataset_unreviewed'
@@ -732,6 +736,7 @@ class AgentOrchestrator:
                 'retrieval_backend': getattr(self.knowledge_backend, 'name', 'embedded'),
                 'simulation': bool(action_requests or appointments or business_action in hospital_intents),
                 'action_requests': action_requests, 'appointment': appointments,
+                'side_effects': side_effects,
                 'errors': ([call['failure'] for call in calls
                            if call.get('failure') and not call.get('resolved')]
                            + [execution['failure'] for execution in executions if execution.get('failure')]),
