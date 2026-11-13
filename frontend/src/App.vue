@@ -48,6 +48,17 @@
       </details>
 
       <div class="chat-layout" :class="{ 'is-wide': sidebarCollapsed }">
+        <button
+          v-if="!focusMode"
+          class="sidebar-handle"
+          type="button"
+          :title="sidebarCollapsed ? '展开会话侧栏' : '收起会话侧栏'"
+          :aria-label="sidebarCollapsed ? '展开会话侧栏' : '收起会话侧栏'"
+          :aria-expanded="!sidebarCollapsed"
+          @click="sidebarCollapsed = !sidebarCollapsed"
+        >
+          <span aria-hidden="true">{{ sidebarCollapsed ? '‹' : '›' }}</span>
+        </button>
         <section class="chat-stage">
           <div class="stage-bar">
             <div class="stage-context">
@@ -55,9 +66,6 @@
               <span>{{ currentBackend.baseUrl }}</span>
             </div>
             <div class="stage-bar-actions">
-              <button v-if="!focusMode" class="link-button stage-sidebar-toggle" type="button" @click="sidebarCollapsed = !sidebarCollapsed">
-                {{ sidebarCollapsed ? '显示侧栏' : '展开对话区' }}
-              </button>
               <button class="link-button stage-sidebar-toggle" type="button" @click="focusMode = !focusMode">
                 {{ focusMode ? '退出半全屏 · Esc' : '半全屏' }}
               </button>
