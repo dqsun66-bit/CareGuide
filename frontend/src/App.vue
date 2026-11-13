@@ -73,6 +73,11 @@
               </div>
               <AnswerBody v-if="item.role === 'assistant'" :content="item.answer?.body || item.content" :sources="item.answer?.sources || []" />
               <p v-else>{{ item.content }}</p>
+              <div v-if="item.role === 'user' && item.attachments?.length" class="message-attachments">
+                <span v-for="att in item.attachments" :key="att.id" class="message-attachment">
+                  {{ att.kind === 'pdf' ? 'PDF' : '图片' }} · {{ att.filename }}
+                </span>
+              </div>
               <div v-if="item.role === 'assistant' && (item.answer?.body || item.content)" class="message-actions">
                 <button class="link-button message-copy" type="button" @click="copyMessage(item)">复制回答</button>
               </div>
@@ -205,6 +210,18 @@
           </div>
 
           <form class="composer" @submit.prevent="sendMessage">
+            <div v-if="pendingAttachments.length" class="attachment-chips">
+              <div v-for="(item, index) in pendingAttachments" :key="`${item.filename}-${index}`"
+                class="attachment-chip" :class="{ 'is-uploading': item.status !== 'ready' }">
+                <img v-if="item.preview" :src="item.preview" alt="" class="attachment-thumb" />
+                <span v-else class="attachment-kind">PDF</span>
+                <span class="attachment-name" :title="item.filename">{{ item.filename }}</span>
+                <small v-if="item.status !== 'ready'">识别中…</small>
+                <small v-else-if="item.warning" class="attachment-warn" :title="item.warning">⚠</small>
+                <small v-else>{{ item.chars }} 字</small>
+                <button type="button" class="attachment-remove" title="移除附件" @click="removeAttachment(index)">×</button>
+              </div>
+            </div>
             <textarea
               ref="composerRef"
               v-model="draft"
@@ -217,11 +234,13 @@
             <div class="composer-bottom">
               <span>{{ busy ? '正在接收实时进度，可停止接收。' : 'Enter 发送 · Shift + Enter 换行' }}</span>
               <div class="composer-actions">
+                <button class="quiet-button attach-button" type="button" title="上传病例或检查报告（PDF / JPG / PNG，本地识别）" @click="pickAttachments">＋ 附件</button>
                 <button class="quiet-button" type="button" :disabled="!settings.conversationId" @click="restoreWorkflow">恢复会话任务</button>
                 <button v-if="busy" class="quiet-button" type="button" @click="cancelRequest">停止接收</button>
-                <button v-else type="submit" :disabled="!draft.trim()">发送</button>
+                <button v-else type="submit" :disabled="!draft.trim() || attaching">发送</button>
               </div>
             </div>
+            <input ref="attachInput" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp" hidden @change="onAttachFiles" />
           </form>
         </section>
 
@@ -605,7 +624,9 @@ import {
   requestSkills,
   requestAction,
   requestAppointments,
-  saveSettings
+  saveSettings,
+  uploadAttachment,
+  deleteAttachment
 } from './lib/backends'
 import { requestOperations, uploadKnowledge } from './lib/backends'
 import { acceptWorkflow, currentTask, currentAction, answerEvent } from './lib/workflow'
@@ -641,6 +662,72 @@ function autoGrowComposer() {
 function resetComposerHeight() {
   const el = composerRef.value
   if (el) el.style.height = ''
+}
+
+// ---------------------------------------------------------------- 病例附件
+const ATTACH_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'webp']
+const MAX_ATTACHMENT_MB = 10
+const MAX_ATTACHMENTS = 3
+const pendingAttachments = ref([])
+const attachInput = ref(null)
+const attaching = computed(() => pendingAttachments.value.some((item) => item.status !== 'ready'))
+
+function pickAttachments() {
+  attachInput.value?.click()
+}
+
+async function onAttachFiles(event) {
+  const files = Array.from(event.target.files || [])
+  event.target.value = ''
+  for (const file of files) {
+    if (pendingAttachments.value.length >= MAX_ATTACHMENTS) {
+      showToast(`一次最多上传 ${MAX_ATTACHMENTS} 个附件`)
+      break
+    }
+    const ext = (file.name.split('.').pop() || '').toLowerCase()
+    if (!ATTACH_EXTENSIONS.includes(ext)) {
+      showToast('仅支持 PDF、JPG、PNG、WebP')
+      continue
+    }
+    if (file.size > MAX_ATTACHMENT_MB * 1024 * 1024) {
+      showToast(`附件超过大小上限（最大 ${MAX_ATTACHMENT_MB}MB）`)
+      continue
+    }
+    const item = reactive({
+      id: '',
+      filename: file.name,
+      kind: ext === 'pdf' ? 'pdf' : 'image',
+      preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+      status: 'uploading',
+      chars: 0,
+      warning: null
+    })
+    pendingAttachments.value.push(item)
+    try {
+      const res = await uploadAttachment(settings.backend, settings, file)
+      item.id = res.attachment_id
+      item.status = 'ready'
+      item.chars = res.text_chars || 0
+      item.warning = res.warning || null
+    } catch (error) {
+      pendingAttachments.value = pendingAttachments.value.filter((entry) => entry !== item)
+      if (item.preview) URL.revokeObjectURL(item.preview)
+      showToast(error.message || '附件上传失败')
+    }
+  }
+}
+
+function removeAttachment(index) {
+  const [item] = pendingAttachments.value.splice(index, 1)
+  if (item?.preview) URL.revokeObjectURL(item.preview)
+  if (item?.id) deleteAttachment(settings.backend, settings, item.id).catch(() => {})
+}
+
+function clearAttachments() {
+  for (const item of pendingAttachments.value) {
+    if (item.preview) URL.revokeObjectURL(item.preview)
+  }
+  pendingAttachments.value = []
 }
 
 // Enter 发送、Shift+Enter 换行；输入法组词中的 Enter 不触发发送
@@ -1119,12 +1206,23 @@ async function sendMessage(workflowEvent, mapEvent, displayContent) {
   const content = displayContent || (workflowEvent?.kind === 'cancel' ? '取消当前任务' : workflowEvent ? Object.entries(workflowEvent.values || {}).map(([field, value]) =>
     `${workflowFieldLabel(field)}：${value}`).join('，') || '继续任务' : draft.value.trim())
   if (!content || busy.value) return false
+  if (attaching.value) {
+    showToast('附件仍在识别中，请稍候再发送')
+    return false
+  }
+  const attachmentIds = pendingAttachments.value
+    .filter((item) => item.status === 'ready' && item.id)
+    .map((item) => item.id)
+  const attachmentMeta = pendingAttachments.value
+    .filter((item) => item.status === 'ready' && item.id)
+    .map((item) => ({ id: item.id, filename: item.filename, kind: item.kind }))
   const startsNewParkingQuery = /停车场|停车|车停|开车去/.test(content) && /医院|院区|就医地点/.test(content)
   if (!workflowEvent && !mapEvent && !startsNewParkingQuery && activeWorkflow.value && /改成|改为|改查|换成|换号源|更换|取消|不用|另外|增加|再加|不查/.test(content)) {
     workflowEvent = { kind: 'change', workflow_id: activeWorkflow.value.id,
       plan_version: activeWorkflow.value.version }
   }
-  messages.value.push({ id: createMessageId(), role: 'user', content })
+  messages.value.push({ id: createMessageId(), role: 'user', content, attachments: attachmentMeta })
+  clearAttachments()
   followOutput.value = true
   draft.value = ''
   nextTick(resetComposerHeight)
@@ -1159,7 +1257,7 @@ async function sendMessage(workflowEvent, mapEvent, displayContent) {
         if (incoming === data.workflow) assistant().progress = {
           message: data.stage === 'plan_ready' ? '计划已校验，准备执行' : '任务进度', workflow: incoming }
       }
-    }, mapEvent)
+    }, mapEvent, attachmentIds)
     if (!stillCurrent() || !assistant()) return false
     if (response.conversationId && !settings.conversationId) {
       settings.conversationId = response.conversationId

@@ -66,16 +66,16 @@ export async function requestSearch(type, settings, query, topK = 5, rewrite = f
   return normalizeSearchResponse(raw)
 }
 
-export async function requestChat(type, settings, message, signal, workflowEvent, onEvent, mapEvent) {
-  const payload = buildChatPayload(type, settings, message, workflowEvent, mapEvent)
+export async function requestChat(type, settings, message, signal, workflowEvent, onEvent, mapEvent, attachments = []) {
+  const payload = buildChatPayload(type, settings, message, workflowEvent, mapEvent, attachments)
   const base = backendMeta(type, settings).baseUrl
   const raw = await postChatStream(`${base}/chat/stream`, payload, { signal, onEvent, headers: authHeaders(base) })
   return normalizeChatResponse(type, raw)
 }
 
-export async function requestChatJson(type, settings, message, signal, workflowEvent, mapEvent) {
+export async function requestChatJson(type, settings, message, signal, workflowEvent, mapEvent, attachments = []) {
   const meta = backendMeta(type, settings)
-  const payload = buildChatPayload(type, settings, message, workflowEvent, mapEvent)
+  const payload = buildChatPayload(type, settings, message, workflowEvent, mapEvent, attachments)
   const raw = await requestJson(meta.baseUrl, '/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -128,7 +128,7 @@ export function requestOperations(type, settings, path, body) {
   })
 }
 
-export function buildChatPayload(type, settings, message, workflowEvent, mapEvent) {
+export function buildChatPayload(type, settings, message, workflowEvent, mapEvent, attachments = []) {
   const hasWorkflowEvent = workflowEvent != null
   const hasMapEvent = mapEvent != null
   if (hasWorkflowEvent && hasMapEvent) {
@@ -141,7 +141,25 @@ export function buildChatPayload(type, settings, message, workflowEvent, mapEven
   }
   if (hasWorkflowEvent) payload.workflow_event = workflowEvent
   if (hasMapEvent) payload.map_event = mapEvent
+  if (attachments.length) payload.attachments = attachments
   return payload
+}
+
+/** 上传病例/检查报告（PDF/图片），后端本地识别文字后返回附件 ID 与预览。 */
+export async function uploadAttachment(type, settings, file) {
+  const base = backendMeta(type, settings).baseUrl
+  const form = new FormData()
+  form.append('file', file, file.name)
+  return requestJson(base, '/attachments', {
+    method: 'POST',
+    body: form,
+    timeoutMs: 180000
+  })
+}
+
+export function deleteAttachment(type, settings, attachmentId) {
+  return requestJson(backendMeta(type, settings).baseUrl,
+    `/attachments/${encodeURIComponent(attachmentId)}`, { method: 'DELETE' })
 }
 
 export function normalizeChatResponse(type, raw) {

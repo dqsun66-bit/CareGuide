@@ -6,13 +6,23 @@ import os
 from dataclasses import asdict, is_dataclass
 from contextlib import asynccontextmanager
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
-from fastapi import Depends, FastAPI, HTTPException, Response, Request
+from fastapi import Depends, FastAPI, File, HTTPException, Response, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from pydantic import ConfigDict, ValidationError
+
+from careguide.attachment_service import (
+    MAX_ATTACHMENT_BYTES,
+    MAX_ATTACHMENTS_PER_MESSAGE,
+    AttachmentError,
+    AttachmentStore,
+    compose_attachment_message,
+    extract_text,
+)
 
 from careguide.domain import AgentType, IntentCategory, capabilities, plan
 from careguide.runtime import get_registry, get_chat_runtime
@@ -58,12 +68,22 @@ app = FastAPI(title='CareGuide', version='0.3.0', lifespan=lifespan)
 app.middleware('http')(authentication_middleware)
 app.add_middleware(CORSMiddleware,
     allow_origins=os.environ.get('CAREGUIDE_CORS_ORIGINS', 'http://127.0.0.1:5175,http://localhost:5175').split(','),
-    allow_methods=['GET', 'POST'], allow_headers=['Content-Type'])
+    allow_methods=['GET', 'POST', 'DELETE'], allow_headers=['Content-Type'])
 _conversation_locks = {}
 _MEMORY_READ_TIMEOUT_S = 2
 _MEMORY_WRITE_TIMEOUT_S = 8
 _stream_tasks = set()
 _STREAM_HEARTBEAT_SECONDS = 10
+
+_attachment_store: AttachmentStore | None = None
+
+
+def get_attachment_store() -> AttachmentStore:
+    """附件临时存储（进程级单例；首次使用时创建并清理上次残留）。"""
+    global _attachment_store
+    if _attachment_store is None:
+        _attachment_store = AttachmentStore()
+    return _attachment_store
 
 
 @lru_cache(maxsize=1)
@@ -138,6 +158,45 @@ class ChatRequest(ActorModel):
     conv_id: str | None = Field(default=None, min_length=1, max_length=100)
     workflow_event: WorkflowEvent | None = None
     map_event: MapHospitalSelectEvent | None = None
+    attachments: list[str] = Field(default_factory=list, max_length=MAX_ATTACHMENTS_PER_MESSAGE)
+
+
+@app.post('/attachments', status_code=201)
+async def upload_attachment(file: UploadFile = File(...)):
+    """上传病例/检查报告（PDF 或图片），本地识别文字。文件不发送到任何外部服务。"""
+    data = await file.read(MAX_ATTACHMENT_BYTES + 1)
+    if len(data) > MAX_ATTACHMENT_BYTES:
+        raise HTTPException(
+            413, f'附件超过大小上限（最大 {MAX_ATTACHMENT_BYTES // (1024 * 1024)}MB）'
+        )
+    store = get_attachment_store()
+    try:
+        record = store.save(file.filename or '', file.content_type or '', data)
+    except AttachmentError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    try:
+        text, warning = await asyncio.to_thread(
+            extract_text, record['kind'], Path(record['path'])
+        )
+    except Exception:
+        text, warning = '', '识别服务暂不可用，可仅凭描述继续咨询'
+    store.set_text(record['attachment_id'], text, warning)
+    return {
+        'attachment_id': record['attachment_id'],
+        'filename': record['filename'],
+        'kind': record['kind'],
+        'size': record['size'],
+        'text_chars': len(text),
+        'text_preview': text[:500],
+        'warning': warning,
+    }
+
+
+@app.delete('/attachments/{attachment_id}')
+def delete_attachment(attachment_id: str):
+    if not get_attachment_store().delete(attachment_id):
+        raise HTTPException(404, '附件不存在或已过期')
+    return {'deleted': True}
 
 
 @app.post('/chat')
@@ -175,6 +234,15 @@ async def _execute_chat_result(request, runtime, amap_factory=None):
     from careguide.timing import phase
     engine, memory, monitor = runtime
     _validate_chat_event(request, engine)
+    # 附件识别文本注入到引擎消息；地图/停车匹配仍用原始消息
+    engine_message = request.message
+    if request.attachments:
+        try:
+            engine_message = compose_attachment_message(
+                get_attachment_store(), request.message, list(request.attachments)
+            )
+        except AttachmentError as exc:
+            raise HTTPException(422, str(exc)) from exc
     conv_id = request.conv_id or uuid.uuid4().hex
     key = (request.user_id, conv_id)
     if key not in _conversation_locks:
@@ -216,18 +284,18 @@ async def _execute_chat_result(request, runtime, amap_factory=None):
                 )
             if request.workflow_event:
                 event = request.workflow_event
-                result = await engine.process(request.message, request.user_id, conv_id, history,
+                result = await engine.process(engine_message, request.user_id, conv_id, history,
                     workflow_event=event.model_dump())
             else:
                 traces = getattr(engine, 'traces', None)
                 result = map_result or parking_chat_response(
                     request.message, request.user_id, conv_id, traces,
-                ) or await engine.process(request.message, request.user_id, conv_id, history)
+                ) or await engine.process(engine_message, request.user_id, conv_id, history)
             emit('stage', stage='saving', message='结果已生成，正在保存会话')
             try:
                 async with asyncio.timeout(_MEMORY_WRITE_TIMEOUT_S):
                     with phase('memory_write'):
-                        await memory.add(request.user_id, conv_id, 'user', request.message)
+                        await memory.add(request.user_id, conv_id, 'user', engine_message)
                         memory_update = await memory.add(request.user_id, conv_id, 'assistant', result['response'])
                 if memory_update is not None:
                     result['memory_update'] = memory_update

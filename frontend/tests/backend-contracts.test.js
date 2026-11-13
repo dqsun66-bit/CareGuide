@@ -34,3 +34,15 @@ test('missing retrieval telemetry has an explicit not-used state', () => {
   assert.equal(result.retrieval.finalCount, 0)
   assert.equal(result.safety.disposition, 'not_assessed')
 })
+
+
+test('chat payload includes attachment ids only when present', async () => {
+  const { buildChatPayload } = await import('../src/lib/backends.js')
+  const settings = { userId: 'u1', conversationId: 'c1' }
+  const plain = buildChatPayload('careguide', settings, '看看这份报告')
+  assert.equal('attachments' in plain, false, '无附件时不应出现 attachments 字段')
+  const withAttachments = buildChatPayload(
+    'careguide', settings, '看看这份报告', undefined, undefined, ['a1', 'a2']
+  )
+  assert.deepEqual(withAttachments.attachments, ['a1', 'a2'])
+})
