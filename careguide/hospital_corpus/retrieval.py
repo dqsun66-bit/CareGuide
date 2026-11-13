@@ -1,9 +1,11 @@
 """Scope-first hybrid retrieval for the verified Jiangsu hospital corpus."""
 from __future__ import annotations
 
+from datetime import date
 import hashlib
+from typing import Any
 
-from .models import KnowledgeRecord
+from .models import KnowledgeRecord, ReviewStatus
 from .store import HospitalCorpus
 
 
@@ -78,3 +80,55 @@ def hospital_evidence(
             "review_status": record.review_status.value,
         },
     }
+
+
+def index_hospital_collection(
+    client: Any,
+    corpus: HospitalCorpus,
+    embedding: Any,
+    *,
+    today: date,
+):
+    """Explicitly build a verified, fingerprint-bound hospital index."""
+    report = corpus.validate(today=today)
+    if not report.valid:
+        raise ValueError("Hospital corpus validation failed")
+    name = hospital_collection_name(corpus)
+    if name in {item.name for item in client.list_collections()}:
+        raise ValueError("Hospital collection already exists")
+    records = [
+        record for record in corpus.records
+        if record.review_status == ReviewStatus.VERIFIED_OFFICIAL
+    ]
+    vectors = embedding.embed_documents([
+        hospital_retrieval_text(corpus, record) for record in records
+    ])
+    if len(vectors) != len(records):
+        raise ValueError("Hospital embedding count mismatch")
+    collection = client.create_collection(
+        name,
+        metadata={
+            "corpus_fingerprint": corpus_fingerprint(corpus),
+            "corpus_version": corpus.manifest.version,
+            "hnsw:space": "cosine",
+            "embedding_model": embedding.model,
+            "embedding_dimensions": embedding.dimensions,
+        },
+        embedding_function=None,
+    )
+    collection.add(
+        ids=[record.document_id for record in records],
+        embeddings=vectors,
+        documents=[record.content for record in records],
+        metadatas=[{
+            "record_id": record.document_id,
+            "hospital_id": record.hospital_id,
+            "campus_id": record.campus_id,
+            "city": record.city,
+            "category": record.category.value,
+            "source_id": record.source_id,
+            "source_url": record.source_url,
+            "review_status": record.review_status.value,
+        } for record in records],
+    )
+    return collection
