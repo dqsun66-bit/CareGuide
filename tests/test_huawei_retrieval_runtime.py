@@ -84,6 +84,27 @@ def test_embedding_dimensions_must_be_positive_integer(monkeypatch, value):
         runtime.semantic_embedding()
 
 
+def test_huawei_runtime_omits_fixed_embedding_dimensions_from_request(monkeypatch):
+    observed = {}
+
+    def configured(**kwargs):
+        observed.update(kwargs)
+        return SimpleNamespace(**kwargs)
+
+    monkeypatch.setenv("CAREGUIDE_EMBEDDING_API_KEY", "test-only")
+    monkeypatch.setenv("CAREGUIDE_EMBEDDING_MODEL", "bge-m3")
+    monkeypatch.setenv("CAREGUIDE_EMBEDDING_DIMENSIONS", "1024")
+    monkeypatch.setattr(
+        "careguide.retrieval.embedding_provider.OpenAICompatibleEmbeddingFunction",
+        configured,
+    )
+
+    runtime.semantic_embedding()
+
+    assert observed["dimensions"] == 1024
+    assert observed["send_dimensions"] is False
+
+
 def test_runtime_status_identifies_huawei_hybrid_provider():
     status = runtime.RetrievalRuntimeStatus(
         requested_mode="hybrid", active_mode="hybrid",

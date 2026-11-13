@@ -38,6 +38,23 @@ def test_embedding_adapter_uses_medical_instruction_and_validates_vectors():
         provider._validate_vector([float('nan'),0.0,0.0,0.0])
 
 
+def test_embedding_adapter_can_validate_fixed_dimensions_without_sending_parameter():
+    calls = []
+
+    def create(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(
+            data=[SimpleNamespace(index=0, embedding=[1.0, 0.0, 0.0, 0.0])])
+
+    provider = OpenAICompatibleEmbeddingFunction(
+        api_key='test-only', base_url='https://example.invalid/v1',
+        model='fixed-dimension-model', dimensions=4, send_dimensions=False,
+        client=SimpleNamespace(embeddings=SimpleNamespace(create=create)))
+
+    assert provider.embed_documents(['挂号材料']) == [[1.0, 0.0, 0.0, 0.0]]
+    assert 'dimensions' not in calls[0]
+
+
 def test_embedding_provider_sanitizes_timeout():
     def create(**kwargs):
         raise TimeoutError('test-only private symptom')

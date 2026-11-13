@@ -56,6 +56,7 @@ def semantic_embedding():
                                 'https://api.modelarts-maas.com/v1'),
         model=_required_text('CAREGUIDE_EMBEDDING_MODEL'),
         dimensions=_positive_integer('CAREGUIDE_EMBEDDING_DIMENSIONS', '1024'),
+        send_dimensions=False,
         encoding_format=os.environ.get('CAREGUIDE_EMBEDDING_FORMAT', 'float'),
         provider_name='huawei-modelarts', timeout=30, max_retries=2)
 

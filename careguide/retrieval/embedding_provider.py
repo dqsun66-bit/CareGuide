@@ -26,6 +26,7 @@ class OpenAICompatibleEmbeddingFunction:
         base_url: str,
         model: str,
         dimensions: int,
+        send_dimensions: bool = True,
         encoding_format: str = "float",
         provider_name: str = "huawei-modelarts",
         query_instruction: str = DEFAULT_QUERY_INSTRUCTION,
@@ -69,6 +70,7 @@ class OpenAICompatibleEmbeddingFunction:
         self.base_url = str(base_url).rstrip("/")
         self.model = str(model).strip()
         self.dimensions = int(dimensions)
+        self.send_dimensions = bool(send_dimensions)
         self.encoding_format = encoding_format
         self.provider_name = str(provider_name).strip() or "openai-compatible"
         self.query_instruction = str(query_instruction).strip()
@@ -107,13 +109,15 @@ class OpenAICompatibleEmbeddingFunction:
         for start in range(0, len(texts), self.batch_size):
             batch = texts[start:start + self.batch_size]
             try:
-                response = self._client.embeddings.create(
+                request = dict(
                     model=self.model,
                     input=batch,
-                    dimensions=self.dimensions,
                     encoding_format=self.encoding_format,
                     **({'timeout': timeout} if timeout is not None else {}),
                 )
+                if self.send_dimensions:
+                    request['dimensions'] = self.dimensions
+                response = self._client.embeddings.create(**request)
             except Exception as exc:
                 name = type(exc).__name__.casefold()
                 status = getattr(exc, "status_code", None)
