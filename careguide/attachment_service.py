@@ -80,12 +80,45 @@ def _ocr():
     return _ocr_engine
 
 
+def _preprocess_image(path: Path) -> Path:
+    """OCR 预处理：灰度 + 小图 2 倍放大 + 锐化 + 对比度增强（模糊/远拍小字的兜底）。"""
+    from PIL import Image, ImageEnhance, ImageFilter
+
+    with Image.open(path) as source:
+        image = source.convert("RGB")
+        width, height = image.size
+        if max(width, height) < 1600:
+            image = image.resize((width * 2, height * 2), Image.LANCZOS)
+        gray = image.convert("L")
+        gray = gray.filter(ImageFilter.UnsharpMask(radius=2, percent=90))
+        gray = ImageEnhance.Contrast(gray).enhance(1.18)
+        pre_path = Path(f"{path}.pre.png")
+        gray.save(pre_path)
+    return pre_path
+
+
 def _extract_image_text(path: Path) -> str:
     result, _elapsed = _ocr()(str(path))
-    if not result:
+    if result:
+        lines = [line[1] for line in result if len(line) >= 2 and line[1]]
+        return "\n".join(lines)
+    # 原图识别为空：预处理后重试一次
+    pre_path = None
+    try:
+        pre_path = _preprocess_image(path)
+        result, _elapsed = _ocr()(str(pre_path))
+        if not result:
+            return ""
+        lines = [line[1] for line in result if len(line) >= 2 and line[1]]
+        return "\n".join(lines)
+    except Exception:
         return ""
-    lines = [line[1] for line in result if len(line) >= 2 and line[1]]
-    return "\n".join(lines)
+    finally:
+        if pre_path is not None:
+            try:
+                pre_path.unlink(missing_ok=True)
+            except OSError:
+                pass
 
 
 def extract_text(kind: str, path: Path) -> tuple[str, str | None]:
@@ -95,7 +128,7 @@ def extract_text(kind: str, path: Path) -> tuple[str, str | None]:
         warning = None if text.strip() else "PDF 中未提取到文字（可能是扫描件，建议上传照片用 OCR 识别）"
     else:
         text = _extract_image_text(path)
-        warning = None if text.strip() else "未能从图片中识别出文字，请确认照片清晰、文字完整"
+        warning = None if text.strip() else "未能识别出文字：请确认照片清晰、文字正向完整（手写体识别率较低，建议重拍或改用打印件）"
     if len(text) > MAX_ATTACHMENT_TEXT_CHARS:
         text = text[:MAX_ATTACHMENT_TEXT_CHARS]
         warning = (warning + "；" if warning else "") + "识别文本过长，已截断"

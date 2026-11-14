@@ -153,3 +153,44 @@ class TestAttachmentApi:
 class TestStoreFactory(AttachmentStore):
     def __init__(self, tmp_path):
         super().__init__(root=tmp_path / "attachments", ttl=3600)
+
+
+# 1x1 有效 PNG（PIL 可打开，模拟真实图片）
+PNG = bytes.fromhex('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da6364f8cf500f00038601805a347d6b0000000049454e44ae426082')
+
+
+class TestOcrFallback:
+    def test_image_fallback_uses_preprocessed_copy(self, tmp_path, monkeypatch):
+        """原图 OCR 为空时走预处理重试，且预处理文件会被清理。"""
+        import careguide.attachment_service as service
+
+        calls = []
+
+        class FakeEngine:
+            def __call__(self, path):
+                calls.append(path)
+                if str(path).endswith(".pre.png"):
+                    return [["box", "预处理识别成功", 0.99]], 0
+                return None, 0
+
+        monkeypatch.setattr(service, "_ocr", lambda: FakeEngine())
+        image = tmp_path / "blur.png"
+        image.write_bytes(PNG)
+
+        text = service._extract_image_text(image)
+        assert text == "预处理识别成功"
+        assert len(calls) == 2, "应先试原图再试预处理"
+        assert not list(tmp_path.glob("*.pre.png")), "预处理临时文件必须清理"
+
+    def test_image_fallback_gives_empty_when_both_fail(self, tmp_path, monkeypatch):
+        import careguide.attachment_service as service
+
+        class EmptyEngine:
+            def __call__(self, path):
+                return None, 0
+
+        monkeypatch.setattr(service, "_ocr", lambda: EmptyEngine())
+        image = tmp_path / "blur.png"
+        image.write_bytes(PNG)
+        assert service._extract_image_text(image) == ""
+        assert not list(tmp_path.glob("*.pre.png"))
