@@ -24,6 +24,34 @@ from careguide.medical_triage import (evaluate_headache_triage,
                                       is_headache_triage_request)
 
 
+_SYMPTOM_CLARIFY_MARKERS = re.compile(
+    r'症状|鼻涕|流涕|咳|发热|发烧|疼|痛|鼻塞|痰|体温|多久|持续|清涕|黄涕|喷嚏')
+_SYMPTOM_FOLLOWUP_MARKERS = re.compile(
+    r'鼻涕|流涕|黄涕|清涕|浓涕|鼻塞|咳|痰|发热|发烧|热|烧|疼|痛|嗓子|喉咙|咽|喷嚏|'
+    r'面部|胀|反复|持续|加重|缓解|黄|绿')
+_SYMPTOM_FOLLOWUP_EXCLUDE = re.compile(
+    r'查询|查一下|查查|怎么|什么原因|原因|怎么办|如何处理|怎么处理|推荐|什么药|吃什么|'
+    r'挂号|预约|地址|电话|医生|医院|导航')
+
+_SYMPTOM_GUIDANCE_FEVER = (
+    '收到，我会用一般就医引导来回应（不替代诊断）。\n'
+    '目前信息不足以判断具体原因。黄脓涕/浓涕伴发热时建议重点观察：\n'
+    '· 发热持续超过3天仍不退，或体温达到39℃及以上；\n'
+    '· 头痛或面部胀痛明显加重；\n'
+    '· 症状超过10天仍无好转，或好转后再次加重。\n'
+    '出现上述任一情况，建议及时就诊；就诊时请说明鼻涕性状变化与发热过程。\n'
+    '以上为一般信息，具体请以就诊医院意见为准。')
+
+_SYMPTOM_GUIDANCE_GENERIC = (
+    '收到，我会用一般就医引导来回应（不替代诊断）。\n'
+    '目前信息不足以判断具体原因。建议重点观察：\n'
+    '· 症状超过10天仍无好转；\n'
+    '· 出现高热（39℃及以上）、明显头痛或面部胀痛；\n'
+    '· 症状反复发作、影响休息或正常生活。\n'
+    '出现上述任一情况，建议及时就诊；就诊前可记录症状起始时间、分泌物性状和体温变化。\n'
+    '以上为一般信息，具体请以就诊医院意见为准。')
+
+
 class UnifiedRuntime(OrchestrationRuntime):
     def __init__(self, engine, path, *, understanding=None, planner=None, **kwargs):
         super().__init__(engine, path,
@@ -63,6 +91,48 @@ class UnifiedRuntime(OrchestrationRuntime):
                                  'message_id': context['current_message']['id']})
         return self.store.mutate(state.id, state.actor, state.conversation, save,
                                  plan_version=state.version, run_id=state.active_run)
+
+    def _last_clarify_question(self, state):
+        for event in reversed(state.events):
+            if event.get('event') == 'request_understood' and event.get('decision') == 'clarify':
+                return event.get('clarify_question', '')
+        return ''
+
+    def _symptom_followup_guidance(self, state, message, user_id, conv_id, history, started):
+        """症状问诊澄清后，用户用短描述补充症状时确定性收敛为一般就医引导。
+
+        只处理：上一轮是症状类 clarify（无任务、waiting_user）、本条是症状补充
+        （短消息 + 症状特征词、非新问句）、且本会话尚未收敛过。不诊断、不处方，
+        只给就医边界与观察要点；返回 None 表示不适用，走原流程。
+        """
+        if not state or state.status != 'waiting_user' or state.tasks:
+            return None
+        if any(event.get('event') == 'symptom_guidance_served' for event in state.events):
+            return None
+        question = self._last_clarify_question(state)
+        if not question or not _SYMPTOM_CLARIFY_MARKERS.search(question):
+            return None
+        text = re.sub(r'[，,。？！?!、\s]', '', message)
+        if len(text) > 40 or _SYMPTOM_FOLLOWUP_EXCLUDE.search(text):
+            return None
+        if not _SYMPTOM_FOLLOWUP_MARKERS.search(text):
+            return None
+        guidance = (_SYMPTOM_GUIDANCE_FEVER
+                    if re.search(r'热|烧', text) else _SYMPTOM_GUIDANCE_GENERIC)
+        budget = self.ledger(state)
+
+        def mark(value):
+            # 只打防重复标记；状态保持 waiting_user（用户可继续补充或提问）。
+            value.events.append({'event': 'symptom_guidance_served', 'at': utc_now().isoformat()})
+
+        state = self.store.mutate(state.id, state.actor, state.conversation, mark,
+                                  plan_version=state.version, run_id=state.active_run)
+        result = self._reply(state, budget, message, started, answer=guidance,
+                             synthesis={'mode': 'deterministic_symptom_guidance'})
+        result.update(workflow=None, knowledge_used=False, grounded=False,
+                      answer_kind='symptom_guidance',
+                      answer_generation={'mode': 'deterministic'})
+        return result
 
     async def _respond(self, state, budget, message, started, **kwargs):
         from careguide.orchestration.answering import generate_answer
@@ -171,6 +241,11 @@ class UnifiedRuntime(OrchestrationRuntime):
                         'kind': 'answer', 'workflow_id': state.id, 'plan_version': state.version,
                         'task_id': task.spec.id, 'task_revision': task.revision,
                         'values': {key: value}, 'event_id': message_id})
+        if state and not workflow_event:
+            guidance = self._symptom_followup_guidance(
+                state, message, user_id, conv_id, history, started)
+            if guidance is not None:
+                return guidance
         understood = await self.understanding.understand(message, message_id=message_id, at=at,
                                                         history=history, classify=False)
         proposal, metadata = compose_plan(message, understood)
@@ -224,7 +299,8 @@ class UnifiedRuntime(OrchestrationRuntime):
                 IntentCategory.EMERGENCY if decision.boundary == 'urgent_handoff' else None, 0, [],
                 decision.boundary, boundary=decision.boundary))
         if decision.kind == 'clarify':
-            state = self._save_context(state, context, {**metadata, 'decision': 'clarify'})
+            state = self._save_context(state, context, {**metadata, 'decision': 'clarify',
+                                                        'clarify_question': decision.question})
             if not state.tasks:
                 state.status = 'waiting_user'
                 state = self.store.save(state, expected_revision=state.revision)

@@ -49,6 +49,79 @@ def test_navigation_request_returns_out_of_scope_without_model(tmp_path):
     asyncio.run(run())
 
 
+def test_symptom_followup_converges_to_guidance_without_model(tmp_path):
+    """症状问诊澄清后用户补充症状 → 确定性就医引导，不再调用模型。"""
+    instance = unified(tmp_path)
+    clarify = {'kind': 'clarify',
+               'question': '请补充你的主要症状和持续时间，例如：流鼻涕是清鼻涕还是黄脓鼻涕？'
+                           '是否伴有发热、咳嗽、打喷嚏、鼻塞、头痛？症状持续多久了？'}
+    client = ScriptedClient([reply(clarify)])
+    instance.engine.client = client
+    instance.planner = UnderstandingPlanner(client)
+    async def run():
+        first = await instance.process('流鼻涕是什么原因 怎么处理', 'u', 'c')
+        assert first['workflow_status'] == 'waiting_user'
+        calls_before = len(client.calls)
+        second = await instance.process('黄色的 又热', 'u', 'c')
+        assert second['workflow_status'] == 'waiting_user'
+        assert len(client.calls) == calls_before
+        assert '不替代诊断' in second['response']
+        assert '就诊' in second['response']
+        assert second['errors'] == []
+    asyncio.run(run())
+
+
+def test_symptom_followup_ignores_new_questions(tmp_path):
+    """补充消息里带新问句（怎么处理）时不收敛，走原规划流程。"""
+    instance = unified(tmp_path)
+    clarify = {'kind': 'clarify', 'question': '请补充你的主要症状和持续时间。'}
+    client = ScriptedClient([reply(clarify), reply(clarify)])
+    instance.engine.client = client
+    instance.planner = UnderstandingPlanner(client)
+    async def run():
+        await instance.process('流鼻涕是什么原因', 'u', 'c')
+        calls_before = len(client.calls)
+        second = await instance.process('流鼻涕怎么处理', 'u', 'c')
+        assert second['workflow_status'] == 'waiting_user'
+        assert len(client.calls) > calls_before
+    asyncio.run(run())
+
+
+def test_symptom_followup_requires_symptom_clarify_topic(tmp_path):
+    """上一轮澄清的不是症状（如缺药品名）时，症状词回复不收敛。"""
+    instance = unified(tmp_path)
+    clarify = {'kind': 'clarify', 'question': '请提供需要查询的药品名称。'}
+    client = ScriptedClient([reply(clarify), reply(clarify)])
+    instance.engine.client = client
+    instance.planner = UnderstandingPlanner(client)
+    async def run():
+        await instance.process('鼻子不舒服', 'u', 'c')
+        calls_before = len(client.calls)
+        second = await instance.process('黄色的 又热', 'u', 'c')
+        assert second['workflow_status'] == 'waiting_user'
+        assert len(client.calls) > calls_before
+    asyncio.run(run())
+
+
+def test_symptom_followup_served_once(tmp_path):
+    """收敛过一次后不再重复给模板（防循环），后续走原流程。"""
+    instance = unified(tmp_path)
+    clarify = {'kind': 'clarify', 'question': '请补充你的主要症状。'}
+    client = ScriptedClient([reply(clarify), reply(clarify), reply(clarify)])
+    instance.engine.client = client
+    instance.planner = UnderstandingPlanner(client)
+    async def run():
+        await instance.process('流鼻涕什么原因', 'u', 'c')
+        second = await instance.process('黄色的 又热', 'u', 'c')
+        assert second['workflow_status'] == 'waiting_user'
+        assert '不替代诊断' in second['response']
+        calls_after_second = len(client.calls)
+        third = await instance.process('还是黄的', 'u', 'c')
+        assert third['workflow_status'] == 'waiting_user'
+        assert len(client.calls) > calls_after_second
+    asyncio.run(run())
+
+
 def test_planner_normalizes_clarify_intent_shaped_as_new_with_empty_tasks(tmp_path):
     """模型用 new+空任务+question 表达澄清意图时，归一化为合法 clarify。"""
     from careguide.orchestration.understanding_planner import UnderstandingPlanner, build_context
