@@ -25,7 +25,7 @@ from careguide.medical_triage import (evaluate_headache_triage,
 
 
 _SYMPTOM_CLARIFY_MARKERS = re.compile(
-    r'症状|鼻涕|流涕|咳|发热|发烧|疼|痛|鼻塞|痰|体温|多久|持续|清涕|黄涕|喷嚏')
+    r'症状|鼻涕|流涕|咳|发热|发烧|热|烧|疼|痛|鼻塞|痰|体温|多久|持续|清涕|黄涕|喷嚏')
 _SYMPTOM_FOLLOWUP_MARKERS = re.compile(
     r'鼻涕|流涕|黄涕|清涕|浓涕|鼻塞|咳|痰|发热|发烧|热|烧|疼|痛|嗓子|喉咙|咽|喷嚏|'
     r'面部|胀|反复|持续|加重|缓解|黄|绿')
@@ -50,6 +50,11 @@ _SYMPTOM_GUIDANCE_GENERIC = (
     '· 症状反复发作、影响休息或正常生活。\n'
     '出现上述任一情况，建议及时就诊；就诊前可记录症状起始时间、分泌物性状和体温变化。\n'
     '以上为一般信息，具体请以就诊医院意见为准。')
+
+_SYMPTOM_ACK = (
+    '收到，已记录你的补充。请继续观察：出现持续高热（39℃及以上）、面部或头部胀痛加重、'
+    '症状超过10天仍无好转时，建议及时就诊。以上为一般信息，具体请以就诊医院意见为准。'
+)
 
 
 class UnifiedRuntime(OrchestrationRuntime):
@@ -99,36 +104,51 @@ class UnifiedRuntime(OrchestrationRuntime):
         return ''
 
     def _symptom_followup_guidance(self, state, message, user_id, conv_id, history, started):
-        """症状问诊澄清后，用户用短描述补充症状时确定性收敛为一般就医引导。
+        """症状对话中用户补充症状/确认时，确定性收敛为一般就医引导。
 
-        只处理：上一轮是症状类 clarify（无任务、waiting_user）、本条是症状补充
-        （短消息 + 症状特征词、非新问句）、且本会话尚未收敛过。不诊断、不处方，
-        只给就医边界与观察要点；返回 None 表示不适用，走原流程。
+        覆盖两种入口：症状 clarify 后补充症状；以及一轮完整症状回答后继续
+        补充（会话上下文谈症状）。确认词（是的/对/嗯）同样收敛。已收敛过的
+        会话再次补充只给简短确认，不再重复模板，也不再进入问诊循环。
+        不诊断、不处方，只给就医边界与观察要点；返回 None 表示不适用。
         """
-        if not state or state.status != 'waiting_user' or state.tasks:
+        if not state or state.status == 'expired' or state.tasks:
             return None
-        if any(event.get('event') == 'symptom_guidance_served' for event in state.events):
-            return None
-        question = self._last_clarify_question(state)
-        if not question or not _SYMPTOM_CLARIFY_MARKERS.search(question):
-            return None
+        served = any(event.get('event') == 'symptom_guidance_served' for event in state.events)
         text = re.sub(r'[，,。？！?!、\s]', '', message)
-        if len(text) > 40 or _SYMPTOM_FOLLOWUP_EXCLUDE.search(text):
+        is_confirmation = bool(re.fullmatch(r'是的|对|对的|嗯|嗯嗯|没错|是', text))
+        is_supplement = bool(not is_confirmation and len(text) <= 40
+                             and not _SYMPTOM_FOLLOWUP_EXCLUDE.search(text)
+                             and _SYMPTOM_FOLLOWUP_MARKERS.search(text))
+        if not (is_confirmation or is_supplement):
             return None
-        if not _SYMPTOM_FOLLOWUP_MARKERS.search(text):
+        # 症状上下文：上轮是症状 clarify，或最近一条用户消息在谈症状。
+        question = self._last_clarify_question(state)
+        previous = next((turn.get('content', '') for turn in reversed(history or ())
+                         if turn.get('role') == 'user'), '')
+        if not (_SYMPTOM_CLARIFY_MARKERS.search(question)
+                or _SYMPTOM_CLARIFY_MARKERS.search(previous)):
+            return None
+        budget = self.ledger(state)
+        if served:
+            # 已收敛过：确认词给简短确认（防模型问询循环）；
+            # 具体症状补充放行给原流程（模型可直接给出更完整的回答）。
+            if is_confirmation:
+                return self._symptom_reply(state, budget, message, started, _SYMPTOM_ACK, served=True)
             return None
         guidance = (_SYMPTOM_GUIDANCE_FEVER
                     if re.search(r'热|烧', text) else _SYMPTOM_GUIDANCE_GENERIC)
-        budget = self.ledger(state)
+        return self._symptom_reply(state, budget, message, started, guidance, served=False)
 
-        def mark(value):
-            # 只打防重复标记；状态保持 waiting_user（用户可继续补充或提问）。
-            value.events.append({'event': 'symptom_guidance_served', 'at': utc_now().isoformat()})
-
-        state = self.store.mutate(state.id, state.actor, state.conversation, mark,
-                                  plan_version=state.version, run_id=state.active_run)
-        result = self._reply(state, budget, message, started, answer=guidance,
+    def _symptom_reply(self, state, budget, message, started, text, *, served):
+        """组装确定性症状引导回复；首次收敛打防重复标记，状态保持 waiting_user。"""
+        if not served:
+            def mark(value):
+                value.events.append({'event': 'symptom_guidance_served', 'at': utc_now().isoformat()})
+            state = self.store.mutate(state.id, state.actor, state.conversation, mark,
+                                      plan_version=state.version, run_id=state.active_run)
+        result = self._reply(state, budget, message, started, answer=text,
                              synthesis={'mode': 'deterministic_symptom_guidance'})
+        result['workflow_status'] = 'completed'
         result.update(workflow=None, knowledge_used=False, grounded=False,
                       answer_kind='symptom_guidance',
                       answer_generation={'mode': 'deterministic'})

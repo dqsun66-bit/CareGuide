@@ -63,7 +63,7 @@ def test_symptom_followup_converges_to_guidance_without_model(tmp_path):
         assert first['workflow_status'] == 'waiting_user'
         calls_before = len(client.calls)
         second = await instance.process('黄色的 又热', 'u', 'c')
-        assert second['workflow_status'] == 'waiting_user'
+        assert second['workflow_status'] == 'completed'
         assert len(client.calls) == calls_before
         assert '不替代诊断' in second['response']
         assert '就诊' in second['response']
@@ -104,21 +104,63 @@ def test_symptom_followup_requires_symptom_clarify_topic(tmp_path):
 
 
 def test_symptom_followup_served_once(tmp_path):
-    """收敛过一次后不再重复给模板（防循环），后续走原流程。"""
+    """收敛过一次后再次补充只给简短确认（防重复模板、防问诊循环）。"""
     instance = unified(tmp_path)
     clarify = {'kind': 'clarify', 'question': '请补充你的主要症状。'}
-    client = ScriptedClient([reply(clarify), reply(clarify), reply(clarify)])
+    client = ScriptedClient([reply(clarify)])
     instance.engine.client = client
     instance.planner = UnderstandingPlanner(client)
     async def run():
         await instance.process('流鼻涕什么原因', 'u', 'c')
         second = await instance.process('黄色的 又热', 'u', 'c')
-        assert second['workflow_status'] == 'waiting_user'
         assert '不替代诊断' in second['response']
         calls_after_second = len(client.calls)
-        third = await instance.process('还是黄的', 'u', 'c')
-        assert third['workflow_status'] == 'waiting_user'
+        third = await instance.process('是的', 'u', 'c')
+        assert third['workflow_status'] == 'completed'
+        assert '收到' in third['response']
+        assert '不替代诊断' not in third['response']
+        assert len(client.calls) == calls_after_second
+        # 具体症状补充放行给模型（不再重复模板）
+        fourth = await instance.process('还有点咳嗽', 'u', 'c')
         assert len(client.calls) > calls_after_second
+    asyncio.run(run())
+
+
+def test_symptom_followup_after_full_answer_uses_history_context(tmp_path):
+    """一轮完整症状回答（completed）后用户继续补充症状，同样收敛。"""
+    from careguide.orchestration.store import utc_now
+    instance = unified(tmp_path)
+    async def run():
+        st = instance.store.create_pending(
+            'u', 'c', '流鼻涕是什么原因 怎么处理',
+            source_at=utc_now().isoformat(), source_message_id='m1')
+        instance.ledger(st, create=True)
+        def close(value):
+            value.status = 'completed'
+            value.events.append({'event': 'direct_answer'})
+        instance.store.mutate(st.id, 'u', 'c', close,
+                              plan_version=st.version, run_id=st.active_run)
+        history = [{'role': 'user', 'content': '流鼻涕是什么原因 怎么处理'},
+                   {'role': 'assistant', 'content': '流鼻涕常见原因包括：感冒、过敏性鼻炎……'}]
+        second = await instance.process('黄色的 又热', 'u', 'c', history=history)
+        assert '不替代诊断' in second['response']
+    asyncio.run(run())
+
+
+def test_symptom_confirmation_word_converges(tmp_path):
+    """确认词（是的）回应症状澄清时也收敛，不再追问。"""
+    instance = unified(tmp_path)
+    clarify = {'kind': 'clarify',
+               'question': '请确认：鼻涕是黄色脓涕，是否伴有发热？症状持续多久了？'}
+    client = ScriptedClient([reply(clarify)])
+    instance.engine.client = client
+    instance.planner = UnderstandingPlanner(client)
+    async def run():
+        await instance.process('流鼻涕什么原因', 'u', 'c')
+        calls_before = len(client.calls)
+        second = await instance.process('是的', 'u', 'c')
+        assert '不替代诊断' in second['response']
+        assert len(client.calls) == calls_before
     asyncio.run(run())
 
 
