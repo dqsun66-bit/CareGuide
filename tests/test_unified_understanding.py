@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
@@ -45,10 +46,74 @@ def test_local_plans_cover_complete_known_requests(text, source, count):
     '那个医生，换成下午，再查同一种药',
     '查消化内科医生，同时查询精氨酸布洛芬片0.2g说明书，再帮我预约',
     '查消化内科医生，然后不要查这个科室',
+    '南京鼓楼医院的地址是什么',
 ])
 def test_unknown_clauses_and_relationships_never_dispatch_partial_plan(text):
     result = understand(text)
     plan, metadata = compose_plan(text, result)
+    assert plan is None
+    assert metadata['plan_source'] == 'llm'
+
+
+@pytest.mark.parametrize('text', [
+    '北京大学第一医院的地址是什么',
+    '北京大学国际医院在哪里',
+    '查北京大学第一医院的联系方式',
+    '北京大学第一医院的挂号流程',
+])
+def test_hospital_guide_queries_get_deterministic_lookup_plan(text):
+    """语料已收录的医院资料查询走确定性 lookup_hospital_guide，不依赖模型规划。"""
+    from careguide.domain import AgentType
+    understanding = understand(text)
+    plan, metadata = compose_plan(text, understanding)
+    assert metadata['plan_source'] == 'single'
+    assert len(plan.tasks) == 1
+    task = plan.tasks[0]
+    assert task.action == 'lookup_hospital_guide'
+    assert task.agent == AgentType.APPOINTMENT
+    assert task.arguments['query'] == text
+
+
+HOSPITAL_CORPUS_DIR = Path(__file__).resolve().parents[1] / 'data' / 'jiangsu_hospitals_v2'
+
+
+def hospital_knowledge():
+    from careguide.hospital_corpus.retrieval import HospitalKnowledgeBase
+    from careguide.hospital_corpus.store import HospitalCorpus
+    return HospitalKnowledgeBase(HospitalCorpus.load(HOSPITAL_CORPUS_DIR), mode='bm25')
+
+
+def hospital_understand(text):
+    return asyncio.run(LocalUnderstanding(
+        Corpus(DEFAULT_CORPUS), hospital_knowledge=hospital_knowledge()).understand(
+        text, message_id='message-1', at='2026-10-24T10:00:00+00:00'))
+
+
+@pytest.mark.parametrize('text,hospital_id', [
+    ('泰州市人民医院的地址是什么', 'js_taizhou_001'),
+    ('泰州二院的联系方式', 'js_taizhou_003'),
+    ('泰州市中医院的挂号流程', 'js_taizhou_002'),
+    ('南京医科大学附属泰州人民医院在哪里', 'js_taizhou_001'),
+    ('泰州市人民医院怎么挂号，需要带什么？', 'js_taizhou_001'),
+])
+def test_spoken_hospital_names_resolve_via_alias_or_containment(text, hospital_id):
+    """口语化医院名（非官方全称）经实体提取确定性解析到官方 hospital_id。"""
+    understanding = hospital_understand(text)
+    plan, metadata = compose_plan(text, understanding)
+    assert metadata['plan_source'] == 'single'
+    task = plan.tasks[0]
+    assert task.action == 'lookup_hospital_guide'
+    assert task.arguments['hospital_id'] == hospital_id
+
+
+@pytest.mark.parametrize('text', [
+    '人民医院的地址是什么',
+    '市人民医院在哪里',
+])
+def test_ambiguous_hospital_span_is_not_guessed(text):
+    """'人民医院'这类多医院共有的泛指不猜测，交给模型澄清。"""
+    understanding = hospital_understand(text)
+    plan, metadata = compose_plan(text, understanding)
     assert plan is None
     assert metadata['plan_source'] == 'llm'
 

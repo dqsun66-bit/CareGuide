@@ -10,6 +10,25 @@ from pydantic import ValidationError
 
 from careguide.domain import AGENTS
 from careguide.errors import ErrorCode, Failure, model_failure
+
+
+def _normalize_decision_json(raw: str) -> str:
+    """把模型的常见错误形状归一化为合法决策。
+
+    模型偶尔会用 kind=new + 空 plan.tasks + question 表达澄清意图（真实输出
+    见过两次）；这种形状校验必失败，且重试同样失败。把它归一化为
+    kind=clarify，保留模型的问题文本。
+    """
+    try:
+        value = json.loads(raw)
+    except (json.JSONDecodeError, ValueError):
+        return raw
+    if (isinstance(value, dict) and value.get('kind') == 'new'
+            and isinstance(value.get('plan'), dict) and not value['plan'].get('tasks')
+            and isinstance(value.get('question'), str) and value['question'].strip()):
+        return json.dumps({'kind': 'clarify', 'question': value['question']},
+                          ensure_ascii=False)
+    return raw
 from careguide.llm_utils import create_chat_completion, extract_text_content
 from careguide.orchestration.bindings import explicit_value
 from careguide.orchestration.budget import BudgetExhausted, use_budget
@@ -104,6 +123,9 @@ semantic_embedding 候选是业务示例参考，不是当前用户事实、用�
 回答方式先分流：通用就诊准备、一般概念、整理表达和问候使用 kind=direct，不带 plan，不要求知识库命中。
 例如“帮我整理一下就诊前需要准备哪些材料，用列表回答”应 direct，不能因为未提供医院而澄清。
 具体医院规定、药品资料、官方来源要求使用 new 检索计划；实时医生/号源及预约业务必须使用工具。
+医院地址、院区、联系方式、交通、就诊流程、挂号/就诊材料等医院资料查询使用 lookup_hospital_guide 任务。
+new/run 计划必须包含至少一个任务；没有可执行任务时使用 clarify 提问，不得返回空任务列表。
+本服务不提供实时导航、路况、打车、天气等非医疗能力；导航/路线类请求用 kind=boundary 且 boundary=out_of_scope。
 不得用 direct 代替受限医疗判断、业务操作、补充任务参数或查询具体来源。direct 不改变既有任务。
 列表、Markdown 等输出格式不是额外业务目标。某家医院的就诊材料查询使用 lookup_hospital_guide；
 具体医院要求缺医院/院区时保留缺失参数交由工具澄清，不猜医院，不添加无关症状检索来凑结果。
@@ -145,10 +167,11 @@ class UnderstandingPlanner(ModelPlanner):
                         response = await create_chat_completion(self.client, model=self.model, system=SYSTEM,
                             messages=[{'role': 'user', 'content': json.dumps(
                                 {**payload, 'validation_feedback': feedback}, ensure_ascii=False)}],
-                            max_tokens=3072, temperature=0, response_format={'type': 'json_object'})
+                            max_tokens=4096, temperature=0, response_format={'type': 'json_object'})
                     if ticket:
                         ticket.record_response(response)
-                decision = validate_decision(RequestDecision.model_validate_json(extract_text_content(response)), context)
+                decision = validate_decision(RequestDecision.model_validate_json(
+                    _normalize_decision_json(extract_text_content(response))), context)
                 events.append({'stage': 'understanding_planning', 'attempt': attempt+1, 'status': 'validated'})
                 return decision, events
             except (ValidationError, ValueError, PermissionError) as exc:
@@ -156,6 +179,11 @@ class UnderstandingPlanner(ModelPlanner):
                 if isinstance(exc, ValidationError):
                     feedback['fields'] = [{'loc': list(item['loc']), 'type': item['type']}
                                           for item in exc.errors(include_input=False)[:8]]
+                    if any(list(item['loc']) == ['plan', 'tasks'] and item['type'] == 'too_short'
+                           for item in exc.errors(include_input=False)):
+                        feedback['hint'] = ('plan.tasks 不能为空：new/run 计划必须至少一个任务。'
+                                            '医院地址、院区、联系方式、就诊流程、材料等资料查询'
+                                            '使用 lookup_hospital_guide 任务；纯回答请求用 kind=direct 且不带 plan。')
                 else:
                     feedback['hint'] = ('Check action completion against allowed_actions[action].completion, '
                                         'original source fragments, role permissions and workflow versions.')

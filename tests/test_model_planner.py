@@ -40,6 +40,14 @@ def test_real_planner_prompt_preserves_full_text_despite_single_intent():
     assert client.calls[0]['response_format'] == {'type': 'json_object'}
 
 
+def test_catalog_describes_each_action_in_chinese_for_model_mapping():
+    """动作目录必须带中文描述，模型才能把自然语言请求映射到动作。"""
+    catalog = ModelPlanner.catalog()
+    assert '地址' in catalog['lookup_hospital_guide']['description']
+    assert '说明书' in catalog['lookup_drug_label']['description']
+    assert all('description' in entry and entry['agents'] for entry in catalog.values())
+
+
 def test_invalid_dag_gets_one_bounded_repair(tmp_path):
     invalid = valid_plan()
     invalid['tasks'][0]['depends_on'] = ['drug']

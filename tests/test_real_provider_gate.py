@@ -44,3 +44,63 @@ def test_mimo_bounded_calls_restore_non_thinking_mode_without_changing_other_mod
     asyncio.run(run())
     assert calls[0]['extra_body'] == {'thinking': {'type': 'disabled'}}
     assert 'extra_body' not in calls[1]
+
+
+def test_deepseek_tool_calls_disable_thinking_for_named_tool_choice_compatibility():
+    import asyncio
+    from types import SimpleNamespace
+    from careguide.llm_utils import create_chat_completion
+
+    calls = []
+
+    async def create(**kwargs):
+        calls.append(kwargs)
+        return {'choices': [{'message': {'tool_calls': []}}]}
+
+    client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    tool = {
+        'name': 'lookup_drug_label',
+        'description': '查询药品说明书',
+        'input_schema': {
+            'type': 'object',
+            'properties': {'drug_name': {'type': 'string'}},
+            'required': ['drug_name'],
+        },
+    }
+
+    asyncio.run(create_chat_completion(
+        client,
+        model='deepseek-flash',
+        messages=[{'role': 'user', 'content': '查询药品说明书'}],
+        tools=[tool],
+        tool_choice={'type': 'function', 'function': {'name': 'lookup_drug_label'}},
+    ))
+
+    assert calls[0]['extra_body'] == {'thinking': {'type': 'disabled'}}
+
+
+def test_deepseek_json_mode_disables_thinking_so_reasoning_cannot_truncate_schema():
+    """Schema-bound DeepSeek replies (json_object) must not share the output
+    budget with reasoning tokens; plain chat keeps thinking enabled."""
+    import asyncio
+    from types import SimpleNamespace
+    from careguide.llm_utils import create_chat_completion
+
+    calls = []
+
+    async def create(**kwargs):
+        calls.append(kwargs)
+        return {'choices': [{'message': {'content': '{"kind": "direct"}'}}]}
+
+    client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+
+    async def run():
+        await create_chat_completion(client, model='deepseek-v4-pro-0813-new',
+            messages=[{'role': 'user', 'content': '规划任务'}],
+            response_format={'type': 'json_object'})
+        await create_chat_completion(client, model='deepseek-flash',
+            messages=[{'role': 'user', 'content': '普通对话'}])
+
+    asyncio.run(run())
+    assert calls[0]['extra_body'] == {'thinking': {'type': 'disabled'}}
+    assert 'extra_body' not in calls[1]

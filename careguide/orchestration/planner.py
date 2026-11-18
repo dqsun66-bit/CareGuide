@@ -40,6 +40,21 @@ async def model_allowance(budget, timeout, *, exploration=False):
             yield None
 
 
+_ACTION_DESCRIPTIONS = {
+    'lookup_hospital_guide': '医院官方资料查询：地址、院区、联系方式、交通、就诊流程、挂号材料、指南等医院信息',
+    'search_care_guidance': '一般就医准备、就诊注意事项等通用就医指导查询',
+    'lookup_department': '医院科室服务范围与介绍查询',
+    'lookup_drug_label': '药品说明书：适应证、禁忌、注意事项、用法用量查询',
+    'lookup_drug_interaction': '药物相互作用查询',
+    'search_doctors': '医生信息查询',
+    'list_available_slots': '医生可预约时间/号源查询（模拟数据）',
+    'get_appointment': '已有预约记录查询',
+    'prepare_appointment': '预约准备（模拟，不提交真实预约）',
+    'prepare_reschedule': '改期准备（模拟）',
+    'prepare_cancellation': '取消预约准备（模拟）',
+}
+
+
 class ModelPlanner:
     def __init__(self, client, model='gpt-4o-mini', *, timeout_s=25,
                  max_repairs=1, max_tasks=12):
@@ -52,6 +67,7 @@ class ModelPlanner:
     def catalog():
         return {action: {'agents': [agent.value for agent, contract in AGENTS.items()
                                     if action in contract.tools],
+                         'description': _ACTION_DESCRIPTIONS.get(action, ''),
                          'arguments_schema': schema.model_json_schema(),
                          'completion': action_completion(action)}
                 for action, schema in ACTION_ARGUMENTS.items()}

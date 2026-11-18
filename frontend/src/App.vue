@@ -119,11 +119,25 @@
                 <small v-if="item.timings.first_content_ms != null">首段正文：{{ Math.round(item.timings.first_content_ms) }} ms。</small>
                 <small>阶段可能嵌套或并行，不能直接相加。</small>
               </details>
-              <div v-if="item.progress" class="action-card" aria-live="polite" data-testid="stream-progress">
-                <strong>{{ item.progress.message }}</strong>
-                <div v-for="task in item.progress.workflow?.tasks || []" :key="`${task.id}-${task.revision}`">
-                  {{ task.label }} · {{ taskProgressLabel(task.status) }}
-                </div>
+              <div v-if="item.progress" class="work-panel" aria-live="polite" data-testid="stream-progress">
+                <div class="work-panel-bar" aria-hidden="true"><span></span></div>
+                <ol class="work-stages">
+                  <li v-for="(stage, index) in item.progress.stages" :key="`${stage.stage || 'stage'}-${index}`"
+                    :class="{ 'is-done': index < item.progress.stages.length - 1, 'is-active': index === item.progress.stages.length - 1 }">
+                    <span class="stage-dot" aria-hidden="true"></span>
+                    <span class="stage-text">{{ stage.message }}</span>
+                    <span v-if="index === item.progress.stages.length - 1" class="stage-ellipsis" aria-hidden="true"></span>
+                  </li>
+                </ol>
+                <p v-if="!item.progress.stages?.length" class="work-stages-fallback">
+                  <span class="stage-dot is-active" aria-hidden="true"></span>{{ item.progress.message }}
+                </p>
+                <ul v-if="item.progress.workflow?.tasks?.length" class="work-tasks">
+                  <li v-for="task in item.progress.workflow.tasks" :key="`${task.id}-${task.revision}`">
+                    <span class="task-name">{{ task.label }}</span>
+                    <span class="task-state">{{ taskProgressLabel(task.status) }}</span>
+                  </li>
+                </ul>
               </div>
               <div v-if="item.simulation" class="simulation-banner">CareGuide 合成医院 · 模拟数据 · 不可用于真实就诊</div>
               <div v-if="item.evidence?.length && !item.answer?.sources?.length" class="evidence-list">
@@ -232,7 +246,7 @@
               @keydown="onComposerKeydown"
             ></textarea>
             <div class="composer-bottom">
-              <span>{{ busy ? '正在接收实时进度，可停止接收。' : 'Enter 发送 · Shift + Enter 换行' }}</span>
+              <span class="composer-hint">{{ busy ? (activeStageMessage ? activeStageMessage + ' · 输入可保留，发送请稍候' : '正在接收实时进度，可停止接收。') : 'Enter 发送 · Shift + Enter 换行' }}</span>
               <div class="composer-actions">
                 <button class="quiet-button attach-button" type="button" title="上传病例或检查报告（PDF / JPG / PNG，本地识别）" @click="pickAttachments">＋ 附件</button>
                 <button class="quiet-button" type="button" :disabled="!settings.conversationId" @click="restoreWorkflow">恢复会话任务</button>
@@ -735,7 +749,11 @@ function onComposerKeydown(event) {
   if (event.key !== 'Enter' || event.shiftKey) return
   if (event.isComposing || event.keyCode === 229) return
   event.preventDefault()
-  if (!busy.value && draft.value.trim()) sendMessage()
+  if (busy.value) {
+    showToast('上一条仍在处理中，输入已保留；完成后即可发送，或先停止接收')
+    return
+  }
+  if (draft.value.trim()) sendMessage()
 }
 
 async function copyMessage(item) {
@@ -768,6 +786,7 @@ const focusMode = ref(false)
 const messages = ref([])
 const draft = ref('')
 const busy = ref(false)
+const activeStageMessage = ref('')
 const activeWorkflow = ref(null)
 const workflowAnswers = reactive({})
 
@@ -1205,7 +1224,11 @@ async function sendMessage(workflowEvent, mapEvent, displayContent) {
   if (mapEvent?.kind !== 'map_hospital_select') mapEvent = undefined
   const content = displayContent || (workflowEvent?.kind === 'cancel' ? '取消当前任务' : workflowEvent ? Object.entries(workflowEvent.values || {}).map(([field, value]) =>
     `${workflowFieldLabel(field)}：${value}`).join('，') || '继续任务' : draft.value.trim())
-  if (!content || busy.value) return false
+  if (busy.value) {
+    showToast('上一条仍在处理中，输入已保留；完成后即可发送，或先停止接收')
+    return false
+  }
+  if (!content) return false
   if (attaching.value) {
     showToast('附件仍在识别中，请稍候再发送')
     return false
@@ -1227,10 +1250,11 @@ async function sendMessage(workflowEvent, mapEvent, displayContent) {
   draft.value = ''
   nextTick(resetComposerHeight)
   busy.value = true
+  activeStageMessage.value = ''
   chatAbortController = new AbortController()
   const assistantId = createMessageId()
   messages.value.push({ id: assistantId, role: 'assistant', content: '',
-    meta: '实时处理', progress: { message: '正在连接…' } })
+    meta: '实时处理', progress: { message: '正在连接…', stages: [] } })
   const assistant = () => messages.value.find(item => item.id === assistantId)
   const requestSettings = { ...settings }
   let streamConversation = settings.conversationId
@@ -1250,15 +1274,28 @@ async function sendMessage(workflowEvent, mapEvent, displayContent) {
         assistant().meta = event === 'delta' ? '正在生成，尚未完成' : '正在展示查询结果'
         void followStream()
       }
-      if (event === 'stage') assistant().progress = { ...assistant().progress, message: data.message }
+      if (event === 'stage') {
+        const stages = [...(assistant().progress?.stages || [])]
+        const stageId = data.stage ?? ''
+        const known = stages.findIndex((item) => (item.stage ?? '') === stageId)
+        if (known >= 0) stages.splice(known, 1)
+        stages.push({ stage: stageId, message: data.message })
+        assistant().progress = { ...assistant().progress, message: data.message, stages }
+        activeStageMessage.value = data.message
+      }
       if (event === 'workflow') {
         const previous = assistant().progress?.workflow
         const incoming = acceptWorkflow(previous, data.workflow)
-        if (incoming === data.workflow) assistant().progress = {
+        if (incoming === data.workflow) assistant().progress = { ...assistant().progress,
           message: data.stage === 'plan_ready' ? '计划已校验，准备执行' : '任务进度', workflow: incoming }
       }
     }, mapEvent, attachmentIds)
-    if (!stillCurrent() || !assistant()) return false
+    const settled = assistant()
+    if (!settled) return false
+    if (!stillCurrent()) {
+      settled.progress = null
+      return false
+    }
     if (response.conversationId && !settings.conversationId) {
       settings.conversationId = response.conversationId
       persist()
@@ -1267,7 +1304,7 @@ async function sendMessage(workflowEvent, mapEvent, displayContent) {
     activeWorkflow.value = acceptWorkflow(activeWorkflow.value, response.workflow)
     lastTrace.value = null
     const meta = [response.intent, response.primaryAgent || response.agentType, response.knowledgeUsed ? 'RAG' : '', response.escalated ? '转人工' : ''].filter(Boolean).join(' · ')
-    Object.assign(assistant(), { content: response.response, answer: response.answer, timings: response.timings, meta, progress: null,
+    Object.assign(settled, { content: response.response, answer: response.answer, timings: response.timings, meta, progress: null,
       trace: null, simulation: response.simulation,
       actionRequests: response.actionRequests, evidence: response.evidence, workflow: response.workflow,
       mapSelection: response.mapSelection, mapParking: response.mapParking })
@@ -1281,12 +1318,17 @@ async function sendMessage(workflowEvent, mapEvent, displayContent) {
     void loadMonitor()
     return true
   } catch (error) {
-    if (stillCurrent() && assistant()) Object.assign(assistant(), {
-      content: error.message, meta: '接收已结束', progress: null, answerId: null, answerOffset: 0 })
+    const failed = assistant()
+    if (failed) {
+      if (stillCurrent()) Object.assign(failed, {
+        content: error.message, meta: '接收已结束', progress: null, answerId: null, answerOffset: 0 })
+      else failed.progress = null
+    }
     return false
   } finally {
     chatAbortController = null
     busy.value = false
+    activeStageMessage.value = ''
     await nextTick()
     if (followOutput.value) messageList.value?.scrollTo({ top: messageList.value.scrollHeight, behavior: 'smooth' })
   }

@@ -126,10 +126,17 @@ async def create_chat_completion(
     messages = [{key: value for key, value in message.items() if key != 'durable_preferences'}
                 for message in messages]
     if is_openai_chat_client(client):
-        # MiMo enables thinking by default. Restore the source recognizer's
-        # disabled setting for bounded JSON/tool calls throughout the runtime.
-        # Other providers keep their original request schema.
-        if extra_body is None and model.casefold().startswith('mimo-'):
+        # MiMo enables thinking by default. DeepSeek also enables it by default,
+        # but its thinking mode rejects named tool_choice and requires
+        # reasoning_content to be replayed during tool loops. CareGuide's
+        # bounded tool protocol therefore uses non-thinking mode for DeepSeek
+        # tool calls, and the same reasoning applies to schema-bound JSON
+        # replies: thinking tokens share the max_tokens budget, so long
+        # reasoning can truncate the structured payload and fail validation.
+        # Open chat/answer streaming keeps thinking enabled for DeepSeek.
+        model_name = model.casefold()
+        if extra_body is None and (model_name.startswith('mimo-') or
+                                   (model_name.startswith('deepseek-') and (tools or response_format))):
             extra_body = {'thinking': {'type': 'disabled'}}
         payload_messages = list(messages)
         if system:

@@ -103,6 +103,10 @@ class UnifiedRuntime(OrchestrationRuntime):
             return await self.engine.process(message, user_id, conv_id, history)
         urgent = IntentRecognizer._pattern(message).get('urgent')
         boundary = QICIntentRecognizer._boundary(message)
+        if re.search(r'导航', message):
+            # 本服务不提供实时导航/路况能力；不消耗模型规划次数。
+            return await self.engine.process(message, user_id, conv_id, history, understood=IntentResult(
+                None, 0, [], 'out_of_scope', boundary='out_of_scope'))
         if urgent or boundary == 'urgent_handoff':
             if state:
                 self._preempt(state)

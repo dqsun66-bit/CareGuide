@@ -10,6 +10,7 @@ from careguide.api import app
 from careguide.corpus import DEFAULT_CORPUS
 from careguide.orchestration.contracts import TaskStatus
 from careguide.orchestration.decisions import RequestDecision, TaskAnswer
+from careguide.orchestration.planner import PlanningFailure
 from careguide.orchestration.store import VersionConflict
 from careguide.orchestration.unified import UnifiedRuntime
 from careguide.orchestration.understanding_planner import UnderstandingPlanner
@@ -21,6 +22,60 @@ from tests.test_model_planner import reply
 def unified(tmp_path):
     old, _ = build(tmp_path, [])
     return UnifiedRuntime(old.engine, old.store.path)
+
+
+def test_hospital_guide_query_routes_deterministically_without_model(tmp_path):
+    """语料已收录的医院地址/资料查询不经过模型规划，直接确定性执行。"""
+    instance = unified(tmp_path)
+    async def run():
+        result = await instance.process('北京大学第一医院的地址是什么', 'u', 'c')
+        assert result['budget']['used']['model'] == 0
+        assert len(result['workflow']['tasks']) == 1
+        tasks = result['workflow']['tasks']
+        assert tasks[0]['action'] == 'lookup_hospital_guide'
+        assert 'lookup_hospital_guide' in result['tools_used']
+        assert result['errors'] == []
+    asyncio.run(run())
+
+
+def test_navigation_request_returns_out_of_scope_without_model(tmp_path):
+    """导航类请求确定性返回 out_of_scope，不走规划器、不调模型。"""
+    instance = unified(tmp_path)
+    async def run():
+        result = await instance.process('导航去泰州医院', 'u', 'c')
+        assert result['workflow_status'] == 'out_of_scope'
+        assert '当前支持症状咨询' in result['response']
+        assert result['errors'] == []
+    asyncio.run(run())
+
+
+def test_planner_normalizes_clarify_intent_shaped_as_new_with_empty_tasks(tmp_path):
+    """模型用 new+空任务+question 表达澄清意图时，归一化为合法 clarify。"""
+    from careguide.orchestration.understanding_planner import UnderstandingPlanner, build_context
+    odd = {'kind': 'new', 'plan': {'goal': '泰州市人民医院怎么挂号，需要带什么？', 'tasks': []},
+           'question': '请补充需要查询的院区，以便查询对应院区的挂号流程和就诊材料。'}
+    client = ScriptedClient([reply(odd)])
+    planner = UnderstandingPlanner(client)
+    context = build_context('泰州市人民医院怎么挂号，需要带什么？', 'm1', '2026-11-18T10:00:00+00:00')
+    decision, _ = asyncio.run(planner._decide(context))
+    assert decision.kind == 'clarify'
+    assert '院区' in decision.question
+
+
+def test_planner_repair_feedback_explains_empty_task_plan(tmp_path):
+    """空任务计划的重试反馈必须告诉模型 plan.tasks 不能为空。"""
+    from careguide.orchestration.understanding_planner import UnderstandingPlanner, build_context
+    invalid = {'kind': 'new', 'plan': {'goal': '泰州市人民医院的地址是什么', 'tasks': []}}
+    client = ScriptedClient([reply(invalid), reply(invalid)])
+    planner = UnderstandingPlanner(client)
+    context = build_context('泰州市人民医院的地址是什么', 'm1', '2026-11-18T10:00:00+00:00')
+    with pytest.raises(PlanningFailure) as excinfo:
+        asyncio.run(planner._decide(context))
+    assert excinfo.value.failure['code'] == 'model_format_error'
+    assert len(client.calls) == 2
+    second = json.loads(client.calls[1]['messages'][-1]['content'])
+    assert second['validation_feedback']['fields'][0]['loc'] == ['plan', 'tasks']
+    assert '至少一个任务' in second['validation_feedback']['hint']
 
 
 def test_local_composition_is_durable_and_brief_isolated(tmp_path):

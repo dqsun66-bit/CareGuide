@@ -12,7 +12,8 @@ import threading
 from careguide.domain import AgentType
 from careguide.external_data import CAREGUIDE_INTENT_LABELS
 from careguide.intent_recognizer import IntentRecognizer
-from careguide.orchestration.contracts import InputReference, PlanProposal, TaskSpec, validate_plan
+from careguide.orchestration.contracts import (
+    InputReference, PlanProposal, TaskSpec, action_completion, validate_plan)
 from careguide.orchestration.decisions import Goal, IntentUnderstanding
 
 
@@ -57,9 +58,13 @@ def local_candidates(text):
 
 
 class LocalUnderstanding:
-    def __init__(self, corpus, classifier=None, *, classifier_timeout=5, semantic=None, semantic_mode='local_ngram'):
+    def __init__(self, corpus, classifier=None, *, classifier_timeout=5, semantic=None,
+                 semantic_mode='local_ngram', hospital_knowledge=None):
         self.entities = IntentRecognizer(embedding_mode='disabled')
         self.entities.corpus = corpus
+        # 医院知识库参与实体提取：官方名称/别名 + 口语化医院名解析
+        # （见 intent_recognizer._explicit_entities 的 hospital_knowledge 分支）。
+        self.entities.hospital_knowledge = hospital_knowledge
         self.classifier = classifier
         self.classifier_timeout = classifier_timeout
         self.semantic, self.semantic_mode = semantic, semantic_mode
@@ -113,6 +118,21 @@ class LocalUnderstanding:
                                        'dosage' if re.search(r'用法|用量', text) else 'all')
             if action is None and re.fullmatch(r'(?:查询|查)?(?:头痛就诊前需要记录哪些信息|头痛就诊前怎么记录|就诊前需要什么准备)', match_text):
                 action, args = 'search_care_guidance', {'query': text, 'top_k': 1}
+            if action is None and entities.get('hospital_id') and re.fullmatch(
+                    self._prefix + r'\S+?(?:医院|卫生院|院区|医疗中心|妇幼保健院|院)(?:的)?'
+                    r'(?:地址|位置|在哪|在哪里|在哪儿|联系方式|电话|就诊流程|挂号流程|'
+                    r'怎么挂号|如何挂号|怎么预约|如何预约|就诊材料|挂号材料|需要带什么|'
+                    r'要带什么|带什么|材料|指南|怎么走|怎么去|如何去)'
+                    r'(?:是什么|是哪里|在哪)?'
+                    r'(?:[，,、和及]?(?:地址|位置|在哪|在哪里|在哪儿|联系方式|电话|就诊流程|'
+                    r'挂号流程|怎么挂号|如何挂号|怎么预约|如何预约|就诊材料|挂号材料|'
+                    r'需要带什么|要带什么|带什么|材料|指南|怎么走|怎么去|如何去)'
+                    r'(?:是什么|是哪里|在哪)?)*'
+                    r'[？?。]?',
+                    match_text, re.I):
+                # 医院官方资料（地址/联系方式/流程/材料）确定性地走医院指南检索。
+                # hospital_id 由实体提取统一解析（精确名/别名/口语化医院名，歧义不猜）。
+                action, args = 'lookup_hospital_guide', {'query': text, 'hospital_id': entities['hospital_id']}
         if action is None:
             return None, 'unknown'
         if action == 'list_available_slots':
@@ -147,6 +167,18 @@ class LocalUnderstanding:
             if not piece.strip():
                 continue
             goal, relation = self._goal(piece, f'goal{index+1}', message_id, at)
+            if goal is None and output.goals and re.fullmatch(
+                    r'(?:需要|要)?带什么[？?。]*|(?:就诊|挂号)?材料[？?。]*|注意事项[？?。]*',
+                    piece.strip(), re.I):
+                # 医院资料续句（"需要带什么？""就诊材料"）合并进上一条医院查询，
+                # 避免被当作未解析子句把整条消息踢给模型。
+                previous = output.goals[-1]
+                if previous.action == 'lookup_hospital_guide':
+                    merged = previous.fragment+'，'+piece.strip()
+                    goal, relation = self._goal(merged, f'goal{index+1}', message_id, at)
+                    if goal:
+                        output.goals[-1] = goal
+                        continue
             if goal:
                 output.goals.append(goal)
                 relations.append(relation)
@@ -226,8 +258,7 @@ def compose_plan(text, understood):
             AgentType.TRIAGE if goal.action in {'search_care_guidance', 'lookup_department'} else AgentType.APPOINTMENT)
         tasks.append(TaskSpec(id=goal.id, fragment=goal.fragment, action=goal.action,
             agent=agent, arguments=goal.arguments,
-            completion='prepared' if goal.action == 'prepare_appointment' else
-                       'source_evidence' if agent != AgentType.APPOINTMENT else 'items'))
+            completion=action_completion(goal.action)))
     if understood.relation == 'doctor_slots':
         doctor = tasks[0]
         goal = understood.goals[0]

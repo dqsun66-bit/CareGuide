@@ -73,6 +73,7 @@ class IntentRecognizer:
         self._vector_lock = asyncio.Lock()
         self._cache = {}
         self.corpus = Corpus()
+        self.hospital_knowledge = None
 
     async def recognize(self, message, history=None):
         history = list(history or [])[-8:]
@@ -229,6 +230,37 @@ class IntentRecognizer:
                         entities['dosage_form'] = next(iter(forms))
             if object_field == 'hospital_id':
                 campuses = {r.campus for r in records if r.campus and r.campus in message}
+                if len(campuses) == 1:
+                    entities['campus'] = next(iter(campuses))
+        # The verified hospital V2 corpus is intentionally independent from
+        # the general medical corpus.  Bind only exact catalog names/aliases
+        # here so a planner cannot drop an explicitly named hospital and force
+        # a redundant clarification before hospital-scoped retrieval.
+        hospital_knowledge = getattr(self, 'hospital_knowledge', None)
+        if hospital_knowledge is not None:
+            matches = []
+            for hospital in hospital_knowledge.corpus.hospitals:
+                names = (hospital.official_name, *hospital.aliases)
+                if any(name and name in text for name in names):
+                    matches.append(hospital)
+            if not matches:
+                # 口语化医院名（如"泰州市人民医院"）不在官方全称/别名中：
+                # 去掉行政区字后按包含关系解析，唯一命中才绑定，歧义不猜。
+                span = re.search(r'\S+?(?:医院|卫生院|院区|医疗中心|妇幼保健院|院)', text)
+                if span:
+                    form = span.group().replace('市', '').replace('县', '').replace('区', '')
+                    for hospital in hospital_knowledge.corpus.hospitals:
+                        if any(name and form in name for name in
+                               (hospital.official_name, *hospital.aliases)):
+                            matches.append(hospital)
+            hospital_ids = {hospital.hospital_id for hospital in matches}
+            if len(hospital_ids) == 1:
+                hospital = matches[0]
+                entities['hospital_id'] = hospital.hospital_id
+                campuses = {
+                    campus.campus_id for campus in hospital.campuses
+                    if campus.official_name in text or campus.campus_id in text
+                }
                 if len(campuses) == 1:
                     entities['campus'] = next(iter(campuses))
         # A compound label specification is one product identifier. Taking

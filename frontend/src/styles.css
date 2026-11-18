@@ -991,6 +991,163 @@ label > input[type="checkbox"] {
   font-size: 12.5px;
 }
 
+/* Codex 同款「工作面板」：任务文字阶段流 + 细进度条 + 任务清单。
+   只用灰阶 + 单一青绿，与临床冷静体系一致。 */
+.work-panel {
+  margin-top: 14px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--ink) 3%, var(--surface)),
+    color-mix(in srgb, var(--ink) 6%, var(--surface)));
+  padding: 14px 16px 13px;
+}
+
+.work-panel-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--hairline);
+  overflow: hidden;
+}
+
+.work-panel-bar span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 38%;
+  border-radius: 2px;
+  background: var(--teal);
+  opacity: 0.55;
+  transform: translateX(-100%);
+  animation: work-panel-slide 1.5s ease-in-out infinite;
+}
+
+@keyframes work-panel-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(263%); }
+}
+
+.work-stages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.work-stages li {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.work-stages-fallback {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.work-stages-fallback .stage-dot {
+  background: var(--teal);
+  animation: work-stage-pulse 1.6s ease-in-out infinite;
+}
+
+.stage-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-right: 2px;
+  border-radius: 50%;
+  background: var(--hairline-strong);
+  transform: translateY(-1px);
+}
+
+.work-stages li.is-done {
+  color: var(--ink-soft);
+}
+
+.work-stages li.is-done .stage-dot {
+  background: var(--teal-line);
+}
+
+.work-stages li.is-active {
+  color: var(--ink);
+}
+
+.work-stages li.is-active .stage-dot {
+  background: var(--teal);
+  animation: work-stage-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes work-stage-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--teal) 35%, transparent); }
+  50% { box-shadow: 0 0 0 5px transparent; }
+}
+
+.stage-ellipsis {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  min-width: 0.2em;
+  color: var(--faint);
+}
+
+.stage-ellipsis::after {
+  content: '……';
+  display: inline-block;
+  width: 1.4em;
+  overflow: hidden;
+  vertical-align: bottom;
+  clip-path: inset(0 100% 0 0);
+  animation: work-ellipsis 1.4s steps(4, end) infinite;
+}
+
+@keyframes work-ellipsis {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+.work-tasks {
+  list-style: none;
+  margin: 11px 0 0;
+  padding: 9px 0 0;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.work-tasks li {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.task-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.task-state {
+  flex: none;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+}
+
 /* 操作卡（待确认操作，唯一的主色卡） */
 .action-card {
   margin-top: 14px;
@@ -1950,5 +2107,6 @@ label > input[type="checkbox"] {
   *::after {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

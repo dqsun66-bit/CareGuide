@@ -370,7 +370,8 @@ def get_chat_runtime():
             runtime_class = UnifiedRuntime
             semantic, semantic_mode = intent_semantic_retriever()
             runtime_options['understanding'] = LocalUnderstanding(registry.corpus, classifier,
-                semantic=semantic, semantic_mode=semantic_mode)
+                semantic=semantic, semantic_mode=semantic_mode,
+                hospital_knowledge=getattr(registry, 'hospital_knowledge', None))
         engine = runtime_class(engine, business_path, **runtime_options, limits=BudgetLimits(
             model=int(os.environ.get('CAREGUIDE_WORKFLOW_MODEL_CALLS', '20')),
             tool=int(os.environ.get('CAREGUIDE_WORKFLOW_TOOL_CALLS', '30')),
