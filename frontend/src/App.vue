@@ -1248,13 +1248,17 @@ async function sendMessage(workflowEvent, mapEvent, displayContent) {
   clearAttachments()
   followOutput.value = true
   draft.value = ''
-  nextTick(resetComposerHeight)
   busy.value = true
   activeStageMessage.value = ''
   chatAbortController = new AbortController()
   const assistantId = createMessageId()
   messages.value.push({ id: assistantId, role: 'assistant', content: '',
     meta: '实时处理', progress: { message: '正在连接…', stages: [] } })
+  // 用户消息与加载面板入 DOM 后立即滚到底部，不等首个 delta。
+  nextTick(() => {
+    resetComposerHeight()
+    if (followOutput.value) messageList.value?.scrollTo({ top: messageList.value.scrollHeight })
+  })
   const assistant = () => messages.value.find(item => item.id === assistantId)
   const requestSettings = { ...settings }
   let streamConversation = settings.conversationId
