@@ -56,6 +56,20 @@ _SYMPTOM_ACK = (
     '症状超过10天仍无好转时，建议及时就诊。以上为一般信息，具体请以就诊医院意见为准。'
 )
 
+_PRICE_MARKERS = re.compile(r'价格|多少钱|售价|贵不贵|药价|卖多少钱')
+_PRICE_MEDICINE_WORDS = re.compile(
+    r'药|胶囊|片剂|颗粒|口服液|冲剂|布洛芬|对乙酰氨基酚|阿莫西林|头孢|感冒灵|连花清瘟')
+
+_PRICE_GUIDANCE = (
+    '药品价格会因厂家、规格、剂型和销售渠道（医院药房、药店、线上平台）不同而有明显差异，'
+    '本服务不提供实时价格，无法给出具体数字。\n'
+    '建议：\n'
+    '1) 直接咨询当地医院药房或药店的实际售价；\n'
+    '2) 比价时注意核对药品规格与剂型，避免不同产品混比；\n'
+    '3) 线上药店价格仅供参考，购买前核对平台资质与药品批准文号。\n'
+    '如需药品说明书（适应证、禁忌、注意事项），告诉我药品全名即可。'
+)
+
 
 class UnifiedRuntime(OrchestrationRuntime):
     def __init__(self, engine, path, *, understanding=None, planner=None, **kwargs):
@@ -154,6 +168,44 @@ class UnifiedRuntime(OrchestrationRuntime):
                       answer_generation={'mode': 'deterministic'})
         return result
 
+    def _price_guidance(self, state, message, user_id, conv_id, history, started):
+        """药品价格查询的确定性回答：不编造动态价格。
+
+        价格是动态/本地信息，知识库与模型都不应给出具体数字。这里给查询
+        途径与影响因素的通用回答；若会话里有已完成的药品说明书任务，附上
+        引用。拦截在任务绑定与规划之前，避免"布洛芬价格"被错接旧任务。
+        """
+        if not _PRICE_MARKERS.search(message):
+            return None
+        drug_name = ''
+        if state is not None:
+            for task in state.tasks.values():
+                if (task.spec.action == 'lookup_drug_label'
+                        and task.status == TaskStatus.SUCCEEDED):
+                    drug_name = task.spec.arguments.get('drug_name', '') or task.spec.fragment
+                    break
+        if not drug_name and not _PRICE_MEDICINE_WORDS.search(message) and not any(
+                name in message for name in self.understanding.drugs):
+            return None
+        if state is None:
+            state = WorkflowState(id='direct-'+uuid.uuid4().hex, actor=user_id, conversation=conv_id,
+                goal=message, tasks={}, status='completed',
+                created_at=utc_now().isoformat(),
+                expires_at=(utc_now()+timedelta(minutes=30)).isoformat(),
+                events=[{'event': 'direct_answer'}])
+            budget = self.ledger(state, create=True)
+        else:
+            budget = self.ledger(state)
+        text = (f'你之前查询的 {drug_name} 说明书注意事项见上文记录。\n\n{_PRICE_GUIDANCE}'
+                if drug_name else _PRICE_GUIDANCE)
+        result = self._reply(state, budget, message, started, answer=text,
+                             synthesis={'mode': 'deterministic_price_guidance'})
+        result['workflow_status'] = 'completed'
+        result.update(workflow=None, knowledge_used=False, grounded=False,
+                      answer_kind='price_guidance',
+                      answer_generation={'mode': 'deterministic'})
+        return result
+
     async def _respond(self, state, budget, message, started, **kwargs):
         from careguide.orchestration.answering import generate_answer
         deadline = started+budget.limits.request_seconds
@@ -215,6 +267,10 @@ class UnifiedRuntime(OrchestrationRuntime):
             from careguide.orchestration.general_answering import local_general_request
             if local_general_request(message, corpus=self.registry.corpus):
                 return await self._answer_general(message, user_id, conv_id, history, started)
+        if not workflow_event:
+            price = self._price_guidance(state, message, user_id, conv_id, history, started)
+            if price is not None:
+                return price
         if state and workflow_event and state.version != workflow_event['plan_version']:
             raise VersionConflict('Old plan version')
         if state:

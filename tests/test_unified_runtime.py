@@ -164,6 +164,39 @@ def test_symptom_confirmation_word_converges(tmp_path):
     asyncio.run(run())
 
 
+def test_price_query_with_drug_context_uses_guidance_not_old_task(tmp_path):
+    """药品价格查询不绑定旧说明书任务，给确定性价格指引。"""
+    instance = unified(tmp_path)
+    async def run():
+        await instance.process('查询精氨酸布洛芬片说明书', 'u', 'c')
+        await instance.process('0.2g', 'u', 'c')
+        price = await instance.process('布洛芬价格', 'u', 'c')
+        assert price['workflow_status'] == 'completed'
+        assert '不提供实时价格' in price['response']
+        assert '你之前查询的' in price['response']
+        assert '说明书' in price['response']
+    asyncio.run(run())
+
+
+def test_price_query_without_context_still_answers_deterministically(tmp_path):
+    """新会话里药品价格查询同样给确定性指引，不调模型。"""
+    instance = unified(tmp_path)
+    async def run():
+        result = await instance.process('布洛芬多少钱', 'u', 'c')
+        assert result['workflow_status'] == 'completed'
+        assert '不提供实时价格' in result['response']
+    asyncio.run(run())
+
+
+def test_price_query_for_non_medicine_is_not_intercepted(tmp_path):
+    """非药品价格（挂号多少钱）不拦截，走原流程。"""
+    instance = unified(tmp_path)
+    async def run():
+        result = await instance.process('挂号多少钱', 'u', 'c')
+        assert '不提供实时价格' not in result['response']
+    asyncio.run(run())
+
+
 def test_planner_normalizes_clarify_intent_shaped_as_new_with_empty_tasks(tmp_path):
     """模型用 new+空任务+question 表达澄清意图时，归一化为合法 clarify。"""
     from careguide.orchestration.understanding_planner import UnderstandingPlanner, build_context
