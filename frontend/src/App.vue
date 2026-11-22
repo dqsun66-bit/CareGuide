@@ -1289,6 +1289,7 @@ async function sendMessage(workflowEvent, mapEvent, displayContent) {
         stages.push({ stage: stageId, message: data.message })
         assistant().progress = { ...assistant().progress, message: data.message, stages }
         activeStageMessage.value = data.message
+        void followStream()
       }
       if (event === 'workflow') {
         const previous = assistant().progress?.workflow
@@ -1337,7 +1338,9 @@ async function sendMessage(workflowEvent, mapEvent, displayContent) {
     busy.value = false
     activeStageMessage.value = ''
     await nextTick()
-    if (followOutput.value) messageList.value?.scrollTo({ top: messageList.value.scrollHeight, behavior: 'smooth' })
+    if (followOutput.value && messageList.value) {
+      messageList.value.scrollTop = messageList.value.scrollHeight
+    }
   }
 }
 

@@ -2065,11 +2065,13 @@ label > input[type="checkbox"] {
 /* ---------------------------------------------------------------- 响应式 */
 
 @media (max-width: 1080px) {
+  /* 窄屏收起侧栏，消息区全宽：避免"侧栏下移"把消息区挤塌（auto 行吃光 1fr 空间）。 */
   .chat-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
   }
-  .chat-sidebar { height: auto; max-height: 420px; }
+  .chat-layout .chat-sidebar { display: none; }
+  .sidebar-handle { display: none; }
   .knowledge-layout { grid-template-columns: 1fr; }
   .parking-layout { grid-template-columns: 1fr; }
   .evaluation-layout { grid-template-columns: 1fr; }
