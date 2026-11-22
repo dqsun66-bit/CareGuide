@@ -73,6 +73,7 @@
               </div>
               <AnswerBody v-if="item.role === 'assistant'" :content="item.answer?.body || item.content" :sources="item.answer?.sources || []" />
               <p v-else>{{ item.content }}</p>
+              <RegistrationEntry v-if="item.role === 'assistant' && !item.simulation && hasRegistrationGuide(item)" />
               <div v-if="item.role === 'user' && item.attachments?.length" class="message-attachments">
                 <span v-for="att in item.attachments" :key="att.id" class="message-attachment">
                   {{ att.kind === 'pdf' ? 'PDF' : '图片' }} · {{ att.filename }}
@@ -646,6 +647,8 @@ import { requestOperations, uploadKnowledge } from './lib/backends'
 import { acceptWorkflow, currentTask, currentAction, answerEvent } from './lib/workflow'
 import { applyAnswerEvent } from './lib/sse'
 import AnswerBody from './components/AnswerBody.vue'
+import RegistrationEntry from './components/RegistrationEntry.vue'
+import { hasRegistrationGuide } from './lib/registration-entry.js'
 import ParkingMap from './components/ParkingMap.vue'
 import { safeSourceUrl } from './lib/markdown'
 import { requestIdentity } from './lib/backends'

@@ -76,7 +76,12 @@ const server = http.createServer(async (req, res) => {
       let result = {}
       if (url.pathname === '/api/chat/stream') {
         const event = body.workflow_event
-        if (body.message === '换成另一家医院停车场') {
+        if (['测试总院区挂号', '测试其他医院挂号'].includes(body.message)) {
+          const task = { id: 'guide', label: '怎么挂号', status: 'succeeded',
+            arguments: { hospital_id: body.message === '测试总院区挂号' ? 'js_taizhou_001' : 'other', campus: 'js_taizhou_001_main' },
+            result: { evidence: [{ source_url: 'https://www.jstzhospital.com/gwrk/xwzx/yyxw/content_1772' }] } }
+          result = { ...response(), simulation: false, workflow: { ...workflow(), tasks: [task] } }
+        } else if (body.message === '换成另一家医院停车场') {
           assert.equal(body.workflow_event, undefined)
           assert.equal(body.map_event, undefined)
           result = {
@@ -143,7 +148,7 @@ const server = http.createServer(async (req, res) => {
         emit(4, 'delta', { answer_id: 'browser-answer', offset: 4, text: '整理查询结果', provisional: true })
         // Keep the final response gated so the browser must render actual
         // streamed progress before it can see the interactive result cards.
-        if (!body.workflow_event && !body.map_event && !result.map_selection) {
+        if (!body.workflow_event && !body.map_event && !result.map_selection && result.simulation) {
           await new Promise(resolve => { releaseFirstStream = resolve })
         }
         if (res.destroyed) return
@@ -315,6 +320,20 @@ try {
   assert.equal(requests.filter(item => item.path === '/api/map/hospitals/search').length, hospitalSearchesBeforeExpansion)
   assert.equal(await evaluate(`JSON.parse(localStorage.getItem('careguide.frontend.settings')).conversationId`), 'browser-conversation')
   assert.equal(failures.length, 0, failures.join('\n'))
+  const entry = 'document.querySelectorAll(".message.assistant:last-child .registration-entry button")'
+  await evaluate(`Array.from(document.querySelectorAll('.view-nav button')).find(button => button.textContent === '对话').click()`)
+  await send('测试总院区挂号')
+  await until(`${entry}.length === 1`)
+  // Isolate the clipboard so the test never overwrites the user's clipboard.
+  await evaluate(`Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+    writeText: async text => { window.copiedRegistration = text }
+  } })`)
+  await evaluate(`${entry}[0].click()`)
+  await until(`document.querySelector('.registration-entry [role=status]')?.textContent.startsWith('已复制')`)
+  assert.equal(await evaluate('window.copiedRegistration'), '#小程序://泰州人民医院互联网医院/1wGRDDgpEQNsJGg')
+  await send('测试其他医院挂号')
+  await until(`document.querySelector('.message.assistant:last-child .answer-markdown h2') !== null`)
+  assert.equal(await evaluate(`${entry}.length`), 0)
   console.log(JSON.stringify({ kind: 'real_chrome_built_vue_scripted_api', checks: [
     'task_missing_field_submission', 'doctor_selection', 'slot_selection', 'versioned_change',
     'old_confirmation_disabled', 'one_current_confirmation', 'reload_and_restore', 'sse_progress_before_final', 'answer_deltas_before_final', 'markdown_and_citation_navigation',
