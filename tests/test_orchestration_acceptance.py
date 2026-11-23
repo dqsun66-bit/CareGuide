@@ -35,6 +35,21 @@ def test_runtime_generic_triage_question_never_creates_department_task(tmp_path)
     assert runtime.store.latest(ACTOR, CONVERSATION) is None
 
 
+def test_runtime_mobility_triage_bypasses_planner_and_tools(tmp_path):
+    runtime, provider = build(tmp_path, [])
+
+    response = asyncio.run(runtime.process(
+        '我不能走路，想去泰州市医院检查腿部，请你帮我安排',
+        ACTOR, CONVERSATION))
+
+    assert response['workflow_status'] == 'waiting_input'
+    assert '突然' in response['response']
+    assert '外伤' in response['response']
+    assert response['tools_used'] == []
+    assert provider.calls == []
+    assert runtime.store.latest(ACTOR, CONVERSATION) is None
+
+
 def test_runtime_thunderclap_preempts_existing_wait_before_provider_call(tmp_path):
     text, plan = task_plan(waiting=True)
     runtime, provider = build(tmp_path, [plan])
@@ -48,10 +63,50 @@ def test_runtime_thunderclap_preempts_existing_wait_before_provider_call(tmp_pat
             first['workflow']['id'], ACTOR, CONVERSATION)
         assert response['safety']['disposition'] == 'emergency'
         assert response['tools_used'] == []
+        assert response['side_effects'][0]['type'] == 'workflow_urgent_preemption'
+        assert response['side_effects'][0]['workflow_id'] == first['workflow']['id']
         assert state.status == 'urgent_handoff'
         assert all(task.status != TaskStatus.WAITING_INPUT
                    for task in state.tasks.values())
         assert len(provider.calls) == 1
+
+    asyncio.run(run())
+
+
+def test_emergency_triage_is_not_blocked_by_stale_workflow_event(tmp_path):
+    runtime, provider = build(tmp_path, [])
+
+    response = asyncio.run(runtime.process(
+        '我刚刚突然不能走路', ACTOR, CONVERSATION,
+        workflow_event={'workflow_id': 'missing-workflow', 'plan_version': 1}))
+
+    assert response['safety']['disposition'] == 'emergency'
+    assert response['workflow_status'] == 'urgent_handoff'
+    assert response['tools_used'] == []
+    assert provider.calls == []
+
+
+def test_emergency_does_not_rewrite_terminal_workflow(tmp_path):
+    text, plan = task_plan(waiting=True)
+    runtime, provider = build(tmp_path, [plan])
+
+    async def run():
+        first = await runtime.process(text, ACTOR, CONVERSATION)
+        state = runtime.store.get(first['workflow']['id'], ACTOR, CONVERSATION)
+
+        def mark_completed(current):
+            current.status = 'completed'
+
+        runtime.store.mutate(
+            state.id, ACTOR, CONVERSATION, mark_completed,
+            plan_version=state.version, run_id=state.active_run)
+        response = await runtime.process(
+            '我刚刚突然不能走路', ACTOR, CONVERSATION)
+        latest = runtime.store.get(state.id, ACTOR, CONVERSATION)
+
+        assert response['safety']['disposition'] == 'emergency'
+        assert response['side_effects'] == []
+        assert latest.status == 'completed'
 
     asyncio.run(run())
 

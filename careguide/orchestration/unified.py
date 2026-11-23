@@ -20,8 +20,7 @@ from careguide.orchestration.store import VersionConflict, WorkflowExpired, Work
 from careguide.orchestration.understanding import LocalUnderstanding, compose_plan
 from careguide.orchestration.understanding_planner import UnderstandingPlanner, build_context
 from careguide.streaming import emit
-from careguide.medical_triage import (evaluate_headache_triage,
-                                      is_headache_triage_request)
+from careguide.medical_triage import evaluate_medical_triage
 
 
 _SYMPTOM_CLARIFY_MARKERS = re.compile(
@@ -235,14 +234,17 @@ class UnifiedRuntime(OrchestrationRuntime):
     async def process(self, message, user_id, conv_id, history=None, *, workflow_event=None):
         started, at, message_id = time.monotonic(), utc_now().isoformat(), uuid.uuid4().hex
         history = history or []
+        triage = evaluate_medical_triage(message, history)
+        if triage is not None and not triage.run_rag:
+            side_effects = []
+            state = self.store.latest(user_id, conv_id) if triage.status == 'emergency' else None
+            if triage.status == 'emergency' and state:
+                side_effects = self._preempt(state)
+            return await self.engine.process(
+                message, user_id, conv_id, history,
+                triage_side_effects=side_effects)
         state = (self.store.get(workflow_event['workflow_id'], user_id, conv_id)
                  if workflow_event else self.store.latest(user_id, conv_id))
-        triage = (evaluate_headache_triage(message, history)
-                  if is_headache_triage_request(message, history) else None)
-        if triage is not None and not triage.run_rag:
-            if triage.status == 'emergency' and state:
-                self._preempt(state)
-            return await self.engine.process(message, user_id, conv_id, history)
         urgent = IntentRecognizer._pattern(message).get('urgent')
         boundary = QICIntentRecognizer._boundary(message)
         if re.search(r'导航', message):
