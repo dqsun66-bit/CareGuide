@@ -12,7 +12,7 @@ from careguide.amap_models import HospitalPoi
 from careguide.trace_store import TRACE_VERSION, validate_trace_completeness
 
 
-EXPLICIT_PARKING = re.compile(r'停车场|停车|车停')
+EXPLICIT_PARKING = re.compile(r'停车场|停车|车停|空车位|剩余车位|车位')
 DRIVE_TO = re.compile(r'开车去')
 HOSPITAL = re.compile(r'医院|院区|就医地点')
 LOCATION_MARKER = re.compile(r'医院|院区|就医地点')
@@ -22,10 +22,21 @@ TRAVEL_SUFFIXES = frozenset(
 )
 SIMULATION_ID = re.compile(r'SIM-[ABC]', re.I)
 SIMULATION_NEGATIONS = ('不要再', '不再', '不要', '别再', '别', '无需', '拒绝')
+INACTIVE_HOSPITAL = re.compile(r'暂停营业|停止营业|已停业|已关闭|永久关闭')
+HOSPITAL_SUBFACILITY = re.compile(
+    r'住院部|门诊楼|放疗中心|急诊楼|医技楼|行政楼|停车场'
+)
+ACCESSIBILITY_NEED = re.compile(r'轮椅|无障碍|行动不便')
 CLAUSE_BOUNDARY = re.compile(r'[，,。.!！？?；;\r\n]')
 QUERY_NOISE = re.compile(
     r'不要模拟结果|停车场|车停哪里|怎么停|哪里停|停哪里|车停|停车|'
-    r'附近|周边|查询|查找|搜索|帮我|一下|请'
+    r'附近|周边|查询|查找|搜索|帮我|我需要|需要|检查|一下|请'
+)
+LIVE_SPACE_SUFFIX = re.compile(
+    r'(?:实时)?(?:现在|目前)?(?:还)?'
+    r'(?:有多少|剩多少|有几个|剩几个|有没有|有无|是否有|有|剩)?'
+    r'(?:个)?(?:实时)?'
+    r'(?:空车位|剩余车位|停车位|车位).*$'
 )
 LEADING_TRAVEL_NOISE = re.compile(
     r'^(?:我(?:想|要)?|想)?(?:开车去|前往|去|到|在)'
@@ -143,6 +154,7 @@ def _local_parking_clause(message: str) -> str:
 
 
 def _clean_location_source(value: str) -> str:
+    value = LIVE_SPACE_SUFFIX.sub('', value)
     value = re.sub(r'(?:附近|周边)?(?:停车场|停车|车停).*$', '', value)
     for suffix in sorted(TRAVEL_SUFFIXES, key=len, reverse=True):
         if value.endswith(suffix):
@@ -183,6 +195,78 @@ def _serialize_hospital(hospital: HospitalPoi) -> dict:
     return hospital.model_dump(mode='json')
 
 
+def _normalized_hospital_name(value: str) -> str:
+    value = re.sub(r'^南京医科大学附属', '', value)
+    value = re.sub(r'[（(](?:新院区|总院区|总院)[)）]', '', value)
+    value = re.sub(r'(?:新院区|总院区|总院)$', '', value)
+    value = re.sub(r'[\s·•\-—（）()]|市', '', value)
+    return value
+
+
+def _is_specific_hospital_query(
+        query: str, hospitals: list[HospitalPoi]) -> bool:
+    compact = re.sub(r'[\s，,。.!！？?；;（）()]', '', query)
+    if compact in {'医院', '院区', '就医地点'}:
+        return False
+    normalized_query = _normalized_hospital_name(query)
+    if any(
+        _normalized_hospital_name(item.name) == normalized_query
+        for item in hospitals
+    ):
+        return True
+    if compact.endswith('医院'):
+        prefix = compact[:-2].removesuffix('市')
+        candidate_cities = {
+            str(item.city_name or '').strip().removesuffix('市')
+            for item in hospitals
+            if item.city_name
+        }
+        if prefix in candidate_cities:
+            return False
+    city = _city_hint(query, query, query)
+    if city and compact in {f'{city}医院', f'{city}市医院'}:
+        return False
+    return bool(HOSPITAL.search(compact))
+
+
+def _filter_hospital_candidates(
+        query: str, hospitals: list[HospitalPoi]) -> list[HospitalPoi]:
+    active = [item for item in hospitals if not INACTIVE_HOSPITAL.search(item.name)]
+    if _is_specific_hospital_query(query, active):
+        normalized_query = _normalized_hospital_name(query)
+        candidates = [
+            item for item in active
+            if normalized_query in _normalized_hospital_name(item.name)
+            or _normalized_hospital_name(item.name) in normalized_query
+        ]
+    else:
+        candidates = active
+
+    campuses = [
+        item for item in candidates
+        if not HOSPITAL_SUBFACILITY.search(item.name)
+        or HOSPITAL_SUBFACILITY.search(query)
+    ]
+    if campuses:
+        candidates = campuses
+
+    unique = []
+    seen = set()
+    for item in candidates:
+        identity = _normalized_hospital_name(item.name)
+        address = re.sub(r'[\s，,。.]', '', item.address)
+        place = address or (
+            round(item.location.longitude, 4),
+            round(item.location.latitude, 4),
+        )
+        dedupe_key = (identity, place)
+        if dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        unique.append(item)
+    return unique[:5]
+
+
 class MapParkingChatService:
     def __init__(self, amap, store, traces, *, now=None, ttl_minutes=10):
         self.amap = amap
@@ -220,7 +304,9 @@ class MapParkingChatService:
         query_source = _clean_location_source(query_source)
         query = _hospital_query(query_source)
         city = _city_hint(query_source, query, message)
-        hospitals = await self.amap.search_hospitals(query, city=city)
+        hospitals = _filter_hospital_candidates(
+            query, await self.amap.search_hospitals(query, city=city)
+        )
         tool_input = {'query': query, 'city': city}
         tool_output = {
             'count': len(hospitals),
@@ -239,6 +325,11 @@ class MapParkingChatService:
             )
 
         serialized = [_serialize_hospital(hospital) for hospital in hospitals]
+        requires_wheelchair_access = bool(ACCESSIBILITY_NEED.search(message))
+        constraints = (
+            {'requires_wheelchair_access': True}
+            if requires_wheelchair_access else None
+        )
         now = self._now()
         saved = self.store.create_map_parking_query(
             user_id,
@@ -248,6 +339,11 @@ class MapParkingChatService:
             serialized,
             expires_at=now + timedelta(minutes=self.ttl_minutes),
             now=now,
+            constraints=constraints,
+        )
+        accessibility_notice = (
+            ' 已记录轮椅/无障碍需求；高德地点信息不能证明无障碍通道，当前状态未经核实。'
+            if requires_wheelchair_access else ''
         )
         return self._result(
             message,
@@ -255,11 +351,13 @@ class MapParkingChatService:
             conv_id,
             started,
             'waiting_user',
-            f'找到 {len(serialized)} 个高德院区候选，请先确认要前往的院区。',
+            f'找到 {len(serialized)} 个高德院区候选，请先确认要前往的院区。'
+            f'{accessibility_notice}',
             map_selection={
                 'query_id': saved['query_id'],
                 'candidate_version': saved['candidate_version'],
                 'expires_at': saved['expires_at'],
+                'requires_wheelchair_access': requires_wheelchair_access,
                 'hospitals': serialized,
             },
             tool_input=tool_input,
@@ -271,7 +369,7 @@ class MapParkingChatService:
             raise ValueError('Unsupported map event kind')
 
         started = time.monotonic()
-        stored = self.store.select_map_hospital(
+        selection = self.store.select_map_hospital_context(
             map_event['query_id'],
             user_id,
             conv_id,
@@ -279,6 +377,8 @@ class MapParkingChatService:
             map_event['hospital_id'],
             now=self._now(),
         )
+        stored = selection['hospital']
+        constraints = selection['constraints']
         stored_hospital = HospitalPoi.model_validate(stored)
 
         detail_started = time.monotonic()
@@ -302,16 +402,37 @@ class MapParkingChatService:
         ]
         observed_at = self._now().isoformat()
 
+        wheelchair_notice = (
+            '轮椅需求已保留，但无障碍通行仍未经核实。'
+            if constraints.get('requires_wheelchair_access') else ''
+        )
         if candidates:
+            first = candidates[0]
+            distance = first.distance_to_hospital_m
+            origin = '院区入口' if hospital.entrance_location else '院区定位点'
+            distance_note = f'，距{origin}的地图距离约 {distance} 米' if distance is not None else ''
             response = (
                 f'已确认院区“{hospital.name}”，找到 {len(candidates)} 个停车地点。'
+                f'可以先看高德地图列出的“{first.name}”{distance_note}。'
                 '本项目无法核实实时余位和无障碍通行，请以现场信息为准。'
+                f'{wheelchair_notice}'
             )
         else:
             response = (
                 f'已确认院区“{hospital.name}”，1 公里内未找到停车地点。'
                 '建议到地图页扩大范围；本项目无法核实实时余位和无障碍通行。'
+                f'{wheelchair_notice}'
             )
+
+        map_parking = {
+            'hospital': hospital.model_dump(mode='json'),
+            'candidates': serialized_candidates,
+            'data_tier': 'map_poi',
+            'source_provider': 'amap',
+            'observed_at': observed_at,
+        }
+        if constraints:
+            map_parking['constraints'] = constraints
 
         return self._result(
             message,
@@ -320,13 +441,7 @@ class MapParkingChatService:
             started,
             'completed',
             response,
-            map_parking={
-                'hospital': hospital.model_dump(mode='json'),
-                'candidates': serialized_candidates,
-                'data_tier': 'map_poi',
-                'source_provider': 'amap',
-                'observed_at': observed_at,
-            },
+            map_parking=map_parking,
             tool_calls=[
                 {
                     'tool_name': 'amap_get_hospital',
@@ -419,7 +534,15 @@ class MapParkingChatService:
             'status': status,
             'task_understanding': {
                 'task_type': 'map_parking',
-                'entities': {'data_tier': 'map_poi'},
+                'entities': {
+                    'data_tier': 'map_poi',
+                    'requires_wheelchair_access': bool(
+                        (map_selection or {}).get('requires_wheelchair_access')
+                        or (map_parking or {}).get('constraints', {}).get(
+                            'requires_wheelchair_access'
+                        )
+                    ),
+                },
                 'missing_fields': (
                     {'map_parking': ['hospital_id']} if map_selection else {}
                 ),

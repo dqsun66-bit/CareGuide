@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from careguide.amap_models import (
@@ -11,9 +12,10 @@ from careguide.amap_models import (
     ParkingCandidate,
 )
 from careguide.amap_client import AmapProviderError
+from careguide.agent_orchestrator import AgentOrchestrator
 from careguide.api import app, get_amap_client, get_amap_client_factory
 from careguide.business_store import BusinessStore
-from careguide.runtime import get_chat_runtime
+from careguide.runtime import get_chat_runtime, get_registry
 from careguide.task_context import SessionMemory
 from careguide.trace_store import TraceStore
 
@@ -132,6 +134,225 @@ def test_chat_real_parking_query_returns_hospital_candidates(chat_api):
     assert len(amap.hospital_calls) == 1
 
 
+def test_tool_word_check_does_not_turn_pure_parking_into_care_request(chat_api):
+    client, engine, amap = chat_api
+
+    response = client.post('/chat', json={
+        'message': '请检查一下泰州医院停车场',
+        'user_id': 'alice',
+        'conv_id': 'map-check-word',
+    })
+
+    assert response.status_code == 200
+    assert response.json()['intent'] == 'map_parking'
+    assert engine.process_calls == []
+    assert amap.hospital_calls == [('泰州医院', '泰州')]
+
+
+def test_exam_verb_with_parking_object_stays_zero_model(chat_api):
+    client, engine, amap = chat_api
+
+    response = client.post('/chat', json={
+        'message': '我需要检查一下泰州医院停车场',
+        'user_id': 'alice',
+        'conv_id': 'map-exam-verb',
+    })
+
+    assert response.status_code == 200
+    assert response.json()['intent'] == 'map_parking'
+    assert engine.process_calls == []
+    assert amap.hospital_calls == [('泰州医院', '泰州')]
+
+
+def test_explicit_medical_exam_and_parking_remains_compound(chat_api):
+    client, engine, amap = chat_api
+
+    response = client.post('/chat', json={
+        'message': '我需要做CT检查，去泰州市人民医院哪里停车？',
+        'user_id': 'alice',
+        'conv_id': 'medical-exam-map',
+    })
+
+    assert response.status_code == 200
+    assert response.json()['intent_group'] == 'compound_care_map'
+    assert len(engine.process_calls) == 1
+    assert amap.hospital_calls == [('泰州市人民医院', '泰州')]
+
+
+def test_chat_live_space_query_routes_to_real_map_instead_of_medical_agent(chat_api):
+    client, engine, amap = chat_api
+
+    response = client.post('/chat', json={
+        'message': '南京医科大学附属泰州人民医院现在还有多少空车位？',
+        'user_id': 'alice',
+        'conv_id': 'live-space-map-chat',
+    })
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result['intent'] == 'map_parking'
+    assert result['workflow_status'] == 'waiting_user'
+    assert result['simulation'] is False
+    assert engine.process_calls == []
+    assert amap.hospital_calls == [
+        ('南京医科大学附属泰州人民医院', '泰州')
+    ]
+
+
+def test_compound_symptom_and_parking_query_keeps_care_and_map_results(chat_api):
+    client, engine, amap = chat_api
+
+    response = client.post('/chat', json={
+        'message': '我头疼，明天想去泰州市人民医院，坐轮椅，哪里停车方便？',
+        'user_id': 'alice',
+        'conv_id': 'compound-care-map',
+    })
+
+    assert response.status_code == 200
+    result = response.json()
+    assert '普通医疗回答' in result['response']
+    assert '找到 1 个高德院区候选' in result['response']
+    assert result['map_selection']['requires_wheelchair_access'] is True
+    assert result['map_selection']['hospitals'][0]['hospital_id'] == 'H1'
+    assert result['intent_group'] == 'compound_care_map'
+    assert 'map_parking' in result['agent_types']
+    assert len(engine.process_calls) == 1
+    assert amap.hospital_calls == [('泰州市人民医院', '泰州')]
+
+
+@pytest.mark.parametrize('message', [
+    '家人叫不醒，去泰州市人民医院哪里停车？',
+    '患者意识不清，去泰州市人民医院停车场怎么走？',
+    '我说话困难，去泰州市人民医院哪里停车？',
+    '患者正在抽搐，去泰州市人民医院哪里停车？',
+    '家人大量出血止不住，去泰州市人民医院哪里停车？',
+    '突然胸痛呼吸困难，去泰州市人民医院哪里停车？',
+    '不是科普，家人叫不醒，去泰州市人民医院哪里停车？',
+    '看了新闻后，家人现在叫不醒，去泰州市人民医院哪里停车？',
+    '不是科普,家人叫不醒，去泰州市人民医院哪里停车？',
+    '看了新闻后,家人现在叫不醒，去泰州市人民医院哪里停车？',
+])
+def test_emergency_care_result_preempts_map_lookup(chat_api, message):
+    client, engine, amap = chat_api
+
+    async def emergency_process(message, user_id, conv_id, history, **kwargs):
+        engine.process_calls.append((message, user_id, conv_id, kwargs))
+        return {
+            'request_id': 'emergency-request',
+            'conversation_id': conv_id,
+            'response': '请立即呼叫急救并前往急诊。',
+            'workflow_status': 'urgent_handoff',
+            'workflow': None,
+            'escalated': True,
+            'simulation': False,
+            'agent_types': ['triage'],
+            'primary_agent': 'triage',
+            'intents': ['emergency'],
+        }
+
+    engine.process = emergency_process
+    response = client.post('/chat', json={
+        'message': message,
+        'user_id': 'alice',
+        'conv_id': 'emergency-care-map',
+    })
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result['workflow_status'] == 'urgent_handoff'
+    assert result['response'] == '请立即呼叫急救并前往急诊。'
+    assert 'map_selection' not in result
+    assert len(engine.process_calls) == 1
+    assert amap.hospital_calls == []
+
+
+def test_compound_map_failure_preserves_care_result(chat_api):
+    client, engine, amap = chat_api
+    amap.hospital_error = AmapProviderError(
+        'provider_unavailable', '地图服务暂不可用'
+    )
+
+    response = client.post('/chat', json={
+        'message': '我头疼，明天想去泰州市人民医院，坐轮椅，哪里停车方便？',
+        'user_id': 'alice',
+        'conv_id': 'compound-map-degraded',
+    })
+
+    assert response.status_code == 200
+    result = response.json()
+    assert '普通医疗回答' in result['response']
+    assert '停车信息暂不可用' in result['response']
+    assert result['map_degraded']['code'] == 'provider_unavailable'
+    assert 'map_selection' not in result
+    assert len(engine.process_calls) == 1
+
+
+def test_compound_unconfigured_map_preserves_care_result(chat_api):
+    client, engine, _amap = chat_api
+
+    def unconfigured_client():
+        raise HTTPException(503, detail={
+            'code': 'provider_unconfigured',
+            'message': '高德 Web 服务密钥未配置',
+        })
+
+    app.dependency_overrides[get_amap_client_factory] = (
+        lambda: unconfigured_client
+    )
+
+    response = client.post('/chat', json={
+        'message': '我头疼，明天想去泰州市人民医院，坐轮椅，哪里停车方便？',
+        'user_id': 'alice',
+        'conv_id': 'compound-map-unconfigured',
+    })
+
+    assert response.status_code == 200
+    result = response.json()
+    assert '普通医疗回答' in result['response']
+    assert '停车信息暂不可用' in result['response']
+    assert result['map_degraded']['code'] == 'provider_unconfigured'
+    assert len(engine.process_calls) == 1
+
+
+def test_real_deterministic_triage_and_map_are_composed_without_model_call(tmp_path):
+    class ForbiddenRecognizer:
+        async def recognize(self, message, history):
+            raise AssertionError('明确头疼分诊不得调用模型识别器')
+
+    amap = ScriptedAmap()
+    engine = AgentOrchestrator(
+        ForbiddenRecognizer(),
+        get_registry(),
+        business_store=BusinessStore(tmp_path / 'compound-real.sqlite3'),
+        traces=TraceStore(path=None),
+    )
+    app.dependency_overrides[get_chat_runtime] = lambda: (
+        engine, SessionMemory(), None
+    )
+    app.dependency_overrides[get_amap_client_factory] = lambda: (lambda: amap)
+    try:
+        with TestClient(app) as client:
+            response = client.post('/chat', json={
+                'message': '我头疼，明天想去泰州市人民医院，坐轮椅，哪里停车方便？',
+                'user_id': 'alice',
+                'conv_id': 'real-triage-map',
+            })
+    finally:
+        app.dependency_overrides.pop(get_chat_runtime, None)
+        app.dependency_overrides.pop(get_amap_client_factory, None)
+
+    assert response.status_code == 200
+    result = response.json()
+    assert '疼痛程度0到10分是多少' in result['response']
+    assert '出行与停车' in result['response']
+    assert '找到 1 个高德院区候选' in result['response']
+    assert result['workflow_status'] == 'waiting_input'
+    assert result['agent_types'] == ['triage', 'map_parking']
+    assert result['primary_agent'] == 'triage'
+    assert result['map_selection']['requires_wheelchair_access'] is True
+    assert amap.hospital_calls == [('泰州市人民医院', '泰州')]
+
+
 def test_chat_stream_has_same_real_map_terminal_contract(chat_api):
     client, _engine, _amap = chat_api
 
@@ -169,6 +390,7 @@ def test_structured_hospital_selection_returns_real_parking(chat_api):
     assert response.status_code == 200
     result = response.json()
     assert result['map_parking']['candidates'][0]['parking_id'] == 'P1'
+    assert result['map_parking']['candidates'][0]['available_spaces'] is None
     assert result['simulation'] is False
     assert amap.detail_calls == ['H1']
     assert len(amap.parking_calls) == 1
@@ -431,7 +653,7 @@ def test_real_map_result_precedes_simulation_and_engine_fallbacks(
     engine.process = forbidden_engine
 
     response = client.post('/chat', json={
-        'message': '查询泰州医院停车场并预约'
+        'message': '查询泰州医院停车场'
     })
 
     assert response.status_code == 200

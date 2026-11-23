@@ -307,6 +307,179 @@ def test_selected_hospital_cannot_mutate_stored_candidate(store, query):
     assert selected_again == HOSPITAL
 
 
+@pytest.mark.parametrize('message', [
+    '南京医科大学附属泰州人民医院现在还有多少空车位？',
+    '泰州市人民医院还剩多少剩余车位',
+    '泰州市人民医院有停车位吗',
+    '泰州市人民医院现在有车位吗',
+])
+def test_hospital_parking_vocabulary_matches_map_flow(message):
+    assert MapParkingChatService.matches(message) is True
+
+
+def test_non_hospital_parking_space_question_does_not_match_map_flow():
+    assert MapParkingChatService.matches('小区车位怎么分配') is False
+
+
+@pytest.mark.parametrize('message', [
+    '南京医科大学附属泰州人民医院现在还有多少空车位？',
+    '南京医科大学附属泰州人民医院有没有空车位？',
+    '南京医科大学附属泰州人民医院现在还有没有空车位？',
+    '南京医科大学附属泰州人民医院是否有空车位？',
+    '南京医科大学附属泰州人民医院实时空车位',
+])
+def test_live_space_query_searches_only_the_hospital_name(tmp_path, message):
+    service, amap, _store, _traces = chat_service(tmp_path, [hospital_poi()])
+
+    result = asyncio.run(service.handle(
+        message,
+        'alice',
+        'conversation-live-space',
+    ))
+
+    assert result['intent'] == 'map_parking'
+    assert result['workflow_status'] == 'waiting_user'
+    assert amap.calls == [{
+        'query': '南京医科大学附属泰州人民医院',
+        'city': '泰州',
+    }]
+
+
+def test_hospital_candidates_are_filtered_to_active_relevant_campuses(tmp_path):
+    hospitals = [
+        hospital_poi('H1', '南京医科大学附属泰州人民医院'),
+        hospital_poi('H2', '泰州市人民医院海陵院区'),
+        hospital_poi('H3', '泰州市人民医院迎春院区(暂停营业)'),
+        hospital_poi('H4', '泰州市人民医院(新院区)-住院部'),
+        hospital_poi('H5', '泰州市人民医院海陵院区门诊楼'),
+        hospital_poi('H6', '泰州市妇幼保健院'),
+        hospital_poi('H7', '泰州市第二人民医院'),
+        hospital_poi('H8', '泰州市人民医院(新院区)').model_copy(update={
+            'address': '洪泽湖路新院区',
+            'location': Coordinate(longitude=119.935, latitude=32.465),
+        }),
+    ]
+    service, _amap, _store, _traces = chat_service(tmp_path, hospitals)
+
+    result = asyncio.run(service.handle(
+        '查询泰州市人民医院停车场', 'alice', 'filtered-campuses'
+    ))
+
+    assert [item['hospital_id'] for item in result['map_selection']['hospitals']] == [
+        'H1', 'H2', 'H8'
+    ]
+
+
+def test_only_relevant_subfacility_is_kept_instead_of_unrelated_hospitals(tmp_path):
+    hospitals = [
+        hospital_poi('H4', '泰州市人民医院(新院区)-住院部'),
+        hospital_poi('H6', '泰州市妇幼保健院'),
+        hospital_poi('H7', '泰州市第二人民医院'),
+    ]
+    service, _amap, _store, _traces = chat_service(tmp_path, hospitals)
+
+    result = asyncio.run(service.handle(
+        '查询泰州市人民医院停车场', 'alice', 'relevant-subfacility'
+    ))
+
+    assert [item['hospital_id'] for item in result['map_selection']['hospitals']] == [
+        'H4'
+    ]
+
+
+def test_named_hospital_filters_unrelated_candidates_without_type_whitelist(tmp_path):
+    hospitals = [
+        hospital_poi('H1', '南京鼓楼医院江北院区'),
+        hospital_poi('H6', '南京市妇幼保健院'),
+        hospital_poi('H7', '南京市第一医院'),
+    ]
+    service, _amap, _store, _traces = chat_service(tmp_path, hospitals)
+
+    result = asyncio.run(service.handle(
+        '查询南京鼓楼医院江北院区停车场', 'alice', 'named-hospital'
+    ))
+
+    assert [item['hospital_id'] for item in result['map_selection']['hospitals']] == [
+        'H1'
+    ]
+
+
+@pytest.mark.parametrize('city', ['无锡', '常州'])
+def test_city_hospital_query_remains_broad_without_city_suffix(tmp_path, city):
+    hospital = hospital_poi(name=f'{city}市人民医院').model_copy(update={
+        'city_name': f'{city}市',
+    })
+    service, _amap, _store, _traces = chat_service(tmp_path, [hospital])
+
+    result = asyncio.run(service.handle(
+        f'查询{city}医院停车场', 'alice', f'{city}-broad-hospital'
+    ))
+
+    assert [item['hospital_id'] for item in result['map_selection']['hospitals']] == [
+        'H1'
+    ]
+
+
+def test_exact_hospital_name_wins_over_city_hospital_ambiguity(tmp_path):
+    hospitals = [
+        hospital_poi('H1', '北京医院').model_copy(update={'city_name': '北京市'}),
+        hospital_poi('H2', '北京协和医院').model_copy(update={'city_name': '北京市'}),
+        hospital_poi('H3', '北京市第一医院').model_copy(update={'city_name': '北京市'}),
+    ]
+    service, _amap, _store, _traces = chat_service(tmp_path, hospitals)
+
+    result = asyncio.run(service.handle(
+        '查询北京医院停车场', 'alice', 'exact-beijing-hospital'
+    ))
+
+    assert [item['hospital_id'] for item in result['map_selection']['hospitals']] == [
+        'H1'
+    ]
+
+
+def test_wheelchair_requirement_is_preserved_without_claiming_verification(tmp_path):
+    service, _amap, _store, _traces = chat_service(tmp_path, [hospital_poi()])
+
+    result = asyncio.run(service.handle(
+        '坐轮椅去泰州市人民医院，哪里停车方便？',
+        'alice',
+        'wheelchair-map',
+    ))
+
+    assert result['map_selection']['requires_wheelchair_access'] is True
+    assert '无障碍' in result['response']
+    assert '未经核实' in result['response']
+
+
+def test_wheelchair_requirement_survives_hospital_selection(tmp_path):
+    service, _amap, _store, traces = chat_service(tmp_path, [hospital_poi()])
+    first = asyncio.run(service.handle(
+        '坐轮椅去泰州市人民医院，哪里停车方便？',
+        'alice',
+        'wheelchair-selection',
+    ))
+    selection = first['map_selection']
+
+    selected = asyncio.run(service.handle(
+        '选择该院区',
+        'alice',
+        'wheelchair-selection',
+        map_event={
+            'kind': 'map_hospital_select',
+            'query_id': selection['query_id'],
+            'candidate_version': selection['candidate_version'],
+            'hospital_id': 'H1',
+        },
+    ))
+
+    assert selected['map_parking']['constraints'] == {
+        'requires_wheelchair_access': True
+    }
+    assert '轮椅需求' in selected['response']
+    trace = traces.get(selected['request_id'])
+    assert trace['task_understanding']['entities']['requires_wheelchair_access'] is True
+
+
 def test_real_parking_query_searches_exact_hospital_and_waits_for_confirmation(tmp_path):
     hospitals = [hospital_poi(), hospital_poi('H2', '泰州市中医院')]
     service, amap, store, traces = chat_service(tmp_path, hospitals)
@@ -360,7 +533,9 @@ def test_real_parking_query_searches_exact_hospital_and_waits_for_confirmation(t
 
 
 def test_single_hospital_candidate_still_waits_for_user_confirmation(tmp_path):
-    service, amap, _store, traces = chat_service(tmp_path, [hospital_poi()])
+    service, amap, _store, traces = chat_service(
+        tmp_path, [hospital_poi(name='南京市第一医院')]
+    )
 
     result = asyncio.run(service.handle(
         '开车去南京市第一医院，停车怎么停', 'alice', 'conversation-single'))
@@ -439,7 +614,9 @@ def test_drive_to_hospital_with_non_travel_suffix_is_not_claimed(tmp_path, messa
     '开车去南京鼓楼医院怎么走',
 ])
 def test_drive_to_hospital_with_only_travel_suffix_is_claimed(tmp_path, message):
-    service, amap, _store, traces = chat_service(tmp_path, [hospital_poi()])
+    service, amap, _store, traces = chat_service(
+        tmp_path, [hospital_poi(name='南京鼓楼医院')]
+    )
 
     result = asyncio.run(service.handle(
         message, 'alice', 'conversation-travel-structure'))
@@ -568,10 +745,11 @@ def _selection_event(result, hospital_id='H1', **extra):
     }
 
 
-def test_selected_hospital_refreshes_detail_and_returns_real_parking(tmp_path):
+@pytest.mark.parametrize('distance', [85, 0, None])
+def test_selected_hospital_refreshes_detail_and_returns_real_parking(tmp_path, distance):
     stored = hospital_poi()
     refreshed = hospital_poi(name='泰州市人民医院总院（刷新）')
-    parking = parking_poi()
+    parking = parking_poi().model_copy(update={'distance_to_hospital_m': distance})
     amap = ScriptedAmap([stored], refreshed=refreshed, parking=[parking])
     store = BusinessStore(tmp_path / 'selected.sqlite3')
     traces = TraceStore(path=None)
@@ -599,6 +777,11 @@ def test_selected_hospital_refreshes_detail_and_returns_real_parking(tmp_path):
     }
     assert '确认院区' in result['response']
     assert '1 个停车地点' in result['response']
+    assert parking.name in result['response']
+    if distance is None:
+        assert '地图距离' not in result['response']
+    else:
+        assert f'地图距离约 {distance} 米' in result['response']
     assert '无法核实实时余位和无障碍通行' in result['response']
     assert parking.available_spaces is None
     assert parking.wheelchair_accessible is None
