@@ -157,6 +157,27 @@ class LocalUnderstanding:
 
     async def _understand(self, text, *, message_id, at, history=(), classify=True):
         output = IntentUnderstanding(recognition_source=['rule'], request_relation='new')
+        location = r'(?P<hospital>[\u4e00-\u9fff]{2,40}?医院)(?P<campus>[\u4e00-\u9fff]{1,8}?院区)'
+        suffix = r'[？?。]?(?:只查询官方资料)?(?:[，,]?不进行预约)?[。]?'
+        registration = re.fullmatch(
+            r'(?:我想|想|请问)?(?:用)?(?:手机|微信)挂' + location +
+            r'的号[，,]?\s*(?:怎么操作|怎么挂号|怎么挂|如何操作)' + suffix, text.strip())
+        if registration is None:
+            registration = re.fullmatch(
+                self._prefix + location + r'(?:怎么挂号|如何挂号|挂号流程)'
+                r'(?:[，,、和]?(?:需要|要)?(?:携带|带)什么(?:材料|证件)?)?' + suffix, text.strip())
+        knowledge = self.entities.hospital_knowledge
+        if registration and knowledge is not None:
+            identity = self.entities._explicit_entities(registration['hospital'], []).get('hospital_id')
+            hospital = knowledge.resolve_hospital(identity) if identity else None
+            campus = knowledge.resolve_campus(hospital, registration['campus']) if hospital else None
+            if campus:
+                args = {'hospital_id': hospital.hospital_id, 'campus': campus.campus_id,
+                        'section': 'all', 'query': '官方微信挂号入口与实名建档'}
+                output.goals.append(Goal(id='goal1', fragment=text, action='lookup_hospital_guide',
+                    arguments=args, sources={key: message_id for key in args}))
+                output.relation = 'single'
+                return output
         # Only each fully matched clause can enter a local combination. Unknown
         # clauses keep the whole message on the dynamic path before any dispatch.
         pieces = re.split(r'[；;\n]|[，,](?:同时|另外|以及)?|同时|另外|以及', text)

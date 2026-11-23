@@ -246,7 +246,8 @@ class IntentRecognizer:
             if not matches:
                 # 口语化医院名（如"泰州市人民医院"）不在官方全称/别名中：
                 # 去掉行政区字后按包含关系解析，唯一命中才绑定，歧义不猜。
-                span = re.search(r'\S+?(?:医院|卫生院|院区|医疗中心|妇幼保健院|院)', text)
+                hospital_text = re.sub(r'^(?:我想|想|请问)?(?:用)?(?:手机|微信)挂', '', text)
+                span = re.search(r'\S+?(?:医院|卫生院|院区|医疗中心|妇幼保健院|院)', hospital_text)
                 if span:
                     form = span.group().replace('市', '').replace('县', '').replace('区', '')
                     for hospital in hospital_knowledge.corpus.hospitals:

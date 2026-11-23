@@ -37,6 +37,8 @@ class TaskWorker:
         self.semaphore = asyncio.Semaphore(max_concurrency)
         self.entities = IntentRecognizer(embedding_mode='disabled')
         self.entities.corpus = engine.registry.corpus
+        self.entities.hospital_knowledge = getattr(
+            engine.registry, 'hospital_knowledge', None)
         self.brief_mode = False
         self.artifacts = None
         self.inline_limit = 32768

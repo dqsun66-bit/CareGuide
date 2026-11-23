@@ -89,6 +89,16 @@ def hospital_understand(text):
         text, message_id='message-1', at='2026-10-24T10:00:00+00:00'))
 
 
+def test_registration_and_materials_with_official_only_constraint():
+    text = '请查询南京医科大学附属泰州人民医院总院区怎么挂号，需要携带什么材料？只查询官方资料，不进行预约。'
+    plan, metadata = compose_plan(text, hospital_understand(text))
+    assert metadata['plan_source'] == 'single'
+    task, = plan.tasks
+    assert task.action == 'lookup_hospital_guide'
+    assert task.arguments['hospital_id'] == 'js_taizhou_001'
+    assert task.arguments['campus'] == 'js_taizhou_001_main'
+
+
 @pytest.mark.parametrize('text,hospital_id', [
     ('泰州市人民医院的地址是什么', 'js_taizhou_001'),
     ('泰州二院的联系方式', 'js_taizhou_003'),

@@ -293,6 +293,9 @@ class MedicalToolRegistry:
             if any(term in query for term in terms)
         }
         section_categories = HOSPITAL_SECTION_CATEGORIES[args.section]
+        # Colloquial registration questions can split 挂号 around a hospital or doctor.
+        if re.search(r'挂[^，。！？,!?\n]{1,48}?(?:的号|专家号|普通号|门诊号)', query):
+            inferred_categories.add('appointment')
         categories = (
             inferred_categories if section_categories is None
             else section_categories | inferred_categories
