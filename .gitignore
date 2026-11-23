@@ -20,5 +20,10 @@ data/eval/results/
 .study/
 .worktrees/
 *.part
+*.log
 
 docs/design/fonts/
+
+# 生成产物（AgentArts 联调记录、Seedance 输出等）
+output/
+seedance_output.*
