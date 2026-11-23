@@ -36,6 +36,27 @@
     "retrieved_sha256": "abfd917c52295530880889b7b473ae86097b572b4f48f82213af563d789df883"
   },
   {
+    "source_id": "src_taizhou_001_registration",
+    "hospital_id": "js_taizhou_001",
+    "campus_id": "js_taizhou_001_main",
+    "title": "泰州市人民医院微信公众号挂号入口",
+    "url": "https://www.jstzhospital.com/gwrk/xwzx/yyxw/content_1772",
+    "source_tier": "hospital_official",
+    "category": "appointment",
+    "published_at": "2021-07-31",
+    "valid_until": "2027-05-14",
+    "collected_at": "2026-11-14T12:00:00+08:00",
+    "reviewed_at": "2026-11-14T12:30:00+08:00",
+    "review_status": "verified_official",
+    "snapshot_path": "snapshots/js_taizhou_001/src_taizhou_001_registration.html",
+    "acquisition_method": "indexed_excerpt",
+    "acquisition_provider": "Exa search index",
+    "acquisition_limitations": "医院官网直接访问返回人机验证页面；仅保存并人工核对搜索索引中可见的官方页面摘录。",
+    "http_status": 412,
+    "content_type": "text/html; charset=utf-8",
+    "retrieved_sha256": "0ec6a7ac2dba6945a539ed0e5013e55ab1a5bd90ad71c9c61a2369f73980db57"
+  },
+  {
     "source_id": "src_taizhou_001_campus",
     "hospital_id": "js_taizhou_001",
     "campus_id": null,

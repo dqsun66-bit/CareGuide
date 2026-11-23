@@ -323,6 +323,26 @@
     "reviewed_at": "2026-11-05T14:00:00+08:00"
   },
   {
+    "verification_id": "verify_js_taizhou_001_appointment_0046",
+    "subject_ids": [
+      "js_taizhou_001_appointment_0046"
+    ],
+    "status": "verified_official",
+    "reason": "CareGuide 项目资料复核组已逐项核对医院官网挂号入口索引快照及记录中的资料缺口声明。",
+    "decision": "批准发布微信公众号挂号入口和实名建档步骤；不发布官网未明确列出的现场材料清单。",
+    "reviewed_at": "2026-11-14T12:30:00+08:00"
+  },
+  {
+    "verification_id": "verify_src_taizhou_001_registration",
+    "subject_ids": [
+      "src_taizhou_001_registration"
+    ],
+    "status": "verified_official",
+    "reason": "已核对医院官方域名页面的检索索引摘录；官网实时访问受人机验证保护，冻结快照明确记录该采集限制。",
+    "decision": "仅批准页面明确出现的微信公众号、就诊中心、挂号小程序、添加就诊人和实名认证信息。",
+    "reviewed_at": "2026-11-14T12:30:00+08:00"
+  },
+  {
     "verification_id": "verify_js_taizhou_002_identity_0004",
     "subject_ids": [
       "js_taizhou_002_identity_0004",

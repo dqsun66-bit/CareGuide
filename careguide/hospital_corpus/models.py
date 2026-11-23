@@ -159,6 +159,9 @@ class Source(StrictModel):
     reviewed_at: datetime | None
     review_status: ReviewStatus
     snapshot_path: str = Field(min_length=1)
+    acquisition_method: Literal["direct_http", "indexed_excerpt"] = "direct_http"
+    acquisition_provider: str | None = Field(default=None, min_length=1)
+    acquisition_limitations: str | None = Field(default=None, min_length=1)
     http_status: int = Field(ge=100, le=599)
     content_type: str = Field(min_length=1)
     retrieved_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
@@ -190,6 +193,15 @@ class Source(StrictModel):
             raise ValueError("verified_official source requires reviewed_at")
         if self.reviewed_at is not None and self.reviewed_at < self.collected_at:
             raise ValueError("reviewed_at cannot predate collection")
+        if self.acquisition_method == "indexed_excerpt":
+            if not self.acquisition_provider or not self.acquisition_limitations:
+                raise ValueError(
+                    "indexed_excerpt source requires provider and limitations"
+                )
+            if self.http_status == 200:
+                raise ValueError(
+                    "indexed_excerpt source cannot claim a direct HTTP 200 response"
+                )
         return self
 
 

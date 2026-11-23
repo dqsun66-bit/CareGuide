@@ -172,6 +172,41 @@ def test_source_review_cannot_predate_collection():
         valid_source(reviewed_at=COLLECTED - timedelta(seconds=1))
 
 
+def test_indexed_excerpt_records_provider_and_access_limitations():
+    source = valid_source(
+        acquisition_method="indexed_excerpt",
+        acquisition_provider="Exa search index",
+        acquisition_limitations="官网直接访问返回人机验证页面。",
+        http_status=412,
+    )
+
+    assert source.acquisition_method == "indexed_excerpt"
+    assert source.http_status == 412
+
+
+@pytest.mark.parametrize(
+    "changes, message",
+    [
+        (
+            {
+                "acquisition_method": "indexed_excerpt",
+                "acquisition_provider": "Exa search index",
+                "acquisition_limitations": "官网直接访问返回人机验证页面。",
+                "http_status": 200,
+            },
+            "cannot claim a direct HTTP 200",
+        ),
+        (
+            {"acquisition_method": "indexed_excerpt", "http_status": 412},
+            "requires provider and limitations",
+        ),
+    ],
+)
+def test_indexed_excerpt_rejects_misleading_acquisition_metadata(changes, message):
+    with pytest.raises(ValidationError, match=message):
+        valid_source(**changes)
+
+
 def test_record_review_cannot_predate_collection():
     with pytest.raises(ValidationError, match="cannot predate collection"):
         valid_record(reviewed_at=COLLECTED - timedelta(seconds=1))

@@ -396,10 +396,10 @@ def test_published_v2_asset_meets_expansion_contract():
     assert corpus.manifest.version == "jiangsu-hospitals-v2"
     assert corpus.manifest.stage == "expanded_core_15_of_15"
     assert len(corpus.hospitals) == 15
-    assert len(corpus.records) == 45
-    assert Counter(record.hospital_id for record in corpus.records) == {
-        hospital.hospital_id: 3 for hospital in corpus.hospitals
-    }
+    assert len(corpus.records) == 46
+    expected_counts = {hospital.hospital_id: 3 for hospital in corpus.hospitals}
+    expected_counts["js_taizhou_001"] = 4
+    assert Counter(record.hospital_id for record in corpus.records) == expected_counts
 
     report = corpus.validate(today=date(2026, 11, 8))
     assert not report.errors, report.errors
@@ -423,6 +423,46 @@ def test_published_v2_asset_meets_expansion_contract():
         )
         for alias in hospital.aliases:
             assert alias in evidence, (hospital.hospital_id, alias)
+
+
+def test_taizhou_people_hospital_publishes_official_registration_entry():
+    corpus = HospitalCorpus.load(V2)
+    record = next(
+        item for item in corpus.records
+        if item.document_id == "js_taizhou_001_appointment_0046"
+    )
+    policy = next(
+        item for item in corpus.records
+        if item.document_id == "js_taizhou_001_appointment_0003"
+    )
+    source = next(
+        item for item in corpus.sources
+        if item.source_id == "src_taizhou_001_registration"
+    )
+
+    assert record.source_id == source.source_id
+    assert record.supporting_source_ids == ()
+    assert "泰州市人民医院" in record.content
+    assert "就诊中心" in record.content
+    assert "挂号小程序" in record.content
+    assert "实名认证" in record.content
+    assert "未公开总院区现场挂号渠道、取号步骤或来院需携带的完整材料清单" in record.content
+    assert "一号管三天" not in record.content
+    assert "身份证、医保卡、病历等具体要求仍应以" in record.content
+    assert policy.source_id == "src_taizhou_001_appointment"
+    assert "一号管三天" in policy.content
+    assert source.source_tier.value == "hospital_official"
+    assert source.acquisition_method == "indexed_excerpt"
+    assert source.acquisition_provider == "Exa search index"
+    assert "人机验证" in source.acquisition_limitations
+    assert source.http_status == 412
+    assert source.url == (
+        "https://www.jstzhospital.com/gwrk/xwzx/yyxw/content_1772"
+    )
+    snapshot = _decode_snapshot(V2 / source.snapshot_path)
+    assert all(term in snapshot for term in (
+        "泰州市人民医院", "就诊中心", "挂号小程序", "实名认证", "预约挂号"
+    ))
 
 
 def test_hashed_hospital_json_is_checkout_stable_on_windows():

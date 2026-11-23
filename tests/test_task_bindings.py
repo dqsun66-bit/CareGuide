@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -8,6 +9,8 @@ import pytest
 from careguide.agent_orchestrator import AgentOrchestrator
 from careguide.corpus import Corpus
 from careguide.intent_recognizer import IntentRecognizer
+from careguide.hospital_corpus.retrieval import HospitalKnowledgeBase
+from careguide.hospital_corpus.store import HospitalCorpus
 from careguide.orchestration.bindings import InvalidResultReference, resolve_inputs
 from careguide.orchestration.budget import BudgetLedger
 from careguide.orchestration.contracts import PlanProposal, TaskStatus
@@ -18,6 +21,8 @@ from careguide.tools import MedicalToolRegistry
 
 
 TEXT = '查消化内科医生，再选择医生查号源'
+HOSPITAL_TEXT = ('请查询南京医科大学附属泰州人民医院总院区怎么挂号，'
+                 '需要携带什么材料？只查询官方资料，不进行预约。')
 
 
 def waiting_selection(tmp_path):
@@ -86,6 +91,38 @@ def test_model_suggestion_does_not_become_confirmed_scope(tmp_path):
     assert bound.missing_fields == ['practitioner_id']
     assert 'practitioner_id' not in bound.arguments
     assert bound.origins['practitioner_id']['confirmed'] is False
+
+
+def test_worker_binds_exact_v2_hospital_and_campus_from_user_text(tmp_path):
+    hospital_corpus = HospitalCorpus.load(
+        Path(__file__).resolve().parents[1] / 'data' / 'jiangsu_hospitals_v2')
+    registry = MedicalToolRegistry(
+        MedicalKnowledgeBase(Corpus()),
+        hospital_knowledge=HospitalKnowledgeBase(hospital_corpus, mode='bm25'))
+    engine = AgentOrchestrator(IntentRecognizer(), registry)
+    worker = TaskWorker(engine)
+    proposal = PlanProposal(goal=HOSPITAL_TEXT, tasks=[{
+        'id': 'hospital_guide',
+        'fragment': HOSPITAL_TEXT,
+        'action': 'lookup_hospital_guide',
+        'agent': 'appointment',
+        'completion': 'source_evidence',
+        'arguments': {
+            'hospital_id': None,
+            'campus': '总院区',
+            'query': HOSPITAL_TEXT,
+            'section': 'all',
+            'top_k': 5,
+        },
+    }])
+    state = WorkflowStore(tmp_path / 'hospital-workflow.sqlite3').create(
+        'u', 'c', proposal, source_text=HOSPITAL_TEXT)
+
+    bound = worker.prepare(state.tasks['hospital_guide'], state)
+
+    assert bound.missing_fields == []
+    assert bound.arguments['hospital_id'] == 'js_taizhou_001'
+    assert bound.arguments['campus'] == 'js_taizhou_001_main'
 
 
 def test_two_medication_tasks_keep_independent_context_and_evidence(tmp_path):

@@ -54,6 +54,24 @@
     "language": "zh-CN"
   },
   {
+    "document_id": "js_taizhou_001_appointment_0046",
+    "hospital_id": "js_taizhou_001",
+    "campus_id": "js_taizhou_001_main",
+    "city": "泰州",
+    "category": "appointment",
+    "title": "官方微信挂号入口与实名建档",
+    "content": "医院官网公开页面确认，关注“泰州市人民医院”微信公众号后，可从“就诊中心”进入“挂号小程序”，添加就诊人并按提示完成实名认证；该小程序已上线预约挂号功能，一个公众号可添加多名就诊人。官方页面未公开总院区现场挂号渠道、取号步骤或来院需携带的完整材料清单，因此身份证、医保卡、病历等具体要求仍应以挂号小程序提示、预约短信及医院当日通知为准。",
+    "source_id": "src_taizhou_001_registration",
+    "source_url": "https://www.jstzhospital.com/gwrk/xwzx/yyxw/content_1772",
+    "source_tier": "hospital_official",
+    "published_at": "2021-07-31",
+    "collected_at": "2026-11-14T12:00:00+08:00",
+    "reviewed_at": "2026-11-14T12:30:00+08:00",
+    "review_status": "verified_official",
+    "content_hash": "770eb4072ec49339cd85900ae853350d5d01c01632d0c0d53214027e3b3443a3",
+    "language": "zh-CN"
+  },
+  {
     "document_id": "js_taizhou_002_identity_0004",
     "hospital_id": "js_taizhou_002",
     "campus_id": "js_taizhou_002_jichuan",

@@ -21,7 +21,8 @@
         "js_taizhou_001_appointment_0003"
       ],
       "retrieved_ids": [
-        "js_taizhou_001_appointment_0003"
+        "js_taizhou_001_appointment_0003",
+        "js_taizhou_001_appointment_0046"
       ]
     },
     {
@@ -438,7 +439,7 @@
       "retrieved_ids": []
     }
   ],
-  "corpus_manifest_sha256": "d9d0297c10e24f446fd1327d100cf06798a03e788b9492c9982fdf972c8028c1",
+  "corpus_manifest_sha256": "d1dcf6699673d1262da00907bd8ee26899ed836179fa1436934e84d574032c45",
   "corpus_stage": "expanded_core_15_of_15",
   "corpus_version": "jiangsu-hospitals-v2",
   "hard_negative_accuracy": 1.0,

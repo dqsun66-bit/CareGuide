@@ -99,7 +99,7 @@ def test_index_contains_exact_reviewed_records_and_scope_metadata(tmp_path):
     )
 
     assert collection.name == hospital_collection_name(corpus)
-    assert collection.count() == 45
+    assert collection.count() == 46
     assert collection.metadata["corpus_fingerprint"] == corpus_fingerprint(corpus)
     assert collection.metadata["corpus_version"] == "jiangsu-hospitals-v2"
     assert collection.metadata["embedding_model"] == "test-bge-m3"
