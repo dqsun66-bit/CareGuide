@@ -101,7 +101,8 @@ class BusinessStore:
             return item
 
     def create_map_parking_query(
-            self, actor, conversation, query, city, hospitals, *, expires_at, now=None):
+            self, actor, conversation, query, city, hospitals, *, expires_at,
+            now=None, constraints=None):
         now = _as_utc(now if now is not None else datetime.now(timezone.utc), 'now')
         expires_at = _as_utc(expires_at, 'expires_at')
         query_id = 'MAP-' + uuid.uuid4().hex
@@ -116,6 +117,8 @@ class BusinessStore:
             'created_at': now.isoformat(),
             'expires_at': expires_at.isoformat(),
         }
+        if constraints:
+            item['constraints'] = dict(constraints)
         with self._lock, self.connect() as connection:
             connection.execute('BEGIN IMMEDIATE')
             connection.execute(
@@ -130,6 +133,12 @@ class BusinessStore:
         return item
 
     def select_map_hospital(
+            self, query_id, actor, conversation, version, hospital_id, *, now=None):
+        return self.select_map_hospital_context(
+            query_id, actor, conversation, version, hospital_id, now=now
+        )['hospital']
+
+    def select_map_hospital_context(
             self, query_id, actor, conversation, version, hospital_id, *, now=None):
         now = _as_utc(now if now is not None else datetime.now(timezone.utc), 'now')
         with self.connect() as connection:
@@ -152,5 +161,8 @@ class BusinessStore:
         item = json.loads(row['payload'])
         for hospital in item['hospitals']:
             if hospital.get('hospital_id') == hospital_id:
-                return hospital
+                return {
+                    'hospital': hospital,
+                    'constraints': dict(item.get('constraints') or {}),
+                }
         raise ValueError('Hospital is not a candidate for this query')

@@ -23,8 +23,7 @@ from careguide.task_context import TaskContext, WorkflowStatus
 from careguide.tool_manager import MCPToolManager, Tool, ToolResult
 from careguide.orchestration.budget import BudgetExhausted, budgeted_call
 from careguide.tools import ARGUMENT_TYPES, MedicalToolRegistry
-from careguide.medical_triage import (evaluate_headache_triage,
-                                      is_headache_triage_request)
+from careguide.medical_triage import evaluate_medical_triage
 from careguide.trace_store import TRACE_VERSION, TraceStore, validate_trace_completeness
 
 
@@ -350,7 +349,9 @@ class AgentOrchestrator:
         return {'id': 'offline-'+uuid.uuid4().hex[:8], 'name': name, 'input': arguments}
 
     def _deterministic_triage_response(self, decision, message, user_id, conv_id,
-                                       identity, started, start):
+                                       identity, started, start,
+                                       side_effects=None):
+        side_effects = list(side_effects or [])
         status = 'urgent_handoff' if decision.status == 'emergency' else 'waiting_input'
         if decision.status == 'emergency':
             text = ('这些描述属于需要立即线下评估的危险信号。请尽快前往急诊；'
@@ -378,7 +379,7 @@ class AgentOrchestrator:
             'routing': routing,
             'execution': {'execution_waves': [], 'tool_calls': [],
                           'retrieval': retrieval},
-            'evidence': [], 'side_effects': [], 'started_at': started,
+            'evidence': [], 'side_effects': side_effects, 'started_at': started,
             'finished_at': now(), 'total_latency_ms': elapsed, 'status': status,
             'final': {'workflow_status': status, 'final_response': text,
                 'agent_types': ['triage'], 'primary_agent': 'triage',
@@ -395,6 +396,7 @@ class AgentOrchestrator:
             'retrieval_backend': 'not_used', 'retrieval': retrieval,
             'safety': safety, 'recommended_department': decision.department,
             'simulation': False, 'action_requests': [], 'appointment': [],
+            'side_effects': side_effects,
             'errors': [], 'integrations': {
                 'knowledge': {'backend': 'not_used', 'status': 'not_used'},
                 'hospital': {'backend': 'disabled', 'status': 'not_used',
@@ -449,6 +451,11 @@ class AgentOrchestrator:
                 error = '请由专业人员决定个人用药；本服务只提供资料和就医流程。' if task.requested_action == 'individualized_medication' else '本服务提供挂号流程引导，不能提交预约或查询实时号源。'
             elif self.client is None:
                 calls.append(await self._dispatch(agent, self._fallback_call(agent, message, task), task))
+            elif (task.planned_action == 'lookup_hospital_guide'
+                  and all(task.entities.get(key) for key in ('hospital_id', 'campus', 'query'))):
+                # The planner already bound this read-only search; retain its exact scope and query.
+                calls.append(await self._dispatch(agent, {'id': 'planned-'+uuid.uuid4().hex[:8],
+                    'name': task.planned_action, 'input': dict(task.entities)}, task))
             elif agent == AgentType.TRIAGE and task.fine_intent == 'department_query' and task.entities.get('department'):
                 # An explicitly named department has one exact, scope-bound
                 # lookup. Broad semantic searches can add unrelated services.
@@ -544,14 +551,15 @@ class AgentOrchestrator:
                 'error': error, 'failure': execution_failure, 'tool_calls': calls,
                 'selected_skill': selection.to_trace() if selection else None}
 
-    async def process(self, message, user_id, conv_id, history=None, *, understood=None):
+    async def process(self, message, user_id, conv_id, history=None, *, understood=None,
+                      triage_side_effects=None):
         start, started, identity = time.monotonic(), now(), uuid.uuid4().hex
         history = history or []
-        triage = (evaluate_headache_triage(message, history)
-                  if is_headache_triage_request(message, history) else None)
+        triage = evaluate_medical_triage(message, history)
         if triage is not None and not triage.run_rag:
             return self._deterministic_triage_response(
-                triage, message, user_id, conv_id, identity, started, start)
+                triage, message, user_id, conv_id, identity, started, start,
+                triage_side_effects)
         understood = understood or await self.recognizer.recognize(message, history)
         task = TaskContext.from_intent_result(understood)
         task.request_id, task.actor_user_id, task.conversation_id = identity, user_id, conv_id

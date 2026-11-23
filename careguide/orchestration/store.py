@@ -212,7 +212,8 @@ class WorkflowStore:
     @staticmethod
     def _expire_invalid_actions(db, state):
         if db.execute("SELECT 1 FROM sqlite_master WHERE name='pending_actions'").fetchone() is None:
-            return
+            return []
+        expired_action_ids = []
         rows = db.execute("SELECT payload FROM pending_actions WHERE actor=? AND conversation=? "
                           "AND status='pending_confirmation'", (state.actor, state.conversation)).fetchall()
         for row in rows:
@@ -236,6 +237,8 @@ class WorkflowStore:
                                       'reason': 'workflow_task_changed'})
             db.execute('UPDATE pending_actions SET status=?,payload=? WHERE id=?',
                        ('expired', json.dumps(action, ensure_ascii=False), action['id']))
+            expired_action_ids.append(action['id'])
+        return expired_action_ids
 
     def save(self, state: WorkflowState, *, expected_revision):
         with self.connect() as db:

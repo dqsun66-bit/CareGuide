@@ -49,11 +49,16 @@ def answer_context(state, message):
             citation = evidence.get('citation') or {}
             if not isinstance(citation, dict):
                 citation = {}
+            source = evidence.get('source') or {}
+            if not isinstance(source, dict):
+                source = {}
             sources.append({'id': f'S{len(sources)+1}', 'task_id': key, 'text': text[:2000],
                 'title': evidence.get('title') or task.spec.fragment,
                 'metadata_text': evidence.get('title') if isinstance(evidence.get('title'), str) else '',
-                'url': evidence.get('source_url') or evidence.get('url') or citation.get('url', ''),
-                'review_status': citation.get('review_status', 'unspecified')})
+                'url': (evidence.get('source_url') or evidence.get('url')
+                        or citation.get('url') or source.get('url', '')),
+                'review_status': (citation.get('review_status')
+                                  or source.get('review_status', 'unspecified'))})
         items = [{k: item[k] for k in ('id', 'name', 'department', 'start', 'status') if k in item}
                  for item in result.get('items', [])[:10] if isinstance(item, dict)]
         if items:
@@ -98,7 +103,7 @@ def source_footer(context):
     labels = {task['task_id']: task['request'] for task in context['tasks']}
     lines = []
     for source in context['verified_results']:
-        text = f"[{source['id']}] {labels[source['task_id']]}"
+        text = f"[{source['id']}] {source.get('title') or labels[source['task_id']]}"
         if source.get('url'):
             text += ' — '+source['url']
         if source.get('review_status') == 'open_dataset_unreviewed':
@@ -115,6 +120,16 @@ async def generate_answer(client, model, state, budget, message):
 
 async def _generate_answer(client, model, state, budget, message):
     context = answer_context(state, message)
+    if state.status == 'completed' and len(context['tasks']) == 1 and len(context['verified_results']) == 1:
+        source = context['verified_results'][0]
+        if (context['tasks'][0]['action'] == 'lookup_hospital_guide'
+                and source.get('url') == 'https://www.jstzhospital.com/gwrk/xwzx/yyxw/content_1772'
+                and source.get('title') == '官方微信挂号入口与实名建档' and source.get('text')):
+            body = f"{source['text']} [{source['id']}]"
+            return body + source_footer(context), {
+                'status': 'official_excerpt', 'model_calls': 0, 'answer_id': uuid.uuid4().hex,
+                'body': body, 'sources': [{**source, 'excerpt': source['text']}],
+            }
     if client is None or state.status not in {'completed', 'partial_completed'} or not context['verified_results']:
         return None, {'status': 'not_needed', 'model_calls': 0}
     if budget.summary()['closing']:

@@ -35,6 +35,13 @@ from careguide.parking_demo import parking_chat_response, replan_demo
 from careguide.amap_client import AmapClient, AmapProviderError
 from careguide.amap_models import RouteRequest
 from careguide.map_parking_chat import MapParkingChatService
+from careguide.compound_map_chat import (
+    compose_care_and_map,
+    compose_care_with_map_failure,
+    immediate_emergency_signal,
+    needs_care_orchestration,
+    urgent_care_result,
+)
 
 @asynccontextmanager
 async def lifespan(app):
@@ -264,16 +271,14 @@ async def _execute_chat_result(request, runtime, amap_factory=None):
                         history = await memory.history(request.user_id, conv_id, query=request.message)
             except Exception:
                 history, memory_status = [], 'unavailable'
-            map_result = None
-            if (request.workflow_event is None and (
-                    request.map_event or MapParkingChatService.matches(request.message))):
+            async def run_map_request():
                 client_factory = (
                     amap_factory if callable(amap_factory) else get_amap_client
                 )
                 service = MapParkingChatService(
                     client_factory(), engine.business_store, engine.traces,
                 )
-                map_result = await service.handle(
+                return await service.handle(
                     request.message,
                     request.user_id,
                     conv_id,
@@ -286,11 +291,51 @@ async def _execute_chat_result(request, runtime, amap_factory=None):
                 event = request.workflow_event
                 result = await engine.process(engine_message, request.user_id, conv_id, history,
                     workflow_event=event.model_dump())
+            elif request.map_event is not None:
+                result = await run_map_request()
             else:
                 traces = getattr(engine, 'traces', None)
-                result = map_result or parking_chat_response(
-                    request.message, request.user_id, conv_id, traces,
-                ) or await engine.process(engine_message, request.user_id, conv_id, history)
+                map_requested = MapParkingChatService.matches(request.message)
+                emergency_map = map_requested and immediate_emergency_signal(
+                    request.message
+                )
+                compound_map = map_requested and needs_care_orchestration(
+                    request.message, history
+                )
+                if compound_map:
+                    care_result = await engine.process(
+                        engine_message, request.user_id, conv_id, history
+                    )
+                    if emergency_map or urgent_care_result(care_result):
+                        result = care_result
+                    else:
+                        try:
+                            result = compose_care_and_map(
+                                care_result, await run_map_request()
+                            )
+                        except AmapProviderError as exc:
+                            result = compose_care_with_map_failure(
+                                care_result, exc.code
+                            )
+                        except HTTPException as exc:
+                            detail = exc.detail if isinstance(exc.detail, dict) else {}
+                            if (
+                                exc.status_code == 503
+                                and detail.get('code') == 'provider_unconfigured'
+                            ):
+                                result = compose_care_with_map_failure(
+                                    care_result, 'provider_unconfigured'
+                                )
+                            else:
+                                raise
+                elif map_requested:
+                    result = await run_map_request()
+                else:
+                    result = parking_chat_response(
+                        request.message, request.user_id, conv_id, traces,
+                    ) or await engine.process(
+                        engine_message, request.user_id, conv_id, history
+                    )
             emit('stage', stage='saving', message='结果已生成，正在保存会话')
             try:
                 async with asyncio.timeout(_MEMORY_WRITE_TIMEOUT_S):

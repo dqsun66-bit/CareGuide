@@ -31,8 +31,7 @@ from careguide.orchestration.store import VersionConflict, WorkflowExpired, Work
 from careguide.orchestration.worker import TaskWorker
 from careguide.trace_store import TRACE_VERSION, validate_trace_completeness
 from careguide.task_context import TaskContext
-from careguide.medical_triage import (evaluate_headache_triage,
-                                      is_headache_triage_request)
+from careguide.medical_triage import evaluate_medical_triage
 
 
 class Flow(TypedDict, total=False):
@@ -188,27 +187,47 @@ class OrchestrationRuntime:
         with self.store.connect() as db:
             db.execute('BEGIN IMMEDIATE')
             current = self.store._load(db, state.id, state.actor, state.conversation)
-            for task in current.tasks.values():
+            if current.status not in {
+                    'planning', 'ready', 'executing', 'waiting_user',
+                    'pending_confirmation', 'reconciling'}:
+                return []
+            previous_status = current.status
+            terminated_run_id = current.active_run
+            lease_was_active = current.lease_expires_at is not None
+            cancelled = []
+            for task_id, task in current.tasks.items():
                 if TaskStatus.CANCELLED in TRANSITIONS.get(task.status, set()):
                     task.transition(TaskStatus.CANCELLED, at=utc_now().isoformat(), reason='urgent_preemption')
+                    cancelled.append(task_id)
             current.active_run, current.lease_expires_at = None, None
             current.status = 'urgent_handoff'
             current.events.append({'event': 'urgent_preemption', 'at': utc_now().isoformat()})
             self.store._write(db, current)
-            self.store._expire_invalid_actions(db, current)
+            expired_action_ids = self.store._expire_invalid_actions(db, current)
+        return [{'type': 'workflow_urgent_preemption',
+                 'workflow_id': current.id,
+                 'from_status': previous_status,
+                 'to_status': 'urgent_handoff',
+                 'cancelled_task_ids': cancelled,
+                 'terminated_run_id': terminated_run_id,
+                 'lease_cleared': lease_was_active,
+                 'expired_action_ids': expired_action_ids}]
 
     async def process(self, message, user_id, conv_id, history=None, *, workflow_event=None):
         started = time.monotonic()
         received_at = utc_now().isoformat()
         history = history or []
+        triage = evaluate_medical_triage(message, history)
+        if triage is not None and not triage.run_rag:
+            side_effects = []
+            state = self.store.latest(user_id, conv_id) if triage.status == 'emergency' else None
+            if triage.status == 'emergency' and state:
+                side_effects = self._preempt(state)
+            return await self.engine.process(
+                message, user_id, conv_id, history,
+                triage_side_effects=side_effects)
         state = (self.store.get(workflow_event['workflow_id'], user_id, conv_id)
                  if workflow_event else self.store.latest(user_id, conv_id))
-        triage = (evaluate_headache_triage(message, history)
-                  if is_headache_triage_request(message, history) else None)
-        if triage is not None and not triage.run_rag:
-            if triage.status == 'emergency' and state:
-                self._preempt(state)
-            return await self.engine.process(message, user_id, conv_id, history)
         # Existing emergency rules run before planning or accepting a reply.
         # The full recognizer remains responsible for contextual boundary signals.
         urgent = IntentRecognizer._pattern(message).get('urgent')

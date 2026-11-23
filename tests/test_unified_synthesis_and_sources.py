@@ -1,10 +1,12 @@
 import asyncio
 import json
 from copy import deepcopy
+from types import SimpleNamespace
 
 import pytest
 
 from careguide.orchestration.artifacts import ResultArtifacts
+from careguide.orchestration.answering import answer_context, source_footer
 from careguide.orchestration.budget import BudgetLimits
 from careguide.orchestration.contracts import PlanChange, PlanProposal, TaskStatus
 from careguide.orchestration.decisions import RequestDecision
@@ -20,6 +22,32 @@ from tests.test_model_planner import reply
 def instance(tmp_path):
     engine, _ = build(tmp_path, [])
     return UnifiedRuntime(engine.engine, engine.store.path)
+
+
+def test_answer_context_preserves_nested_official_hospital_source():
+    evidence = {
+        'title': '总院区地址',
+        'content': '已核验的医院官方资料。',
+        'source': {
+            'url': 'https://hospital.example.com/official',
+            'review_status': 'verified_official',
+        },
+    }
+    task = SimpleNamespace(
+        spec=SimpleNamespace(fragment='查询总院区资料', action='lookup_hospital_guide'),
+        status=TaskStatus.SUCCEEDED,
+        failure=None,
+        result={'evidence': [evidence]},
+    )
+    state = SimpleNamespace(tasks={'hospital': task}, status='completed')
+
+    context = answer_context(state, '查询总院区资料')
+
+    assert context['verified_results'][0]['url'] == evidence['source']['url']
+    assert context['verified_results'][0]['review_status'] == 'verified_official'
+    footer = source_footer(context)
+    assert '总院区地址' in footer
+    assert evidence['source']['url'] in footer
 
 
 def test_synthesis_only_selects_verified_excerpts_and_budget_is_shared(tmp_path):
