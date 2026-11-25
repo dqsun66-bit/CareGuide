@@ -502,12 +502,13 @@ def test_registration_guidance_uses_symptom_history_and_confirmed_campus(tmp_pat
     asyncio.run(run())
 
 
-def test_registration_guidance_works_without_campus(tmp_path):
+@pytest.mark.parametrize('message', ['挂号', '预约挂号', '预约挂号窗口', '在线预约挂号'])
+def test_registration_guidance_works_without_campus(tmp_path, message):
     """有症状历史但无院区时，仍给科室方向引导并请求医院信息。"""
     instance = unified(tmp_path)
     history = [{'role': 'user', 'content': '我腿脚不舒服'}]
     async def run():
-        result = await instance.process('挂号', 'u', 'c', history=history)
+        result = await instance.process(message, 'u', 'c', history=history)
         assert result['workflow_status'] == 'completed'
         assert '骨科' in result['response']
         assert '告诉我具体医院和院区' in result['response']

@@ -69,7 +69,9 @@ _PRICE_GUIDANCE = (
     '如需药品说明书（适应证、禁忌、注意事项），告诉我药品全名即可。'
 )
 
-_REGISTRATION_SHORT = re.compile(r'^(?:请|帮我|麻烦)?(?:安排|办理|去)?(?:手机|微信)?(?:在线|网上)?挂号$')
+_REGISTRATION_SHORT = re.compile(
+    r'^(?:请|帮我|麻烦)?(?:想|要)?(?:安排|办理|去|在线|网上|手机|微信)?'
+    r'(?:预约)?挂号(?:窗口|入口|流程|怎么办|怎么操作|怎么挂)?$')
 _CONFIRMED_CAMPUS = re.compile(r'已确认院区[“"](.+?)[”"]')
 _DEPARTMENT_GUIDANCE = (
     '腿脚不适通常涉及骨科、神经内科或康复科；'
