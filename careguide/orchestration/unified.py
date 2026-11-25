@@ -69,6 +69,13 @@ _PRICE_GUIDANCE = (
     '如需药品说明书（适应证、禁忌、注意事项），告诉我药品全名即可。'
 )
 
+_REGISTRATION_SHORT = re.compile(r'^(?:请|帮我|麻烦)?(?:安排|办理|去)?(?:手机|微信)?(?:在线|网上)?挂号$')
+_CONFIRMED_CAMPUS = re.compile(r'已确认院区[“"](.+?)[”"]')
+_DEPARTMENT_GUIDANCE = (
+    '腿脚不适通常涉及骨科、神经内科或康复科；'
+    '具体科室请以该院分诊台意见为准，也可到院后由导医协助判断。'
+)
+
 
 class UnifiedRuntime(OrchestrationRuntime):
     def __init__(self, engine, path, *, understanding=None, planner=None, **kwargs):
@@ -205,6 +212,50 @@ class UnifiedRuntime(OrchestrationRuntime):
                       answer_generation={'mode': 'deterministic'})
         return result
 
+    def _registration_guidance(self, state, message, user_id, conv_id, history, started):
+        """短挂号请求 + 会话有症状与已选院区上下文时，确定性给科室方向引导。
+
+        修复“安排挂号”只回“想挂哪个科室”的干巴巴澄清：会话历史里有症状
+        描述时给科室方向引导（不指定具体科室），并锚定已确认院区。
+        无症状上下文或非短挂号请求返回 None，走原流程。
+        """
+        if not _REGISTRATION_SHORT.fullmatch(message.strip()):
+            return None
+        previous = [turn.get('content', '') for turn in (history or ())
+                    if turn.get('role') == 'user']
+        if not previous:
+            return None
+        symptom_text = '\n'.join(previous[-3:])
+        if not (_SYMPTOM_CLARIFY_MARKERS.search(symptom_text)
+                or re.search(r'腿脚|行动不便|走路|站立|下肢', symptom_text)):
+            return None
+        assistant_text = '\n'.join(turn.get('content', '') for turn in (history or ())
+                                   if turn.get('role') == 'assistant')
+        campus = _CONFIRMED_CAMPUS.search(assistant_text)
+        if campus:
+            text = (f'收到。会话中已确认前往{campus.group(1)}。{_DEPARTMENT_GUIDANCE}'
+                    '可通过官方微信公众号挂号；前往就诊时家人陪同开车可参考上文'
+                    '的停车与无障碍通行提示。')
+        else:
+            text = (f'收到。{_DEPARTMENT_GUIDANCE}'
+                    '如需手机挂号入口，告诉我具体医院和院区即可。')
+        if state is None:
+            state = WorkflowState(id='direct-'+uuid.uuid4().hex, actor=user_id, conversation=conv_id,
+                goal=message, tasks={}, status='completed',
+                created_at=utc_now().isoformat(),
+                expires_at=(utc_now()+timedelta(minutes=30)).isoformat(),
+                events=[{'event': 'direct_answer'}])
+            budget = self.ledger(state, create=True)
+        else:
+            budget = self.ledger(state)
+        result = self._reply(state, budget, message, started, answer=text,
+                             synthesis={'mode': 'deterministic_registration_guidance'})
+        result['workflow_status'] = 'completed'
+        result.update(workflow=None, knowledge_used=False, grounded=False,
+                      answer_kind='registration_guidance',
+                      answer_generation={'mode': 'deterministic'})
+        return result
+
     async def _respond(self, state, budget, message, started, **kwargs):
         from careguide.orchestration.answering import generate_answer
         deadline = started+budget.limits.request_seconds
@@ -273,6 +324,11 @@ class UnifiedRuntime(OrchestrationRuntime):
             price = self._price_guidance(state, message, user_id, conv_id, history, started)
             if price is not None:
                 return price
+        if not workflow_event:
+            registration = self._registration_guidance(
+                state, message, user_id, conv_id, history, started)
+            if registration is not None:
+                return registration
         if state and workflow_event and state.version != workflow_event['plan_version']:
             raise VersionConflict('Old plan version')
         if state:

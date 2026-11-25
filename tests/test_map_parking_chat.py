@@ -5,10 +5,37 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from careguide.business_store import BusinessStore
+from careguide.compound_map_chat import mobility_travel_notice, registration_clause
 from careguide.amap_client import AmapProviderError
 from careguide.amap_models import Coordinate, HospitalPoi, ParkingCandidate
 from careguide.map_parking_chat import MapParkingChatService
 from careguide.trace_store import TRACE_VERSION, TraceStore, validate_trace_completeness
+
+
+def test_mobility_travel_notice_replaces_out_of_scope_for_mobility_signals():
+    care = {'response': '当前支持症状咨询与科室资料、药品信息和挂号流程引导。',
+            'workflow_status': 'out_of_scope', 'intent': 'other'}
+    result = mobility_travel_notice(care, '我腿脚不舒服 想去泰州市人民医院总院看看，家人陪同开车过去，给我安排停车路线')
+    assert '当前支持症状咨询' not in result['response']
+    assert '轮椅' in result['response']
+    assert '不替代诊断' in result['response']
+    assert result['workflow_status'] == 'completed'
+    assert result['intent_group'] == 'compound_care_map'
+    # 原 care 不被原地修改
+    assert '当前支持症状咨询' in care['response']
+
+
+def test_mobility_travel_notice_ignores_other_messages():
+    care = {'response': '当前支持症状咨询与科室资料、药品信息和挂号流程引导。'}
+    assert mobility_travel_notice(care, '我头疼，帮我看看哪里停车方便')['response'] == care['response']
+    assert mobility_travel_notice({'response': '预约资料如下'}, '我腿脚不舒服，怎么挂号')['response'] == '预约资料如下'
+
+
+def test_registration_clause_preserves_additional_care_requests():
+    trip = '我明天坐轮椅去泰州市人民医院总院区，怎么挂号？家人开车送我，哪里停车方便？'
+    assert registration_clause(trip) == '泰州市人民医院总院区怎么挂号'
+    for extra in ('帮我预约', '我现在头痛'):
+        assert registration_clause(trip + extra) == trip + extra
 
 
 NOW = datetime(2026, 10, 30, 8, tzinfo=timezone.utc)

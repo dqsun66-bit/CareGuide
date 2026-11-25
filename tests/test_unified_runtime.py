@@ -473,3 +473,51 @@ def test_mode_fallback_and_direct_confirmation_preserve_aliased_budget(tmp_path)
         assert (await instance.appointment_service.confirm(action['id'], 'u', 'c'))['status'] == 'completed'
         assert len(instance.appointment_service.backend.appointments) == 1
     asyncio.run(run())
+
+
+def test_planner_prompt_reuses_confirmed_campus_and_gives_department_guidance():
+    """挂号请求必须沿用会话已确认院区；症状+挂号给科室方向引导而非直接指定。"""
+    from careguide.orchestration.understanding_planner import SYSTEM
+    assert '必须沿用该院区' in SYSTEM
+    assert '不直接指定具体科室' in SYSTEM
+    assert '分诊台' in SYSTEM
+
+
+def test_registration_guidance_uses_symptom_history_and_confirmed_campus(tmp_path):
+    """短挂号请求 + 历史症状与已选院区 → 确定性科室方向引导。"""
+    instance = unified(tmp_path)
+    history = [
+        {'role': 'user', 'content': '我腿脚不舒服，想去医院看看，家人开车送我'},
+        {'role': 'assistant', 'content': '就医通行提示…'},
+        {'role': 'user', 'content': '选择院区：南京医科大学附属泰州人民医院'},
+        {'role': 'assistant', 'content': '已确认院区“南京医科大学附属泰州人民医院”，找到 10 个停车地点。'},
+    ]
+    async def run():
+        result = await instance.process('安排挂号', 'u', 'c', history=history)
+        assert result['workflow_status'] == 'completed'
+        assert '南京医科大学附属泰州人民医院' in result['response']
+        assert '骨科' in result['response']
+        assert '分诊台' in result['response']
+        assert '挂号' in result['response']
+    asyncio.run(run())
+
+
+def test_registration_guidance_works_without_campus(tmp_path):
+    """有症状历史但无院区时，仍给科室方向引导并请求医院信息。"""
+    instance = unified(tmp_path)
+    history = [{'role': 'user', 'content': '我腿脚不舒服'}]
+    async def run():
+        result = await instance.process('挂号', 'u', 'c', history=history)
+        assert result['workflow_status'] == 'completed'
+        assert '骨科' in result['response']
+        assert '告诉我具体医院和院区' in result['response']
+    asyncio.run(run())
+
+
+def test_registration_guidance_ignores_requests_without_symptom_context(tmp_path):
+    """无症状上下文的挂号请求不拦截，走原流程。"""
+    instance = unified(tmp_path)
+    async def run():
+        result = await instance.process('安排挂号', 'u', 'c', history=[])
+        assert '骨科' not in (result.get('response') or '')
+    asyncio.run(run())

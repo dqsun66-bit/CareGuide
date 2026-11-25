@@ -38,6 +38,7 @@ from careguide.map_parking_chat import MapParkingChatService
 from careguide.compound_map_chat import (
     compose_care_and_map,
     compose_care_with_map_failure,
+    mobility_travel_notice,
     immediate_emergency_signal,
     needs_care_orchestration,
     urgent_care_result,
@@ -304,8 +305,10 @@ async def _execute_chat_result(request, runtime, amap_factory=None):
                 )
                 if compound_map:
                     care_result = await engine.process(
-                        engine_message, request.user_id, conv_id, history
+                        engine_message,
+                        request.user_id, conv_id, history
                     )
+                    care_result = mobility_travel_notice(care_result, request.message)
                     if emergency_map or urgent_care_result(care_result):
                         result = care_result
                     else:
