@@ -41,6 +41,7 @@ from careguide.compound_map_chat import (
     mobility_travel_notice,
     immediate_emergency_signal,
     needs_care_orchestration,
+    registration_clause,
     urgent_care_result,
 )
 
@@ -305,7 +306,7 @@ async def _execute_chat_result(request, runtime, amap_factory=None):
                 )
                 if compound_map:
                     care_result = await engine.process(
-                        engine_message,
+                        registration_clause(engine_message) if not request.attachments else engine_message,
                         request.user_id, conv_id, history
                     )
                     care_result = mobility_travel_notice(care_result, request.message)

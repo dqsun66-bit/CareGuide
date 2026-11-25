@@ -154,6 +154,9 @@ const server = http.createServer(async (req, res) => {
         if (res.destroyed) return
         emit(5, 'result', result)
         res.end(); return
+      } else if (url.pathname === '/api/map/routes') {
+        assert.deepEqual(body, { origin: mapParkingCandidate.location, destination: mapHospital.location, mode: 'walking' })
+        result = { simulation: false, route: { distance_m: 230, polyline: [] } }
       } else if (url.pathname === '/api/map/hospitals/search') {
         await oldHospitalSearchGate
         result = { simulation: false, hospitals: [{ ...mapHospital, hospital_id: 'H-OLD', name: '迟到的旧院区' }] }
@@ -282,7 +285,11 @@ try {
   await until(`document.querySelector('[data-testid="open-map-parking"]:not(:disabled)') !== null`)
   assert.equal(await evaluate(`document.body.textContent.includes('实时车位未知') && document.body.textContent.includes('无障碍通行未核实')`), true)
   assert.equal(await evaluate(`Array.from(document.querySelectorAll('.message.user p')).at(-1)?.textContent`), '选择院区：泰州市人民医院新院区')
-  await evaluate(`document.querySelector('[data-testid="open-map-parking"]').click()`)
+  await evaluate(`document.querySelector('.chat-parking-route').focus()`)
+  await command('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', text: '\r', windowsVirtualKeyCode: 13 })
+  await command('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', windowsVirtualKeyCode: 13 })
+  await until(`document.querySelector('.route-summary')?.textContent.includes('230 米')`)
+  assert.equal(await evaluate(`new URL(document.querySelector('.route-summary a').href).searchParams.get('to')`), '119.921,32.461,泰州市人民医院停车场')
   await until(`document.querySelector('.page-parking h1')?.textContent.includes('医院停车与行程规划')`)
   assert.equal(await evaluate(`document.body.textContent.includes('实时车位为未知') && document.body.textContent.includes('无障碍通行尚未核实')`), true)
   assert.equal(await evaluate(`document.body.textContent.includes('SIM-A')`), false)
@@ -291,7 +298,7 @@ try {
   assert.deepEqual(requests.filter(item => item.path === '/api/chat/stream' && item.body.map_event).map(item => item.body.map_event), [{
     kind: 'map_hospital_select', query_id: 'map-query-1', candidate_version: 1, hospital_id: 'H1'
   }])
-  assert.equal(requests.some(item => item.path.startsWith('/api/map/')), false)
+  assert.deepEqual(requests.filter(item => item.path.startsWith('/api/map/')).map(item => item.path), ['/api/map/routes'])
   await evaluate(`(() => { const input=document.querySelector('.parking-controls input'); input.value='旧搜索'; input.dispatchEvent(new Event('input',{bubbles:true})); Array.from(document.querySelectorAll('.parking-controls button')).find(button => button.textContent.includes('查询真实院区')).click(); })()`)
   await until(`Array.from(document.querySelectorAll('.parking-controls button')).some(button => button.textContent.includes('正在查询') && button.disabled)`)
   await evaluate(`Array.from(document.querySelectorAll('.view-nav button')).find(button => button.textContent === '对话').click()`)

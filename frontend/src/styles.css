@@ -975,14 +975,9 @@ label > input[type="checkbox"] {
   display: grid;
 }
 
-.chat-parking-list article {
-  padding: 10px 16px;
-  border-top: 1px solid var(--hairline);
-  font-size: 13px;
-  color: var(--ink-soft);
-}
-
-.chat-parking-list article strong { color: var(--ink); }
+.chat-parking-list .chat-parking-route { cursor: pointer; }
+.chat-parking-route b { color: var(--teal-deep); }
+.chat-parking-route:focus-visible { outline: 2px solid var(--teal-deep); outline-offset: -3px; }
 
 .message .chat-map-empty {
   margin: 0;

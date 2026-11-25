@@ -104,12 +104,15 @@
                   <small class="source-badge">高德地图 · map_poi · {{ formatMapObservation(item.mapParking.hospital.observed_at) }}</small>
                 </div>
                 <div v-if="item.mapParking.candidates.length" class="chat-parking-list">
-                  <article v-for="candidate in item.mapParking.candidates" :key="candidate.parking_id">
+                  <button v-for="candidate in item.mapParking.candidates" :key="candidate.parking_id"
+                    type="button" class="chat-map-option chat-parking-route"
+                    @click="openChatParkingMap(item.mapParking, candidate.parking_id)">
                     <strong>{{ candidate.name }}</strong>
                     <span>{{ mapParkingDistance(candidate) }} · {{ parkingTruthLabels(candidate).availability }}</span>
                     <small>{{ parkingTruthLabels(candidate).accessibility }}</small>
                     <small class="source-badge">高德地图 · map_poi · {{ formatMapObservation(candidate.observed_at) }}</small>
-                  </article>
+                    <b>规划路线 →</b>
+                  </button>
                 </div>
                 <p v-else class="chat-map-empty">高德地图暂未返回周边停车场；实时车位未知，无障碍通行未核实。</p>
                 <button data-testid="open-map-parking" :disabled="busy" @click="openChatParkingMap(item.mapParking)">在地图中查看</button>
@@ -555,10 +558,11 @@
                 <small class="source-badge">map_poi · 高德地图 · {{ formatMapObservation(item.observed_at) }}</small>
               </article>
             </div>
-            <div v-if="selectedParking" class="route-summary">
+            <div v-if="selectedParking" ref="routeSummary" class="route-summary" tabindex="-1">
               <strong>{{ selectedParking.name }}</strong>
-              <span v-if="mapRoute">普通步行路线 {{ mapRoute.distance_m }} 米。该路线不代表轮椅可通行。</span>
-              <button :disabled="parkingBusy" @click="planSelectedRoute">生成普通步行路线</button>
+              <a v-if="drivingUrl" :href="drivingUrl" target="_blank" rel="noopener noreferrer">用高德地图驾车去这里 ↗</a>
+              <span v-if="mapRoute" role="status">停车场到院区的普通步行路线 {{ mapRoute.distance_m }} 米。该路线不代表轮椅可通行。</span>
+              <button :disabled="parkingBusy" @click="planSelectedRoute">{{ parkingBusy ? '正在规划步行路线…' : '生成普通步行路线' }}</button>
             </div>
             <div v-if="!mapParking.length && !selectedHospital" class="workspace-empty">先搜索并选择院区，再查看周边真实停车场。</div>
             <div v-else-if="!mapParking.length" class="workspace-empty parking-empty-selected">
@@ -852,6 +856,18 @@ const mapHospitals = ref([])
 const selectedHospital = ref(null)
 const mapParking = ref([])
 const selectedParking = ref(null)
+const routeSummary = ref(null)
+const drivingUrl = computed(() => {
+  const parking = selectedParking.value
+  const point = parking?.entrance_location || parking?.location
+  if (!Number.isFinite(point?.longitude) || !Number.isFinite(point?.latitude)) return ''
+  const params = new URLSearchParams({
+    to: [point.longitude, point.latitude, parking.name].join(','),
+    mode: 'car',
+    src: 'CareGuide',
+  })
+  return `https://uri.amap.com/navigation?${params}`
+})
 const mapRoute = ref(null)
 let mapOperationGeneration = 0
 const parkingForm = reactive({
@@ -964,7 +980,7 @@ async function selectChatHospital(selection, hospital) {
   }
 }
 
-function openChatParkingMap(value) {
+async function openChatParkingMap(value, parkingId) {
   try {
     const handoff = mapHandoff(toRaw(value))
     ++mapOperationGeneration
@@ -976,6 +992,12 @@ function openChatParkingMap(value) {
     selectedParking.value = null
     mapRoute.value = null
     activeView.value = 'parking'
+    if (parkingId) {
+      selectParking(handoff.candidates.find(candidate => candidate.parking_id === parkingId))
+      await nextTick()
+      routeSummary.value?.focus()
+      await planSelectedRoute()
+    }
   } catch (error) {
     showToast(error.message)
   }
